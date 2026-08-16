@@ -7,14 +7,16 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -o app ./cmd/api
+ARG TARGET=api
+
+RUN CGO_ENABLED=0 go build -o /out/app ./cmd/${TARGET}
 
 FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/app .
+COPY --from=builder /out/app /app/app
 
 EXPOSE 8080
 
-CMD ["./app"]
+CMD ["/app/app"]

@@ -1,10 +1,25 @@
 services:
-    app:
-        build: .
+    api:
+        build:
+            context: .
+            args:
+                TARGET: api
         ports:
             - "127.0.0.1:${APP_PORT:-8080}:${APP_PORT:-8080}"
         env_file:
             - .env
         restart: unless-stopped
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+
+    email-worker:
+        build:
+            context: .
+            args:
+                TARGET: email-queue-worker
+        env_file:
+            - .env
+        restart: unless-stopped
+
         extra_hosts:
             - "host.docker.internal:host-gateway"

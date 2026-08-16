@@ -1,5 +1,5 @@
 -- Drop (assignment_id, submitted_by) constraint
-ALTER TABLE assignment_submissions
+ALTER TABLE IF EXISTS assignment_submissions
     DROP CONSTRAINT IF EXISTS assignment_submissions_assignment_id_submitted_by_key;
 
 -- One non-returned submission per assignment per student
@@ -8,6 +8,6 @@ ON assignment_submissions (assignment_id, submitted_by)
 WHERE status <> 'returned';
 
 -- Drop old returned col
-ALTER TABLE assignment_submissions
+ALTER TABLE IF EXISTS assignment_submissions
     DROP COLUMN IF EXISTS returned,
     DROP COLUMN IF EXISTS return_msg;

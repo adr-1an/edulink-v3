@@ -139,8 +139,8 @@ func AppendMailQueue(emails []MailQueue, sf *sonyflake.Sonyflake, db *sql.Tx, ct
 
 	query := `
 INSERT INTO email_queue (id, send_to, subject, content_type, priority, body, send_at, purpose, max_retries)
-VALUES ($0,$0)`
-	query = strings.ReplaceAll(query, "($0,$0)", strings.Join(placeholders, ","))
+VALUES ($0,$0,$0,$0)`
+	query = strings.ReplaceAll(query, "($0,$0,$0,$0)", strings.Join(placeholders, ","))
 
 	// Insert queued emails
 	if _, err := db.ExecContext(ctx, query, args...); err != nil {

@@ -760,7 +760,7 @@ export const pl = {
     "staff.students.import.nextPage": "Następna",
     "staff.students.import.page": "Strona {page} z {total}",
     "staff.students.import.enableAccounts": "Włącz konta uczniów",
-    "staff.students.import.enableAccountsDescription": "Utwórz konta z możliwością logowania dla wszystkich uczniów w tym imporcie.",
+    "staff.students.import.enableAccountsDescription": "Utwórz konta z możliwością logowania dla wszystkich uczniów w tym imporcie. Każdy uczeń otrzyma e-mailem automatycznie wygenerowane hasło.",
     "staff.students.import.readyCount": "Uczniowie gotowi do importu: {count}",
     "staff.students.import.issueCount": "Wiersze wymagające uwagi: {count}",
     "staff.students.import.submit": "Importuj uczniów: {count}",

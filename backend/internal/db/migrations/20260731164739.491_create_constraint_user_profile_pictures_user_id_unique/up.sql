@@ -1,3 +1,3 @@
-ALTER TABLE user_profile_pictures
+ALTER TABLE IF EXISTS user_profile_pictures
 ADD CONSTRAINT user_profile_pictures_user_id_unique
 UNIQUE (user_id)

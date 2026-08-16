@@ -1,3 +1,3 @@
-ALTER TABLE assignment_submissions
+ALTER TABLE IF EXISTS assignment_submissions
     ADD COLUMN IF NOT EXISTS returned BOOL NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS return_msg TEXT;

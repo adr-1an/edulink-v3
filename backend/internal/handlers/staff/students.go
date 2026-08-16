@@ -914,7 +914,7 @@ func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 	confPlaceholders := make([]string, 0, len(studentList))
 
 	var emails []string
-	mailQ := make([]helpers2.MailQueue, 0, len(emails))
+	mailQ := make([]helpers2.MailQueue, 0, len(studentList))
 
 	for i, s := range studentList {
 		n := i*11 + 1
@@ -983,13 +983,13 @@ Please change your password as soon as you log in.
 				Purpose:     helpers2.Ptr(helpers2.MailPurposeStudentAccountCreation),
 				MaxRetries:  nil,
 			})
-
-			if err := helpers2.AppendMailQueue(mailQ, sf, tx, ctx); err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
 		}
+	}
+
+	if err := helpers2.AppendMailQueue(mailQ, sf, tx, ctx); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	// Check for email conflicts

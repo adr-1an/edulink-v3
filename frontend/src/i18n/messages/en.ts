@@ -758,7 +758,7 @@ export const en = {
     "staff.students.import.nextPage": "Next",
     "staff.students.import.page": "Page {page} of {total}",
     "staff.students.import.enableAccounts": "Enable student accounts",
-    "staff.students.import.enableAccountsDescription": "Create login-enabled accounts for every student in this import.",
+    "staff.students.import.enableAccountsDescription": "Create login-enabled accounts for every student in this import. Each student will receive an automatically generated password by email.",
     "staff.students.import.readyCount": "{count} students ready",
     "staff.students.import.issueCount": "{count} rows need attention",
     "staff.students.import.submit": "Import {count} students",
