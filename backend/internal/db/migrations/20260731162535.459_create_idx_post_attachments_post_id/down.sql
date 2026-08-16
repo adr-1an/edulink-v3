@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS post_attachments_post_id

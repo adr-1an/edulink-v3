@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS assigned_course_students;

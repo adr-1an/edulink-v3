@@ -1,0 +1,2 @@
+Table was dropped due to the notification system being reworked.
+It was not used anywhere in the app, so it shouldn't contain any data.

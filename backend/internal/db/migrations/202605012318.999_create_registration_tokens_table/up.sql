@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS registration_tokens (
+    token_hash BYTEA PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '24 hours'
+)

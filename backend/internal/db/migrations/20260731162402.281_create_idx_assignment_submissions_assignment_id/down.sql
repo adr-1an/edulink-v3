@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_assignment_submissions_assignment_id

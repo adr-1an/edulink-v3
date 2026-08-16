@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_assignment_submissions_assignment_id
+ON assignment_submissions(assignment_id)

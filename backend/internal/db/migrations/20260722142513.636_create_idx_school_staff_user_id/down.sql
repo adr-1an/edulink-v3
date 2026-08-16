@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_school_staff_user_id

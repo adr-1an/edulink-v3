@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS snowflake_machine_ids;

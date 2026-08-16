@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS school_staff (
+    id BIGINT PRIMARY KEY,
+
+    school_id BIGINT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+    added_by_user BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (school_id, user_id)
+)

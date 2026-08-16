@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_verification_tokens_user_id

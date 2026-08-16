@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_assigned_course_students_portal_user_id
+ON assigned_course_students(portal_user_id)

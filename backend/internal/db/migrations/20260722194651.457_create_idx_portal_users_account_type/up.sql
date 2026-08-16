@@ -1,0 +1,2 @@
+CREATE INDEX idx_portal_users_account_type
+ON portal_users(account_type)

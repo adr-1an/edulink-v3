@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_submission_attachments_submission_id
+ON submission_attachments(submission_id)

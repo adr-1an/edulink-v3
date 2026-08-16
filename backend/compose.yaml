@@ -1,0 +1,10 @@
+services:
+    app:
+        build: .
+        ports:
+            - "127.0.0.1:${APP_PORT:-8080}:${APP_PORT:-8080}"
+        env_file:
+            - .env
+        restart: unless-stopped
+        extra_hosts:
+            - "host.docker.internal:host-gateway"

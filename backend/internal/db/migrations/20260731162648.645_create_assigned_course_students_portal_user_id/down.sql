@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_assigned_course_students_portal_user_id

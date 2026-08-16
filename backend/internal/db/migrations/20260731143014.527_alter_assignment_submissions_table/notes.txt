@@ -1,0 +1,2 @@
+This migration is no longer needed. New migration:
+20260801065334.860_alter_assignment_submissions_table

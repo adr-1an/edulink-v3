@@ -1,0 +1,26 @@
+# node / next
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/.env*
+frontend/.idea
+
+# go
+backend/AGENTS.md
+backend/dbox
+backend/bin
+backend/tmp
+backend/vendor
+backend/*.exe
+backend/*.test
+backend/*.out
+backend/.idea
+
+# general
+.DS_Store
+*.log
+*.swp
+.idea
+.vscode
+.env
+AGENTS.md

@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_verification_tokens_user_id
+ON verification_tokens(user_id)

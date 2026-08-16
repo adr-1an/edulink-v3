@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS assignment_notification_subscriptions;

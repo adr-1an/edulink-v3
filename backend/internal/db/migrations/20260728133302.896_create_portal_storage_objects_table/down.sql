@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS portal_storage_objects;

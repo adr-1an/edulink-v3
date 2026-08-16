@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_submission_attachments_submission_id

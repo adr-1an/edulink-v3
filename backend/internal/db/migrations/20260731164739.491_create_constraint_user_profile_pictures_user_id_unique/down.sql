@@ -1,0 +1,2 @@
+ALTER TABLE user_profile_pictures
+DROP CONSTRAINT IF EXISTS user_profile_pictures_user_id_unique
