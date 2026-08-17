@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS portal_account_activation_tokens;
+
+DROP INDEX IF EXISTS idx_portal_account_activation_tokens_portal_user_id;

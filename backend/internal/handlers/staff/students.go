@@ -802,21 +802,17 @@ func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 		return
 	}
 
-	type studentCredentials struct {
-		RawPassword  string
-		PasswordHash string
-	}
-
 	type student struct {
-		ID             int64
-		Name           string
-		LastName       string
-		DoB            time.Time
-		Email          string
-		Phone          *string
-		Notes          *string
-		AccountEnabled bool
-		Credentials    *studentCredentials
+		ID                  int64
+		Name                string
+		LastName            string
+		DoB                 time.Time
+		Email               string
+		Phone               *string
+		Notes               *string
+		AccountEnabled      bool
+		ActivationToken     *string
+		ActivationTokenHash *[]byte
 	}
 	var studentList []student
 
@@ -871,30 +867,7 @@ func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 			return
 		}
 
-		var creds *studentCredentials
-		if p.EnableAccounts {
-			// Generate password
-			pass, err := gonanoid.New(16)
-			if err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			passHash, err := argon2id.CreateHash(pass, argon2id.DefaultParams)
-			if err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			creds = &studentCredentials{
-				RawPassword:  pass,
-				PasswordHash: passHash,
-			}
-		}
-
-		studentList = append(studentList, student{
+		sRow := student{
 			ID:             newID,
 			Name:           s.Name,
 			LastName:       s.LastName,
@@ -903,11 +876,32 @@ func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 			Phone:          s.Phone,
 			Notes:          s.Notes,
 			AccountEnabled: p.EnableAccounts,
-			Credentials:    creds,
-		})
+		}
+
+		if p.EnableAccounts {
+			// Generate activation token
+			activationToken, err := gonanoid.New(128)
+			if err != nil {
+				log.Println(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			activationTokenHash := helpers2.MakeHash256(activationToken)
+
+			sRow.ActivationToken = &activationToken
+			sRow.ActivationTokenHash = &activationTokenHash
+		}
+
+		studentList = append(studentList, sRow)
 	}
 
-	args := make([]any, 0, len(studentList)*11)
+	// The number of arguments one insert query would take
+	argLen := 10
+
+	activationArgs := make([]any, 0, len(studentList)*2) // Query uses 2 parameters (portal_user_id, token_hash)
+	activationPlaceholders := make([]string, 0, len(studentList))
+
+	args := make([]any, 0, len(studentList)*argLen)
 	placeholders := make([]string, 0, len(studentList))
 
 	confArgs := make([]any, 0, len(studentList))
@@ -917,13 +911,14 @@ func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 	mailQ := make([]helpers2.MailQueue, 0, len(studentList))
 
 	for i, s := range studentList {
-		n := i*11 + 1
+		n := i*argLen + 1
+		an := i*2 + 1
 		cn := i + 1
 
 		placeholders = append(
 			placeholders,
-			fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
-				n, n+1, n+2, n+3, n+4, n+5, n+6, n+7, n+8, n+9, n+10),
+			fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+				n, n+1, n+2, n+3, n+4, n+5, n+6, n+7, n+8, n+9),
 		)
 
 		confArgs = append(confArgs, s.Email)
@@ -931,11 +926,6 @@ func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 			confPlaceholders,
 			fmt.Sprintf("($%d)", cn),
 		)
-
-		var passHash *string
-		if s.Credentials != nil {
-			passHash = &s.Credentials.PasswordHash
-		}
 
 		args = append(args,
 			s.ID,
@@ -947,29 +937,32 @@ func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 			s.Phone,
 			s.Notes,
 			s.AccountEnabled,
-			passHash,
 			helpers2.AccTypeStudent,
 		)
 
+		// Build placeholders & args for the account activation token insert query
+		activationPlaceholders = append(
+			activationPlaceholders,
+			fmt.Sprintf("($%d, $%d)",
+				an, an+1),
+		)
+		activationArgs = append(activationArgs, s.ID, s.ActivationTokenHash)
+
 		emails = append(emails, s.Email)
 
-		if s.AccountEnabled && s.Credentials != nil {
+		if s.AccountEnabled && s.ActivationToken != nil {
 			appName := os.Getenv("APP_NAME")
+			frontendURL := os.Getenv("FRONTEND_URL")
+			verificationURL := fmt.Sprintf("%s/app/portal/auth/activate/%s", frontendURL, *s.ActivationToken)
 			msgBody := fmt.Sprintf(`
 Hello %s,
 
-Your %s Portal account has been created.
-Here are your credentials:
-
-Email: %s
-Password: %s
-
-Please change your password as soon as you log in.
+Your %s Portal account has been created. Please activate it here:
+%s
 `,
 				s.Name,
 				appName,
-				s.Email,
-				s.Credentials.RawPassword,
+				verificationURL,
 			)
 			appName = strings.TrimSpace(appName)
 
@@ -986,10 +979,12 @@ Please change your password as soon as you log in.
 		}
 	}
 
-	if err := helpers2.AppendMailQueue(mailQ, sf, tx, ctx); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if p.EnableAccounts {
+		if err := helpers2.AppendMailQueue(mailQ, sf, tx, ctx); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Check for email conflicts
@@ -1033,16 +1028,33 @@ SELECT email FROM portal_users WHERE email IN ($0)
 		return
 	}
 
+	// Insert students
+
 	// Workaround to suppress false SQL syntax errors
 	query := `
-INSERT INTO portal_users (id, school_id, name, last_name, date_of_birth, email, phone, notes, account_enabled, password_hash, account_type)
-VALUES ($0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0)`
-	query = strings.ReplaceAll(query, "($0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0)", strings.Join(placeholders, ","))
+INSERT INTO portal_users (id, school_id, name, last_name, date_of_birth, email, phone, notes, account_enabled, account_type)
+VALUES ($0,$0,$0,$0,$0,$0,$0,$0,$0,$0)`
+	query = strings.ReplaceAll(query, "($0,$0,$0,$0,$0,$0,$0,$0,$0,$0)", strings.Join(placeholders, ","))
 
 	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+
+	// Insert verification tokens
+	if p.EnableAccounts {
+		query = `
+INSERT INTO portal_account_activation_tokens (portal_user_id, token_hash)
+VALUES ($0,$0)
+`
+		query = strings.ReplaceAll(query, "($0,$0)", strings.Join(activationPlaceholders, ","))
+
+		if _, err := tx.ExecContext(ctx, query, activationArgs...); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

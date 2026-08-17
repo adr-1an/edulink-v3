@@ -1,0 +1,5 @@
+ALTER TABLE IF EXISTS portal_users
+ADD COLUMN IF NOT EXISTS account_active BOOL NOT NULL DEFAULT TRUE;
+
+ALTER TABLE portal_users
+    ALTER COLUMN account_active SET DEFAULT FALSE;

@@ -26,5 +26,10 @@ func AuthRoutes(db *sql.DB) chi.Router {
 		portal.LogoutHandler(w, r, db)
 	})
 
+	// Activate account
+	r.Post("/activate/{token}", func(w http.ResponseWriter, r *http.Request) {
+		portal.AccountActivationHandler(w, r, db)
+	})
+
 	return r
 }

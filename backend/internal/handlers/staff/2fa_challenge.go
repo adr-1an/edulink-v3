@@ -2,7 +2,7 @@ package staff
 
 import (
 	helpers2 "app/internal/helpers"
-	"app/internal/helpers/staff"
+	staff_helpers "app/internal/helpers/staff"
 	"context"
 	"database/sql"
 	"encoding/json"

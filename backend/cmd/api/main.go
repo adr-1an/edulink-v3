@@ -15,8 +15,8 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-// Latest update: added email queue worker
-const version = "3.8.3"
+// Latest update: added portal user activation tokens
+const version = "3.9.3"
 
 func main() {
 	fmt.Printf("Starting EduLink API v%s\n", version)

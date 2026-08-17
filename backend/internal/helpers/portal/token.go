@@ -42,6 +42,7 @@ WHERE ps.token_hash = $1
 AND pu.account_type <> $2
 AND ps.last_used_at > NOW() - INTERVAL '7 days'
 AND pu.account_enabled = true
+AND pu.account_active = true
 `
 	default:
 		query = `
@@ -53,6 +54,7 @@ WHERE ps.token_hash = $1
 AND pu.account_type = $2
 AND ps.last_used_at > NOW() - INTERVAL '7 days'
 AND pu.account_enabled = true
+AND pu.account_active = true
 `
 	}
 

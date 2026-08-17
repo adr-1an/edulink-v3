@@ -3,7 +3,7 @@ package helpers
 type AccType string
 
 const (
-	AccTypeStudent AccType = "student"
-	AccTypeTeacher AccType = "guardian"
-	AccTypeEither  AccType = "-"
+	AccTypeStudent  AccType = "student"
+	AccTypeGuardian AccType = "guardian"
+	AccTypeEither   AccType = "-"
 )

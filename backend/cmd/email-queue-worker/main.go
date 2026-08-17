@@ -107,10 +107,6 @@ func loop(db *sql.DB) {
 		return
 	}
 
-	if len(emails) == 0 {
-		fmt.Printf("[%s] No emails queued.\n", time.Now())
-	}
-
 	for _, e := range emails {
 		msg := helpers.Mail{
 			To:          e.SendTo,

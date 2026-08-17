@@ -1,8 +1,10 @@
 package portal
 
 import (
-	helpers2 "app/internal/helpers"
+	"app/internal/helpers"
 	"app/internal/helpers/portal"
+	staffhelpers "app/internal/helpers/staff"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -10,8 +12,10 @@ import (
 	"net/http"
 	"net/netip"
 	"strings"
+	"time"
 
 	"github.com/alexedwards/argon2id"
+	"github.com/go-chi/chi/v5"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
@@ -46,19 +50,13 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
-
 	var userID int64
 	var passwordHash string
 	var loginAllowed bool
-	if err := tx.QueryRowContext(ctx, `
-		SELECT id, COALESCE(password_hash, ''), account_enabled FROM portal_users WHERE email = $1
+	if err := db.QueryRowContext(ctx, `
+		SELECT id, COALESCE(password_hash, ''), account_enabled
+		FROM portal_users
+		WHERE email = $1 AND account_active = true
 	`, p.Email).Scan(&userID, &passwordHash, &loginAllowed); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -86,19 +84,37 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
+	CompleteLogin(completeLoginPayload{
+		W:      w,
+		R:      r,
+		DB:     db,
+		Ctx:    ctx,
+		UserID: userID,
+	})
+}
+
+type completeLoginPayload struct {
+	W      http.ResponseWriter
+	R      *http.Request
+	DB     *sql.DB
+	Ctx    context.Context
+	UserID int64
+}
+
+func CompleteLogin(p completeLoginPayload) {
 	token, err := gonanoid.New(128)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		p.W.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	tokenHash := helpers2.MakeHash256(token)
+	tokenHash := helpers.MakeHash256(token)
 
 	var ptrForwardedFor *string
 	var ptrSourceIP *string
 
-	xForwardedFor := r.Header.Get("X-Forwarded-For")
-	sourceIP := r.RemoteAddr
+	xForwardedFor := p.R.Header.Get("X-Forwarded-For")
+	sourceIP := p.R.RemoteAddr
 
 	if _, err := netip.ParseAddr(xForwardedFor); err != nil {
 		xForwardedFor = ""
@@ -116,24 +132,18 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		ptrSourceIP = &sourceIP
 	}
 
-	userAgent := r.Header.Get("User-Agent")
+	userAgent := p.R.Header.Get("User-Agent")
 
-	if _, err := tx.ExecContext(ctx, `
+	if _, err := p.DB.ExecContext(p.Ctx, `
 		INSERT INTO portal_sessions (token_hash, portal_user_id, x_forwarded_for, source_ip, user_agent)
 		VALUES ($1, $2, $3, $4, $5)
-	`, tokenHash, userID, ptrForwardedFor, ptrSourceIP, userAgent); err != nil {
+	`, tokenHash, p.UserID, ptrForwardedFor, ptrSourceIP, userAgent); err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		p.W.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	_ = json.NewEncoder(p.W).Encode(map[string]any{
 		"token": token,
 	})
 }
@@ -141,7 +151,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 func TokenCheckHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	ctx := r.Context()
 
-	userID, err := portal.TokenToUID(w, r, db, ctx, helpers2.AccTypeEither)
+	userID, err := portal.TokenToUID(w, r, db, ctx, helpers.AccTypeEither)
 	if err != nil {
 		return
 	}
@@ -174,7 +184,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	if err != nil {
 		return
 	}
-	tokenHash := helpers2.MakeHash256(token)
+	tokenHash := helpers.MakeHash256(token)
 
 	if _, err := db.ExecContext(ctx, `
 		DELETE FROM portal_sessions WHERE token_hash = $1
@@ -185,4 +195,108 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func AccountActivationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	ctx := r.Context()
+
+	activationToken := chi.URLParam(r, "token")
+	if activationToken == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"code": staffhelpers.ErrorCodeNoToken,
+		})
+		return
+	}
+	tokenHash := helpers.MakeHash256(activationToken)
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Get user ID by token hash
+	var userID int64
+	var expiresAt time.Time
+	if err := tx.QueryRowContext(ctx, `
+		DELETE FROM portal_account_activation_tokens
+		WHERE token_hash = $1
+		RETURNING portal_user_id, expires_at
+	`, tokenHash).Scan(&userID, &expiresAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code": staffhelpers.ErrorCodeInvalidToken,
+			})
+		} else {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if expiresAt.Before(time.Now()) || expiresAt.Equal(time.Now()) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"code": staffhelpers.ErrorCodeExpiredToken,
+		})
+		return
+	}
+
+	type payload struct {
+		NewPassword string `json:"newPassword"`
+	}
+	var p payload
+
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&p); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if len(p.NewPassword) < 8 {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	// Hash new password
+	passHash, err := argon2id.CreateHash(p.NewPassword, argon2id.DefaultParams)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Update user
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE portal_users
+		SET
+		    password_hash = $1,
+		    account_active = true
+		WHERE id = $2
+	`, passHash, userID); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Login
+	CompleteLogin(completeLoginPayload{
+		W:      w,
+		R:      r,
+		DB:     db,
+		Ctx:    ctx,
+		UserID: userID,
+	})
 }
