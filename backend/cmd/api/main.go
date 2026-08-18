@@ -16,7 +16,8 @@ import (
 )
 
 // Latest update: added rate limiting by X-Forwarded-For IP
-const version = "3.10.3"
+// Minor: corrected .env var name
+const version = "3.10.4"
 
 func main() {
 	fmt.Printf("Starting EduLink API v%s\n", version)
@@ -68,7 +69,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	trustForwardedFor := os.Getenv("TRUST_FORWARDED_FOR") == "true"
+	trustForwardedFor := os.Getenv("TRUST_X_FORWARDED_FOR") == "true"
 
 	// Init routes
 	r := v1.MainRouter(db, sf, s3, trustForwardedFor)
