@@ -15,9 +15,10 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-// Latest update: added rate limiting by X-Forwarded-For IP
-// Minor: corrected .env var name
-const version = "3.10.4"
+// Latest updates
+// Minor: Added rate limiting
+// Patch: changed ip source header
+const version = "3.10.5"
 
 func main() {
 	fmt.Printf("Starting EduLink API v%s\n", version)

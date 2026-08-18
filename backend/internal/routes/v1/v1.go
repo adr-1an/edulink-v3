@@ -25,7 +25,7 @@ func MainRouter(
 	r.Use(middleware.RequestID)
 
 	if trustForwarded {
-		r.Use(middleware.ClientIPFromXFFTrustedProxies(1))
+		r.Use(middleware.ClientIPFromHeader("CF-Connecting-IP"))
 	} else {
 		r.Use(middleware.ClientIPFromRemoteAddr)
 	}
