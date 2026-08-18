@@ -15,8 +15,8 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-// Latest update: added portal user activation tokens
-const version = "3.9.3"
+// Latest update: added rate limiting by X-Forwarded-For IP
+const version = "3.10.3"
 
 func main() {
 	fmt.Printf("Starting EduLink API v%s\n", version)
@@ -68,8 +68,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	trustForwardedFor := os.Getenv("TRUST_FORWARDED_FOR") == "true"
+
 	// Init routes
-	r := v1.MainRouter(db, sf, s3)
+	r := v1.MainRouter(db, sf, s3, trustForwardedFor)
 
 	// Start server
 	port := fmt.Sprintf(":%s", os.Getenv("APP_PORT"))
