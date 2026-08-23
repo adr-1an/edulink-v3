@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
 )
 
 func postToCourseID(postID int64, db *sql.DB, ctx context.Context) (int64, error) {
@@ -27,10 +26,10 @@ func postToCourseID(postID int64, db *sql.DB, ctx context.Context) (int64, error
 	return courseID, nil
 }
 
-func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) ViewPostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, db, ctx, helpers2.AccTypeEither)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeEither)
 	if err != nil {
 		return
 	}
@@ -41,7 +40,7 @@ func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 		return
 	}
 
-	courseID, err := postToCourseID(postID, db, ctx)
+	courseID, err := postToCourseID(postID, h.DB, ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -52,7 +51,7 @@ func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 		return
 	}
 
-	if !portal2.CanAccessCourse(db, userID, courseID, ctx) {
+	if !portal2.CanAccessCourse(h.DB, userID, courseID, ctx) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -83,7 +82,7 @@ func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 	}
 	var p post
 
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT
 		    u.id, u.name, u.email,
 		    p.id, p.title, p.body, p.accent_color, p.show_until, p.created_at, p.edited_at
@@ -107,7 +106,7 @@ func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 		return
 	}
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT pa.id, so.bucket_name, so.object_key, so.original_file_name, so.declared_content_type
 		FROM post_attachments pa
 		JOIN storage_objects so
@@ -144,7 +143,7 @@ func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 		}
 
 		if aID.Valid {
-			url, err := s3.PresignedGetObject(ctx, aBucketName.String, aKey.String, 15*time.Minute, nil)
+			url, err := h.S3.PresignedGetObject(ctx, aBucketName.String, aKey.String, 15*time.Minute, nil)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)

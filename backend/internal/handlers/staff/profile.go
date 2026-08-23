@@ -21,14 +21,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/matoous/go-nanoid/v2"
 	"github.com/minio/minio-go/v7"
-	"github.com/sony/sonyflake/v2"
 	"github.com/wneessen/go-mail"
 )
 
-func GetProfileHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -59,7 +58,7 @@ func GetProfileHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *m
 	var filename sql.NullString
 	var contentType sql.NullString
 
-	if err = db.QueryRowContext(ctx, `
+	if err = h.DB.QueryRowContext(ctx, `
 		SELECT
 		    so.bucket_name, so.object_key, so.original_file_name, so.declared_content_type,
 		    u.id, u.name, u.email, u.phone, u.two_factor_status, u.public_profile, u.staff_invitations_disabled, u.updated_at, u.created_at
@@ -91,7 +90,7 @@ func GetProfileHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *m
 	}
 
 	if filename.Valid && contentType.Valid && bucketName.Valid {
-		url, err := s3.PresignedGetObject(ctx, bucketName.String, objKey.String, 15*time.Minute, nil)
+		url, err := h.S3.PresignedGetObject(ctx, bucketName.String, objKey.String, 15*time.Minute, nil)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -111,10 +110,10 @@ func GetProfileHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *m
 	})
 }
 
-func UpdateProfileHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -147,7 +146,7 @@ func UpdateProfileHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Update
-	if _, err = db.ExecContext(ctx, `
+	if _, err = h.DB.ExecContext(ctx, `
 		UPDATE users
 		SET name = $1, phone = $2, public_profile = $3, staff_invitations_disabled = $4, updated_at = NOW()
 		WHERE id = $5
@@ -160,10 +159,10 @@ func UpdateProfileHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func SendEmailChangeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) SendEmailChangeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -195,7 +194,7 @@ func SendEmailChangeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 	// Get current password hash & check for email conflict
 	var passwordHash string
 	var emailConflict bool
-	err = db.QueryRowContext(ctx, `
+	err = h.DB.QueryRowContext(ctx, `
 		WITH conflict AS (
 		    SELECT EXISTS (SELECT 1 FROM users WHERE email = $2) AS email_exists
 		)
@@ -242,7 +241,7 @@ func SendEmailChangeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 
 	// Store token
 	var userEmail string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		WITH inserted AS (
 		    INSERT INTO verification_tokens (token_hash, user_id, purpose, email_change_new_email)
 		   	VALUES ($1, $2, $3, $4)
@@ -275,7 +274,7 @@ func SendEmailChangeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func EmailUpdateHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) EmailUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get token from URL
@@ -289,7 +288,7 @@ func EmailUpdateHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	// Get old email
 	var oldEmail string
 	var newEmail string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT u.email, vt.email_change_new_email
 		FROM verification_tokens vt
 		JOIN users u ON u.id = vt.user_id
@@ -306,7 +305,7 @@ func EmailUpdateHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 	// Delete token & update user
 	var res string
-	err := db.QueryRowContext(ctx, `
+	err := h.DB.QueryRowContext(ctx, `
 		WITH token AS (
 		    SELECT user_id, email_change_new_email
 		    FROM verification_tokens
@@ -392,10 +391,10 @@ New email: %s`, oldEmail, newEmail)
 	return
 }
 
-func PasswordChangeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -426,7 +425,7 @@ func PasswordChangeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var uName string
 	var uEmail string
 	var currentHash string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT name, email, password_hash FROM users WHERE id = $1
 	`, userID).Scan(&uName, &uEmail, &currentHash); err != nil {
 		log.Println(err)
@@ -447,7 +446,7 @@ func PasswordChangeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Delete all sessions
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		UPDATE sessions
 		SET revoked_at = NOW(), revoke_note = 'Password change'
 		WHERE user_id = $1
@@ -466,7 +465,7 @@ func PasswordChangeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Change password
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		UPDATE users SET password_hash = $1 WHERE id = $2
 	`, newHash, userID); err != nil {
 		log.Println(err)
@@ -497,10 +496,10 @@ If this wasn't you, review your account security immediately.
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func UploadPfpHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake, s3 *minio.Client) {
+func (h *Handler) UploadPfpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -545,20 +544,20 @@ func UploadPfpHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *so
 	}
 
 	s := helpers2.UploadService{
-		Db:         db,
-		S3:         s3,
+		Db:         h.DB,
+		S3:         h.S3,
 		Ctx:        ctx,
 		BucketName: bucketName,
 	}
 
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	pfpID, err := sf.NextID()
+	pfpID, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -581,7 +580,7 @@ func UploadPfpHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *so
 		return
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		INSERT INTO user_profile_pictures (id, user_id, storage_object_id)
 		VALUES ($1, $2, $3)
 		ON CONFLICT (user_id) DO UPDATE
@@ -592,7 +591,7 @@ func UploadPfpHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *so
 		return
 	}
 
-	url, err := s3.PresignedPutObject(ctx, bucketName, objKey, 5*time.Minute)
+	url, err := h.S3.PresignedPutObject(ctx, bucketName, objKey, 5*time.Minute)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -606,10 +605,10 @@ func UploadPfpHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *so
 	})
 }
 
-func ClearPfpHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) ClearPfpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -617,7 +616,7 @@ func ClearPfpHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 	// delete from db
 	var objKey string
 	var bucketName string
-	if err = db.QueryRowContext(ctx, `
+	if err = h.DB.QueryRowContext(ctx, `
 		WITH oid AS (
 		    DELETE FROM user_profile_pictures WHERE user_id = $1 RETURNING storage_object_id
 		)
@@ -633,7 +632,7 @@ func ClearPfpHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 	}
 
 	// delete from s3
-	if err := s3.RemoveObject(ctx, bucketName, objKey, minio.RemoveObjectOptions{}); err != nil {
+	if err := h.S3.RemoveObject(ctx, bucketName, objKey, minio.RemoveObjectOptions{}); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

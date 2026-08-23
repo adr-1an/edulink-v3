@@ -13,7 +13,6 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sony/sonyflake/v2"
 )
 
 func getCourseSchoolID(courseID int64, tx *sql.Tx) (int64, error) {
@@ -33,10 +32,10 @@ func getCourseSchoolID(courseID int64, tx *sql.Tx) (int64, error) {
 	return schoolID, nil
 }
 
-func AddOrRemoveCourseStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake, assign bool) {
+func (h *Handler) AddOrRemoveCourseStudentHandler(w http.ResponseWriter, r *http.Request, assign bool) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -47,7 +46,7 @@ func AddOrRemoveCourseStudentHandler(w http.ResponseWriter, r *http.Request, db 
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -67,12 +66,12 @@ func AddOrRemoveCourseStudentHandler(w http.ResponseWriter, r *http.Request, db 
 	}
 
 	if assign {
-		if !schools.Can(schools.PermissionCourseStudentAssign, userID, schoolID, ctx, db) {
+		if !schools.Can(schools.PermissionCourseStudentAssign, userID, schoolID, ctx, h.DB) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 	} else {
-		if !schools.Can(schools.PermissionCourseStudentRemove, userID, schoolID, ctx, db) {
+		if !schools.Can(schools.PermissionCourseStudentRemove, userID, schoolID, ctx, h.DB) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -171,7 +170,7 @@ WHERE portal_user_id = $1 AND course_id = $2
 	}
 
 	if affected != 0 {
-		if err := schools.StoreSchoolLog(schoolID, userID, logAction, logType, logTitle, logDesc, tx, ctx, sf, logDetails); err != nil {
+		if err := schools.StoreSchoolLog(schoolID, userID, logAction, logType, logTitle, logDesc, tx, ctx, h.Sf, logDetails); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -191,10 +190,10 @@ WHERE portal_user_id = $1 AND course_id = $2
 	}
 }
 
-func ListCourseStudentsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListCourseStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -205,7 +204,7 @@ func ListCourseStudentsHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -224,7 +223,7 @@ func ListCourseStudentsHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 		return
 	}
 
-	if !schools.Can(schools.PermissionCourseStudentList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionCourseStudentList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -278,7 +277,7 @@ func ListCourseStudentsHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

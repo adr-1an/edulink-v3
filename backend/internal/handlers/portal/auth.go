@@ -32,7 +32,7 @@ func validatePayload(p payload) error {
 	return nil
 }
 
-func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var p payload
@@ -53,7 +53,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var userID int64
 	var passwordHash string
 	var loginAllowed bool
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT id, COALESCE(password_hash, ''), account_enabled
 		FROM portal_users
 		WHERE email = $1 AND account_active = true
@@ -87,7 +87,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	CompleteLogin(completeLoginPayload{
 		W:      w,
 		R:      r,
-		DB:     db,
+		DB:     h.DB,
 		Ctx:    ctx,
 		UserID: userID,
 	})
@@ -148,16 +148,16 @@ func CompleteLogin(p completeLoginPayload) {
 	})
 }
 
-func TokenCheckHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal.TokenToUID(w, r, db, ctx, helpers.AccTypeEither)
+	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeEither)
 	if err != nil {
 		return
 	}
 
 	var accType string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT account_type FROM portal_users WHERE id = $1
 	`, userID).Scan(&accType); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -177,7 +177,7 @@ func TokenCheckHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	})
 }
 
-func LogoutHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	token, err := portal.ParseToken(w, r)
@@ -186,7 +186,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 	tokenHash := helpers.MakeHash256(token)
 
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		DELETE FROM portal_sessions WHERE token_hash = $1
 	`, tokenHash); err != nil {
 		log.Println(err)
@@ -197,7 +197,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func AccountActivationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) AccountActivationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	activationToken := chi.URLParam(r, "token")
@@ -210,7 +210,7 @@ func AccountActivationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 	}
 	tokenHash := helpers.MakeHash256(activationToken)
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -295,7 +295,7 @@ func AccountActivationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 	CompleteLogin(completeLoginPayload{
 		W:      w,
 		R:      r,
-		DB:     db,
+		DB:     h.DB,
 		Ctx:    ctx,
 		UserID: userID,
 	})

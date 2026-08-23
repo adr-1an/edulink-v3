@@ -18,13 +18,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/matoous/go-nanoid/v2"
 	"github.com/pquerna/otp/totp"
-	"github.com/sony/sonyflake/v2"
 	"github.com/wneessen/go-mail"
 )
 
 // SendRegistrationLinkHandler generates a registration link, and if the provided email isn't taken,
 // sends a registration email.
-func SendRegistrationLinkHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) SendRegistrationLinkHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Payload
@@ -50,7 +49,7 @@ func SendRegistrationLinkHandler(w http.ResponseWriter, r *http.Request, db *sql
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -108,7 +107,7 @@ func SendRegistrationLinkHandler(w http.ResponseWriter, r *http.Request, db *sql
 	tokenHash := helpers2.MakeHash256(token)
 
 	// Store registration token
-	res, err := db.ExecContext(ctx, `
+	res, err := h.DB.ExecContext(ctx, `
 		INSERT INTO registration_tokens (token_hash, email, expires_at)
 		VALUES ($1, $2, NOW() + INTERVAL '1 hour')
 		ON CONFLICT (email) DO UPDATE
@@ -168,7 +167,7 @@ func SendRegistrationLinkHandler(w http.ResponseWriter, r *http.Request, db *sql
 
 // CheckRegistrationTokenHandler checks whether the given registration token is valid
 // and returns the email associated with it.
-func CheckRegistrationTokenHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) CheckRegistrationTokenHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	token := chi.URLParam(r, "token")
@@ -176,7 +175,7 @@ func CheckRegistrationTokenHandler(w http.ResponseWriter, r *http.Request, db *s
 
 	// Get the email from the token
 	var email string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT email
 		FROM registration_tokens
 		WHERE token_hash = $1
@@ -202,7 +201,7 @@ func CheckRegistrationTokenHandler(w http.ResponseWriter, r *http.Request, db *s
 // Name - min 1, max 128
 // Phone - min 3, max 32
 // Password - min 8, no max
-func RegistrationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Payload
@@ -251,7 +250,7 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	tokenHash := helpers2.MakeHash256(token)
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -282,7 +281,7 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Generate ID
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
@@ -298,7 +297,7 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Store user
-	_, err = db.ExecContext(ctx, `
+	_, err = h.DB.ExecContext(ctx, `
 		INSERT INTO users (id, name, email, phone, password_hash)
 		VALUES ($1, $2, $3, $4, $5)
 	`, id, p.Name, email, p.Phone, passwordHash)
@@ -322,7 +321,7 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 // Validation rules:
 // Email - min 5, max 254
 // Password - min 8, no max
-func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user agent & IP
@@ -361,7 +360,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyfl
 	// Get user password
 	var userID int64
 	var passwordHash string
-	err := db.QueryRowContext(ctx, `
+	err := h.DB.QueryRowContext(ctx, `
 		SELECT id, password_hash FROM users WHERE email = $1
 	`, p.Email).Scan(&userID, &passwordHash)
 	if err != nil {
@@ -389,7 +388,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyfl
 
 	// Check if the account requires a 2FA challenge
 	var tfa string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT two_factor_status FROM users WHERE id = $1
 	`, userID).Scan(&tfa); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -411,7 +410,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyfl
 		}
 		tokenHash := helpers2.MakeHash256(token)
 
-		id, err := sf.NextID()
+		id, err := h.Sf.NextID()
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -433,7 +432,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyfl
 		}
 
 		expiresAt := time.Now().Add(15 * time.Minute)
-		if _, err := db.ExecContext(ctx, `
+		if _, err := h.DB.ExecContext(ctx, `
 			INSERT INTO two_factor_challenges (id, user_id, purpose, token_hash, expires_at, metadata)
 			VALUES ($1, $2, $3, $4, $5, $6)
 		`, id, userID, ChallengePurposeLogin, tokenHash, expiresAt, metadata); err != nil {
@@ -456,7 +455,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyfl
 	// If not, continue
 	CompleteLogin(CompleteLoginPayload{
 		W:   w,
-		DB:  db,
+		DB:  h.DB,
 		Ctx: ctx,
 		Meta: LoginChallengeMetadata{
 			UserID:       userID,
@@ -516,7 +515,7 @@ func CompleteLogin(p CompleteLoginPayload) {
 
 // TokenCheckHandler checks whether the given token is valid and not expired.
 // It will only return a 204 if the token is valid.
-func TokenCheckHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get token & hash
@@ -527,7 +526,7 @@ func TokenCheckHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 	// Check if token is valid
 	var exists bool
-	err = db.QueryRowContext(ctx, `
+	err = h.DB.QueryRowContext(ctx, `
 		SELECT EXISTS (
 		    SELECT 1 FROM sessions
 			WHERE token_hash = $1
@@ -553,7 +552,7 @@ func TokenCheckHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 }
 
 // SendPasswordResetEmailHandler sends a password reset link ("forgot password") to the user's email address.
-func SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Payload
@@ -584,7 +583,7 @@ func SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.Request, db *s
 
 	// Get ID from email
 	var userID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT id FROM users WHERE email = $1
 	`, p.Email).Scan(&userID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -598,7 +597,7 @@ func SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.Request, db *s
 	}
 
 	// Delete all previous password reset tokens
-	_, err := db.ExecContext(ctx, `
+	_, err := h.DB.ExecContext(ctx, `
 		DELETE FROM verification_tokens
 		WHERE user_id = $1
 		AND purpose = $2
@@ -619,7 +618,7 @@ func SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.Request, db *s
 	resetTokenHash := helpers2.MakeHash256(resetToken)
 
 	// Store in DB
-	_, err = db.ExecContext(ctx, `
+	_, err = h.DB.ExecContext(ctx, `
 		INSERT INTO verification_tokens (token_hash, user_id, purpose)
 		VALUES ($1, $2, $3)
 	`, resetTokenHash, userID, staff_helpers.TokenPurposePasswordReset)
@@ -652,7 +651,7 @@ func SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.Request, db *s
 }
 
 // PasswordResetHandler resets the user's password by using a reset token.
-func PasswordResetHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get reset token
@@ -688,7 +687,7 @@ func PasswordResetHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 	// Get ID
 	var userID int64
-	err := db.QueryRowContext(ctx, `
+	err := h.DB.QueryRowContext(ctx, `
 		DELETE FROM verification_tokens
 	   		WHERE token_hash = $1
 			AND created_at >= NOW() - INTERVAL '24 hours'
@@ -709,7 +708,7 @@ func PasswordResetHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Revoke all sessions
-	_, err = db.ExecContext(ctx, `
+	_, err = h.DB.ExecContext(ctx, `
 		UPDATE sessions
 		SET revoked_at = NOW()
 		WHERE user_id = $1
@@ -730,7 +729,7 @@ func PasswordResetHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Update password
-	_, err = db.ExecContext(ctx, `
+	_, err = h.DB.ExecContext(ctx, `
 		UPDATE users
 		SET password_hash = $1
 		WHERE id = $2
@@ -745,7 +744,7 @@ func PasswordResetHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 }
 
 // LogoutHandler revokes the current token sent in the request.
-func LogoutHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	tokenHash, err := staff_helpers.TokenToHash(w, r)
@@ -754,7 +753,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Delete token
-	res, err := db.ExecContext(ctx, `
+	res, err := h.DB.ExecContext(ctx, `
 		UPDATE sessions
 		SET revoked_at = NOW()
 		WHERE token_hash = $1
@@ -791,10 +790,10 @@ const (
 	TwoFAStatusDisabled string = "disabled"
 )
 
-func Enable2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -802,7 +801,7 @@ func Enable2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	// Check if 2FA is already enabled
 	var email string
 	var status string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT email, two_factor_status FROM users WHERE id = $1
 	`, userID).Scan(&email, &status); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -855,7 +854,7 @@ func Enable2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Store secret
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		UPDATE users
 		SET totp_secret = $1,
 		    two_factor_status = $2
@@ -871,10 +870,10 @@ func Enable2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	})
 }
 
-func Verify2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -898,7 +897,7 @@ func Verify2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -995,10 +994,10 @@ func Verify2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	})
 }
 
-func Disable2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) Disable2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -1026,7 +1025,7 @@ func Disable2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	// Get password hash
 	var passHash string
 	var totpSecret []byte
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT password_hash, totp_secret FROM users WHERE id = $1
 	`, userID).Scan(&passHash, &totpSecret); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1071,7 +1070,7 @@ func Disable2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Disable 2FA
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		UPDATE users
 		SET two_factor_status = $1,
 		    totp_secret = NULL
@@ -1083,7 +1082,7 @@ func Disable2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Delete recovery codes
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		DELETE FROM two_factor_recovery_codes
 		WHERE user_id = $1
 	`, userID); err != nil {
@@ -1095,7 +1094,7 @@ func Disable2faHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func RecoverTwoFactorHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) RecoverTwoFactorHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	type payload struct {
@@ -1112,7 +1111,7 @@ func RecoverTwoFactorHandler(w http.ResponseWriter, r *http.Request, db *sql.DB)
 
 	codeHash := helpers2.MakeHash256(p.RecoveryCode)
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

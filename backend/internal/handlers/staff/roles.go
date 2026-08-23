@@ -16,7 +16,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/lib/pq"
-	"github.com/sony/sonyflake/v2"
 )
 
 type roleRank struct {
@@ -171,11 +170,11 @@ func persistRoleOrder(ctx context.Context, tx *sql.Tx, schoolID int64, orderedRo
 	return nil
 }
 
-func CreateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CreateRoleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -188,7 +187,7 @@ func CreateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionRoleCreate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionRoleCreate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -227,7 +226,7 @@ func CreateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -279,7 +278,7 @@ func CreateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	// Generate ID
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -315,7 +314,7 @@ func CreateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRoleCreate, schools.TypeCreate, "Role created", "{user} created the role '"+p.Name+"'.", tx, ctx, sf, "{user} created role '"+p.Name+"' at position "+strconv.Itoa(p.Position)+" with color '#"+color+"'."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRoleCreate, schools.TypeCreate, "Role created", "{user} created the role '"+p.Name+"'.", tx, ctx, h.Sf, "{user} created role '"+p.Name+"' at position "+strconv.Itoa(p.Position)+" with color '#"+color+"'."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -331,11 +330,11 @@ func CreateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	w.WriteHeader(http.StatusCreated)
 }
 
-func ListRolesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListRolesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -348,7 +347,7 @@ func ListRolesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionRoleList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionRoleList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -365,7 +364,7 @@ func ListRolesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var roles []Role
 
 	// Fetch roles
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 			r.id,
 			r.position,
@@ -417,11 +416,11 @@ func ListRolesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	})
 }
 
-func UpdateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) UpdateRoleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -436,7 +435,7 @@ func UpdateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	// Get the role's school ID
 	var schoolID int64
 	var roleName string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT school_id, name FROM staff_roles WHERE id = $1
 	`, roleID).Scan(&schoolID, &roleName); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -449,13 +448,13 @@ func UpdateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionRoleUpdate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionRoleUpdate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -600,7 +599,7 @@ func UpdateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 
 	// Log action
 	details := "{user} updated the role name from '" + oldName + "' to '" + p.Name + "', color from '#" + oldColor + "' to '#" + p.Color + "', and position from " + strconv.Itoa(currentPosition) + " to " + strconv.Itoa(p.Position) + "."
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRoleEdit, schools.TypeEdit, "Role updated", "{user} updated the role '"+p.Name+"'.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRoleEdit, schools.TypeEdit, "Role updated", "{user} updated the role '"+p.Name+"'.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -616,11 +615,11 @@ func UpdateRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	w.WriteHeader(http.StatusOK)
 }
 
-func DeleteRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) DeleteRoleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -635,7 +634,7 @@ func DeleteRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	// Get the role's school ID
 	var schoolID int64
 	var roleName string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT school_id, name FROM staff_roles WHERE id = $1
 	`, roleID).Scan(&schoolID, &roleName); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -648,13 +647,13 @@ func DeleteRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionRoleDelete, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionRoleDelete, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -722,7 +721,7 @@ func DeleteRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRoleDelete, schools.TypeDelete, "Role deleted", "{user} deleted the role '"+roleName+"'.", tx, ctx, sf, "{user} deleted role '"+roleName+"' with ID "+strconv.FormatInt(roleID, 10)+"."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRoleDelete, schools.TypeDelete, "Role deleted", "{user} deleted the role '"+roleName+"'.", tx, ctx, h.Sf, "{user} deleted role '"+roleName+"' with ID "+strconv.FormatInt(roleID, 10)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -738,11 +737,11 @@ func DeleteRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func SetStaffRolePermissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) SetStaffRolePermissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -758,7 +757,7 @@ func SetStaffRolePermissionHandler(w http.ResponseWriter, r *http.Request, db *s
 	var position int
 	var schoolID int64
 	var roleName string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT position, school_id, name
 		FROM staff_roles
 		WHERE id = $1
@@ -773,7 +772,7 @@ func SetStaffRolePermissionHandler(w http.ResponseWriter, r *http.Request, db *s
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionRolePermissionUpdate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionRolePermissionUpdate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -809,7 +808,7 @@ func SetStaffRolePermissionHandler(w http.ResponseWriter, r *http.Request, db *s
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -864,7 +863,7 @@ func SetStaffRolePermissionHandler(w http.ResponseWriter, r *http.Request, db *s
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRolePermissionEdit, schools.TypeEdit, title, message, tx, ctx, sf); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRolePermissionEdit, schools.TypeEdit, title, message, tx, ctx, h.Sf); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -880,11 +879,11 @@ func SetStaffRolePermissionHandler(w http.ResponseWriter, r *http.Request, db *s
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func ListPermissionsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListPermissionsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	_, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	_, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -904,11 +903,11 @@ func ListPermissionsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 	})
 }
 
-func AddStaffRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) AddStaffRoleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -926,7 +925,7 @@ func AddStaffRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -952,7 +951,7 @@ func AddStaffRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionStaffRoleAdd, userID, target.StaffSchoolID, ctx, db) {
+	if !schools.Can(schools.PermissionStaffRoleAdd, userID, target.StaffSchoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -982,7 +981,7 @@ func AddStaffRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(target.StaffSchoolID, userID, schools.ActionStaffRoleCreate, schools.TypeCreate, "Staff role added", "{user} added the role '"+target.RoleName+"' to "+target.StaffName+".", tx, ctx, sf, "{user} added role '"+target.RoleName+"' to staff member "+target.StaffName+"."); err != nil {
+	if err := schools.StoreSchoolLog(target.StaffSchoolID, userID, schools.ActionStaffRoleCreate, schools.TypeCreate, "Staff role added", "{user} added the role '"+target.RoleName+"' to "+target.StaffName+".", tx, ctx, h.Sf, "{user} added role '"+target.RoleName+"' to staff member "+target.StaffName+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -998,11 +997,11 @@ func AddStaffRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func RemoveStaffRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) RemoveStaffRoleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -1020,7 +1019,7 @@ func RemoveStaffRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1046,7 +1045,7 @@ func RemoveStaffRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionStaffRoleRemove, userID, target.StaffSchoolID, ctx, db) {
+	if !schools.Can(schools.PermissionStaffRoleRemove, userID, target.StaffSchoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -1076,7 +1075,7 @@ func RemoveStaffRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(target.StaffSchoolID, userID, schools.ActionStaffRoleDelete, schools.TypeDelete, "Staff role removed", "{user} removed the role '"+target.RoleName+"' from "+target.StaffName+".", tx, ctx, sf, "{user} removed role '"+target.RoleName+"' from staff member "+target.StaffName+"."); err != nil {
+	if err := schools.StoreSchoolLog(target.StaffSchoolID, userID, schools.ActionStaffRoleDelete, schools.TypeDelete, "Staff role removed", "{user} removed the role '"+target.RoleName+"' from "+target.StaffName+".", tx, ctx, h.Sf, "{user} removed role '"+target.RoleName+"' from staff member "+target.StaffName+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -1092,11 +1091,11 @@ func RemoveStaffRoleHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func ListStaffRolesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListStaffRolesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -1110,7 +1109,7 @@ func ListStaffRolesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 	// Get the staff member's school ID
 	var schoolID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT school_id FROM school_staff WHERE id = $1
 	`, staffID).Scan(&schoolID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1123,7 +1122,7 @@ func ListStaffRolesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionStaffRoleList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionStaffRoleList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -1138,7 +1137,7 @@ func ListStaffRolesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var roles []Role
 
 	// Fetch roles
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT sr.id, sr.name, sr.color, sr.position
 		FROM staff_roles sr
 		JOIN staff_role_members srm
@@ -1178,7 +1177,7 @@ func ListStaffRolesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Get user access data
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

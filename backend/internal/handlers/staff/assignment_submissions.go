@@ -37,10 +37,10 @@ func SubToSchoolID(subID int64, db *sql.DB, ctx context.Context) (int64, error) 
 	return sID, nil
 }
 
-func ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -52,7 +52,7 @@ func ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *http.Request, db
 	}
 
 	var schoolID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id
 		FROM assignments a
 		JOIN courses c ON a.course_id = c.id
@@ -69,7 +69,7 @@ func ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *http.Request, db
 		return
 	}
 
-	if !schools.Can(schools.PermissionSubmissionList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSubmissionList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -91,7 +91,7 @@ func ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *http.Request, db
 	}
 	var subs []submission
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    s.id, u.id, u.email, u.phone, u.name, u.last_name,
 		    s.notes, s.created_at, s.status
@@ -167,7 +167,7 @@ func ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *http.Request, db
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -180,10 +180,10 @@ func ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *http.Request, db
 	})
 }
 
-func ViewSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) ViewSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -194,7 +194,7 @@ func ViewSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s
 		return
 	}
 
-	schoolID, err := SubToSchoolID(subID, db, ctx)
+	schoolID, err := SubToSchoolID(subID, h.DB, ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -205,7 +205,7 @@ func ViewSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s
 		return
 	}
 
-	if !schools.Can(schools.PermissionSubmissionView, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSubmissionView, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -249,7 +249,7 @@ func ViewSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s
 		SubmittedAt time.Time              `json:"submittedAt"`
 	}
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    s.id,
 		    s.status,
@@ -382,7 +382,7 @@ func ViewSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s
 		if r.AttachmentID != nil {
 			objKey := fmt.Sprintf("%s/%s", helpers2.UploadCategorySubmissionAttachments, *r.AttachmentID)
 
-			url, err := s3.PresignedGetObject(ctx, *r.BucketName, objKey, 5*time.Minute, nil)
+			url, err := h.S3.PresignedGetObject(ctx, *r.BucketName, objKey, 5*time.Minute, nil)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -418,7 +418,7 @@ func ViewSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -431,10 +431,10 @@ func ViewSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s
 	})
 }
 
-func ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -445,7 +445,7 @@ func ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	schoolID, err := SubToSchoolID(subID, db, ctx)
+	schoolID, err := SubToSchoolID(subID, h.DB, ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -456,12 +456,12 @@ func ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	if !schools.Can(schools.PermissionSubmissionReturn, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSubmissionReturn, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		DELETE FROM submission_scores WHERE submission_id = $1
 	`, subID); err != nil {
 		log.Println(err)
@@ -469,7 +469,7 @@ func ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	result, err := db.ExecContext(ctx, `
+	result, err := h.DB.ExecContext(ctx, `
 		UPDATE assignment_submissions
 		SET status = $1
 		WHERE id = $2
@@ -495,10 +495,10 @@ func ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -509,7 +509,7 @@ func DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http.Request, db 
 		return
 	}
 
-	schoolID, err := SubToSchoolID(subID, db, ctx)
+	schoolID, err := SubToSchoolID(subID, h.DB, ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -520,12 +520,12 @@ func DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http.Request, db 
 		return
 	}
 
-	if !schools.Can(schools.PermissionSubmissionDelete, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSubmissionDelete, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -624,7 +624,7 @@ func DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http.Request, db 
 	}
 
 	for _, object := range storageObjects {
-		if err := s3.RemoveObject(context.WithoutCancel(ctx), object.BucketName, object.ObjectKey, minio.RemoveObjectOptions{}); err != nil {
+		if err := h.S3.RemoveObject(context.WithoutCancel(ctx), object.BucketName, object.ObjectKey, minio.RemoveObjectOptions{}); err != nil {
 			log.Println(err)
 		}
 	}

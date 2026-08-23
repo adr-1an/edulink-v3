@@ -11,14 +11,13 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sony/sonyflake/v2"
 )
 
-func ListAcademicYearsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListAcademicYearsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -32,7 +31,7 @@ func ListAcademicYearsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionAcademicYearList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionAcademicYearList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -47,7 +46,7 @@ func ListAcademicYearsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 	var years []AcYear
 
 	// Get rows
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT id, start_year, end_year, is_active
 		FROM academic_years
 		WHERE school_id = $1
@@ -79,7 +78,7 @@ func ListAcademicYearsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 	}
 
 	// Get user access
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -93,11 +92,11 @@ func ListAcademicYearsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 	})
 }
 
-func CreateAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -111,7 +110,7 @@ func CreateAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionAcademicYearCreate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionAcademicYearCreate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -151,7 +150,7 @@ func CreateAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 
 	// Check for conflicts
 	var exists bool
-	if err = db.QueryRowContext(ctx, `
+	if err = h.DB.QueryRowContext(ctx, `
 		SELECT EXISTS (
 		    SELECT 1 FROM academic_years
 		 	WHERE school_id = $1
@@ -173,14 +172,14 @@ func CreateAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 	}
 
 	// Generate ID
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -201,7 +200,7 @@ func CreateAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 
 	yearLabel := strconv.Itoa(p.AcademicYear.From) + "-" + strconv.Itoa(p.AcademicYear.To)
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionAcademicYearCreate, schools.TypeCreate, "Academic year created", "{user} created the academic year "+yearLabel+".", tx, ctx, sf, "{user} created academic year "+yearLabel+" with ID "+strconv.FormatInt(id, 10)+"."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionAcademicYearCreate, schools.TypeCreate, "Academic year created", "{user} created the academic year "+yearLabel+".", tx, ctx, h.Sf, "{user} created academic year "+yearLabel+" with ID "+strconv.FormatInt(id, 10)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -222,11 +221,11 @@ func CreateAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 	w.WriteHeader(http.StatusCreated)
 }
 
-func DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -240,7 +239,7 @@ func DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -261,7 +260,7 @@ func DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionAcademicYearDelete, userID, yearSchoolID, ctx, db) {
+	if !schools.Can(schools.PermissionAcademicYearDelete, userID, yearSchoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -305,7 +304,7 @@ func DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 	}
 
 	yearLabel := strconv.Itoa(startYear) + "-" + strconv.Itoa(endYear)
-	if err := schools.StoreSchoolLog(yearSchoolID, userID, schools.ActionAcademicYearDelete, schools.TypeDelete, "Academic year deleted", "{user} deleted the academic year "+yearLabel+".", tx, ctx, sf, "{user} deleted academic year "+yearLabel+" with ID "+strconv.FormatInt(acYearID, 10)+"."); err != nil {
+	if err := schools.StoreSchoolLog(yearSchoolID, userID, schools.ActionAcademicYearDelete, schools.TypeDelete, "Academic year deleted", "{user} deleted the academic year "+yearLabel+".", tx, ctx, h.Sf, "{user} deleted academic year "+yearLabel+" with ID "+strconv.FormatInt(acYearID, 10)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -320,11 +319,11 @@ func DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func ClearAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) ClearAcademicYearHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -337,12 +336,12 @@ func ClearAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionAcademicYearToggleActive, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionAcademicYearToggleActive, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -381,7 +380,7 @@ func ClearAcademicYearHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 	if activeYearID != 0 {
 		details = "{user} cleared active academic year " + strconv.Itoa(activeStartYear) + "-" + strconv.Itoa(activeEndYear) + " with ID " + strconv.FormatInt(activeYearID, 10) + "."
 	}
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolEdit, schools.TypeEdit, "Active academic year cleared", "{user} cleared the active academic year.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolEdit, schools.TypeEdit, "Active academic year cleared", "{user} cleared the active academic year.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

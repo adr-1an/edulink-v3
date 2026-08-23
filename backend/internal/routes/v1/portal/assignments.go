@@ -1,49 +1,39 @@
 package portal
 
 import (
-	"app/internal/handlers/portal"
-	students2 "app/internal/handlers/portal/students"
-	"database/sql"
-	"net/http"
+	portalhandlers "app/internal/handlers/portal"
+	"app/internal/handlers/portal/students"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
-	"github.com/sony/sonyflake/v2"
 )
 
-func CourseAssignmentRoutes(db *sql.DB, sf *sonyflake.Sonyflake, s3 *minio.Client) chi.Router {
+func CourseAssignmentRoutes(h *students.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// List all student assignments
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		students2.ListAllAssignmentsHandler(w, r, db, s3)
-	})
+	r.Get("/", h.ListAllAssignmentsHandler)
 
-	r.Mount("/", AssignmentRoutes(db, sf))
+	r.Mount("/", AssignmentRoutes(h))
 
 	return r
 }
 
-func AssignmentRoutes(db *sql.DB, sf *sonyflake.Sonyflake) chi.Router {
+func AssignmentRoutes(h *students.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{assignmentID}", func(r chi.Router) {
 		// Begin assignment submission
-		r.Post("/submissions", func(w http.ResponseWriter, r *http.Request) {
-			students2.CreateAssignmentSubmissionHandler(w, r, db, sf)
-		})
+		r.Post("/submissions", h.CreateAssignmentSubmissionHandler)
 	})
 
 	return r
 }
 
-func SubmissionAttachmentRoutes(db *sql.DB, s3 *minio.Client) chi.Router {
+func SubmissionAttachmentRoutes(h *portalhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// Complete attachment upload
-	r.Post("/{objectID}", func(w http.ResponseWriter, r *http.Request) {
-		portal.CompleteUploadHandler(w, r, db, s3)
-	})
+	r.Post("/{objectID}", h.CompleteUploadHandler)
 
 	return r
 }

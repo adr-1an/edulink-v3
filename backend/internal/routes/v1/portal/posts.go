@@ -1,22 +1,17 @@
 package portal
 
 import (
-	"app/internal/handlers/portal"
-	"database/sql"
-	"net/http"
+	portalhandlers "app/internal/handlers/portal"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
 )
 
-func PostRoutes(db *sql.DB, s3 *minio.Client) chi.Router {
+func PostRoutes(h *portalhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{postID}", func(r chi.Router) {
 		// View post
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			portal.ViewPostHandler(w, r, db, s3)
-		})
+		r.Get("/", h.ViewPostHandler)
 	})
 
 	return r

@@ -1,49 +1,35 @@
 package staff
 
 import (
-	h "app/internal/handlers/staff"
-	"database/sql"
-	"net/http"
+	staffhandlers "app/internal/handlers/staff"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
-	"github.com/sony/sonyflake/v2"
 )
 
-func SchoolStaffMemberRoutes(
-	db *sql.DB,
-	sf *sonyflake.Sonyflake,
-	s3 *minio.Client,
-) chi.Router {
+func SchoolStaffMemberRoutes(h *staffhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// List staff members
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		h.ListStaffMembersHandler(w, r, db, s3)
-	})
+	r.Get("/", h.ListStaffMembersHandler)
 
 	// Invitations
 	r.Route("/invitations", func(r chi.Router) {
 		// Create & send invitation
-		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			h.SendStaffInvitationHandler(w, r, db, sf)
-		})
+		r.Post("/", h.SendStaffInvitationHandler)
 	})
 
 	return r
 }
 
-func StaffMemberRoutes(db *sql.DB, sf *sonyflake.Sonyflake) chi.Router {
+func StaffMemberRoutes(h *staffhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{staffID}", func(r chi.Router) {
 		// Delete staff member
-		r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-			h.DeleteStaffMemberHandler(w, r, db, sf)
-		})
+		r.Delete("/", h.DeleteStaffMemberHandler)
 
 		// Staff roles
-		r.Mount("/roles", StaffRoleRoutes(db, sf))
+		r.Mount("/roles", StaffRoleRoutes(h))
 	})
 
 	return r

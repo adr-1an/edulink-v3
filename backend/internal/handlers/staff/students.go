@@ -20,7 +20,6 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/go-chi/chi/v5"
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/sony/sonyflake/v2"
 	"github.com/wneessen/go-mail"
 )
 
@@ -93,10 +92,10 @@ func studentToSchoolID(ctx context.Context, db *sql.DB, studentID int64) (int64,
 	return sID, nil
 }
 
-func CreateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -107,7 +106,7 @@ func CreateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 		return
 	}
 
-	if !schools.Can(schools.PermissionStudentCreate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionStudentCreate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -127,7 +126,7 @@ func CreateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -147,7 +146,7 @@ func CreateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 		return
 	}
 
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -207,7 +206,7 @@ func CreateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 	}
 
 	details := fmt.Sprintf("{user} created a new student: %s <%s>", p.Name, p.Email)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStudentCreate, schools.TypeCreate, "Student created", "{user} created a student.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStudentCreate, schools.TypeCreate, "Student created", "{user} created a student.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -228,10 +227,10 @@ func CreateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 	w.WriteHeader(http.StatusCreated)
 }
 
-func UpdateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -242,14 +241,14 @@ func UpdateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 		return
 	}
 
-	schoolID, err := studentToSchoolID(ctx, db, studentID)
+	schoolID, err := studentToSchoolID(ctx, h.DB, studentID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if !schools.Can(schools.PermissionStudentUpdate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionStudentUpdate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -269,7 +268,7 @@ func UpdateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -299,7 +298,7 @@ func UpdateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 		lastname string
 		email    string
 	)
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT name, last_name, email
 		FROM portal_users
 		WHERE id = $1
@@ -346,7 +345,7 @@ func UpdateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 
 	if passHash != nil {
 		// Password has been changed, delete all sessions
-		if _, err := db.ExecContext(ctx, `
+		if _, err := h.DB.ExecContext(ctx, `
 			DELETE FROM portal_sessions
 			WHERE portal_user_id = $1
 		`, studentID); err != nil {
@@ -359,7 +358,7 @@ func UpdateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 	details := fmt.Sprintf(
 		"{user} updated the student %s %s <%s> to %s %s <%s>.",
 		name, lastname, email, p.Name, p.LastName, p.Email)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStudentEdit, schools.TypeEdit, "Student updated", "{user} updated a student.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStudentEdit, schools.TypeEdit, "Student updated", "{user} updated a student.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -380,10 +379,10 @@ func UpdateStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func DeleteStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -394,19 +393,19 @@ func DeleteStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 		return
 	}
 
-	schoolID, err := studentToSchoolID(ctx, db, studentID)
+	schoolID, err := studentToSchoolID(ctx, h.DB, studentID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if !schools.Can(schools.PermissionStudentDelete, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionStudentDelete, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -431,7 +430,7 @@ func DeleteStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 	}
 
 	details := fmt.Sprintf("{user} deleted the student %s <%s>.", name, email)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStudentDelete, schools.TypeDelete, "Student deleted", "{user} deleted a student.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStudentDelete, schools.TypeDelete, "Student deleted", "{user} deleted a student.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -446,10 +445,10 @@ func DeleteStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func ListStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -460,12 +459,12 @@ func ListStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	if !schools.Can(schools.PermissionStudentList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionStudentList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -528,7 +527,7 @@ func ListStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -541,10 +540,10 @@ func ListStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	})
 }
 
-func ViewStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -555,7 +554,7 @@ func ViewStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	schoolID, err := studentToSchoolID(ctx, db, studentID)
+	schoolID, err := studentToSchoolID(ctx, h.DB, studentID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -566,7 +565,7 @@ func ViewStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	if !schools.Can(schools.PermissionStudentView, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionStudentView, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -617,7 +616,7 @@ func ViewStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var s student
 
 	// Get the student data & submissions
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 			s.id, s.created_at, s.notes,
 			ss.score_percentage,
@@ -735,7 +734,7 @@ func ViewStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		s.Notes = nil
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -749,10 +748,10 @@ func ViewStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	})
 }
 
-func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -764,7 +763,7 @@ func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 		return
 	}
 
-	if !schools.Can(schools.PermissionStudentCreate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionStudentCreate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -816,7 +815,7 @@ func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 	}
 	var studentList []student
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -860,7 +859,7 @@ func ImportStudentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf
 		}
 
 		// Generate new ID
-		newID, err := sf.NextID()
+		newID, err := h.Sf.NextID()
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -980,7 +979,7 @@ Your %s Portal account has been created. Please activate it here:
 	}
 
 	if p.EnableAccounts {
-		if err := helpers2.AppendMailQueue(mailQ, sf, tx, ctx); err != nil {
+		if err := helpers2.AppendMailQueue(mailQ, h.Sf, tx, ctx); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return

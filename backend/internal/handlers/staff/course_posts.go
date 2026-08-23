@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
-	"github.com/sony/sonyflake/v2"
 )
 
 type CoursePostPayload struct {
@@ -43,10 +41,10 @@ func parseAndValidate(p CoursePostPayload) (CoursePostPayload, error) {
 	return p, nil
 }
 
-func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -58,7 +56,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	var schoolID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id
 		FROM courses c
 		JOIN grades g
@@ -72,7 +70,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 		return
 	}
 
-	if !schools.Can(schools.PermissionCoursePostCreate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionCoursePostCreate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -94,14 +92,14 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 		return
 	}
 
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -125,7 +123,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 		return
 	}
 
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionPostCreate, schools.TypeCreate, "Post created", "{user} created the post '"+p.Title+"'.", tx, ctx, sf, "{user} created post '"+p.Title+"' with accent color '#"+p.AccentColor+"'."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionPostCreate, schools.TypeCreate, "Post created", "{user} created the post '"+p.Title+"'.", tx, ctx, h.Sf, "{user} created post '"+p.Title+"' with accent color '#"+p.AccentColor+"'."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -143,10 +141,10 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	})
 }
 
-func UpdatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) UpdatePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -158,7 +156,7 @@ func UpdatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	var schoolID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id
 		FROM course_posts p
 		JOIN courses c
@@ -178,7 +176,7 @@ func UpdatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 		return
 	}
 
-	if !schools.Can(schools.PermissionCoursePostUpdate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionCoursePostUpdate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -200,7 +198,7 @@ func UpdatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -239,7 +237,7 @@ func UpdatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	details := "{user} updated the post title from '" + oldTitle + "' to '" + p.Title + "', changed accent color from '#" + oldAccentColor + "' to '#" + p.AccentColor + "', and changed the body length from " + strconv.Itoa(len(oldBody)) + " to " + strconv.Itoa(len(p.Body)) + " characters."
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionPostEdit, schools.TypeEdit, "Post updated", "{user} updated the post '"+p.Title+"'.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionPostEdit, schools.TypeEdit, "Post updated", "{user} updated the post '"+p.Title+"'.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -254,10 +252,10 @@ func UpdatePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func ListPostsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) ListPostsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -269,7 +267,7 @@ func ListPostsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *mi
 	}
 
 	var schoolID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id
 		FROM courses c
 		JOIN grades g
@@ -283,7 +281,7 @@ func ListPostsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *mi
 		return
 	}
 
-	if !schools.Can(schools.PermissionCoursePostList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionCoursePostList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -311,7 +309,7 @@ func ListPostsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *mi
 	}
 	var posts []post
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    pa.id, so.object_key, so.bucket_name, so.original_file_name, so.declared_content_type,
 		    p.id, u.name, p.title, p.body, p.show_until, p.accent_color, p.edited_at, p.created_at,
@@ -384,7 +382,7 @@ func ListPostsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *mi
 		// Post attachments
 		if aID.Valid && aKey.Valid && aBucketName.Valid && aFilename.Valid && aContentType.Valid {
 			// generate presigned url
-			url, err := s3.PresignedGetObject(ctx, aBucketName.String, aKey.String, 15*time.Minute, nil)
+			url, err := h.S3.PresignedGetObject(ctx, aBucketName.String, aKey.String, 15*time.Minute, nil)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -404,7 +402,7 @@ func ListPostsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *mi
 
 		// Author pfp
 		if pfpKey != nil && pfpBucketName != nil && pfpFilename != nil && pfpContentType != nil {
-			url, err := s3.PresignedGetObject(ctx, *pfpBucketName, *pfpKey, 15*time.Minute, nil)
+			url, err := h.S3.PresignedGetObject(ctx, *pfpBucketName, *pfpKey, 15*time.Minute, nil)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -422,7 +420,7 @@ func ListPostsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *mi
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -435,10 +433,10 @@ func ListPostsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *mi
 	})
 }
 
-func DeletePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) DeletePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -450,7 +448,7 @@ func DeletePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	}
 
 	var schoolID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id
 		FROM course_posts p
 		JOIN courses c
@@ -470,12 +468,12 @@ func DeletePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 		return
 	}
 
-	if !schools.Can(schools.PermissionCoursePostDelete, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionCoursePostDelete, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -507,7 +505,7 @@ func DeletePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 		return
 	}
 
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionPostDelete, schools.TypeDelete, "Post deleted", "{user} deleted the post '"+postTitle+"'.", tx, ctx, sf, "{user} deleted post '"+postTitle+"' with ID "+strconv.FormatInt(postID, 10)+"."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionPostDelete, schools.TypeDelete, "Post deleted", "{user} deleted the post '"+postTitle+"'.", tx, ctx, h.Sf, "{user} deleted post '"+postTitle+"' with ID "+strconv.FormatInt(postID, 10)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -522,10 +520,10 @@ func DeletePostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) ViewPostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -537,7 +535,7 @@ func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 	}
 
 	var schoolID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id
 		FROM course_posts p
 		JOIN courses c
@@ -557,7 +555,7 @@ func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 		return
 	}
 
-	if !schools.Can(schools.PermissionCoursePostView, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionCoursePostView, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -588,7 +586,7 @@ func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 	}
 	var posts []post
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    so.id, so.bucket_name, so.object_key, so.original_file_name, so.declared_content_type,
 		    author.id, author.name, author.email,
@@ -653,7 +651,7 @@ func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 
 		if aID.Valid {
 			// generate presigned url
-			url, err := s3.PresignedGetObject(ctx, aBucketName.String, aKey.String, 15*time.Minute, nil)
+			url, err := h.S3.PresignedGetObject(ctx, aBucketName.String, aKey.String, 15*time.Minute, nil)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -679,7 +677,7 @@ func ViewPostHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *min
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

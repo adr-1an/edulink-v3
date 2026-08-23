@@ -2,7 +2,7 @@ package staff
 
 import (
 	helpers2 "app/internal/helpers"
-	staff_helpers "app/internal/helpers/staff"
+	"app/internal/helpers/staff"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/pquerna/otp/totp"
-	"github.com/sony/sonyflake/v2"
 )
 
 type TwoFactorChallengePurpose string
@@ -92,7 +91,7 @@ type challengeCompletionPayload struct {
 	ChallengeToken string `json:"challengeToken"`
 }
 
-func CompleteChallenge(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CompleteChallenge(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var p challengeCompletionPayload
 
@@ -119,7 +118,7 @@ func CompleteChallenge(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 	var dbMetadata json.RawMessage
 	var expiresAt time.Time
 
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT id, user_id, purpose, metadata, expires_at
 		FROM two_factor_challenges
 		WHERE token_hash = $1
@@ -154,7 +153,7 @@ func CompleteChallenge(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 			return
 		}
 
-		ok, err := verifyTfa(w, db, ctx, userID, p, id, tokenHash)
+		ok, err := verifyTfa(w, h.DB, ctx, userID, p, id, tokenHash)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -168,7 +167,7 @@ func CompleteChallenge(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 
 		CompleteLogin(CompleteLoginPayload{
 			W:   w,
-			DB:  db,
+			DB:  h.DB,
 			Ctx: ctx,
 			Meta: LoginChallengeMetadata{
 				UserID:       meta.UserID,
@@ -187,7 +186,7 @@ func CompleteChallenge(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 			return
 		}
 
-		ok, err := verifyTfa(w, db, ctx, userID, p, id, tokenHash)
+		ok, err := verifyTfa(w, h.DB, ctx, userID, p, id, tokenHash)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -201,8 +200,8 @@ func CompleteChallenge(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *s
 
 		CompleteSchoolDeletion(CompleteSchoolDeletionPayload{
 			W:   w,
-			DB:  db,
-			Sf:  sf,
+			DB:  h.DB,
+			Sf:  h.Sf,
 			Ctx: ctx,
 			Meta: SchoolDeletionChallengeMetadata{
 				UserID:   meta.UserID,

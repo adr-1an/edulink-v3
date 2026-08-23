@@ -16,12 +16,12 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func CompleteUploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) CompleteUploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	doCleanup := true
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -50,7 +50,7 @@ func CompleteUploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s
 	var declaredSize int64
 	var declaredContentType string
 	var objectKey string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT uploaded_by, declared_file_size, declared_content_type, object_key
 		FROM storage_objects WHERE id = $1 AND completion_token = $2 AND status = $3
 	`, objectID, tokenHash, helpers2.StatusPending).Scan(&objectUserID, &declaredSize, &declaredContentType, &objectKey); err != nil {
@@ -80,11 +80,11 @@ func CompleteUploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s
 			return
 		}
 
-		if err := s3.RemoveObject(context.WithoutCancel(ctx), bucketName, objectKey, minio.RemoveObjectOptions{}); err != nil {
+		if err := h.S3.RemoveObject(context.WithoutCancel(ctx), bucketName, objectKey, minio.RemoveObjectOptions{}); err != nil {
 			log.Println(err)
 		}
 
-		if _, err := db.ExecContext(context.WithoutCancel(ctx), `
+		if _, err := h.DB.ExecContext(context.WithoutCancel(ctx), `
 			UPDATE storage_objects
 			SET status = $1
 			WHERE id = $2
@@ -97,7 +97,7 @@ func CompleteUploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s
 	}()
 
 	// check if the declared object data matches the actual data
-	info, err := s3.StatObject(ctx, bucketName, objectKey, minio.StatObjectOptions{})
+	info, err := h.S3.StatObject(ctx, bucketName, objectKey, minio.StatObjectOptions{})
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -116,7 +116,7 @@ func CompleteUploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s
 	// note: the content type stored in s3 is from the client. there's no guarantee it's correct, but
 	// for this handler it really doesn't matter.
 
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		UPDATE storage_objects
 		SET status = $1, completion_token = '', completed_at = NOW()
 		WHERE id = $2

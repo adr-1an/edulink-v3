@@ -18,7 +18,6 @@ import (
 	"github.com/lib/pq"
 	"github.com/matoous/go-nanoid/v2"
 	"github.com/minio/minio-go/v7"
-	"github.com/sony/sonyflake/v2"
 )
 
 type SubmissionStatus string
@@ -124,10 +123,10 @@ func listAssignmentSubmissionAttachments(ctx context.Context, db *sql.DB, submis
 	return attachments, nil
 }
 
-func DeleteSubmissionAttachmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) DeleteSubmissionAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, db, ctx, helpers2.AccTypeStudent)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -144,7 +143,7 @@ func DeleteSubmissionAttachmentHandler(w http.ResponseWriter, r *http.Request, d
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -223,7 +222,7 @@ func DeleteSubmissionAttachmentHandler(w http.ResponseWriter, r *http.Request, d
 		return
 	}
 
-	if err := s3.RemoveObject(context.WithoutCancel(ctx), bucketName, objectKey, minio.RemoveObjectOptions{}); err != nil {
+	if err := h.S3.RemoveObject(context.WithoutCancel(ctx), bucketName, objectKey, minio.RemoveObjectOptions{}); err != nil {
 		log.Println(err)
 	}
 
@@ -231,10 +230,10 @@ func DeleteSubmissionAttachmentHandler(w http.ResponseWriter, r *http.Request, d
 }
 
 // CreateAssignmentSubmissionHandler creates the submission with the "pending" status, to wait for attachment uploads.
-func CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, db, ctx, helpers2.AccTypeStudent)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -247,7 +246,7 @@ func CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *http.Request, d
 
 	var courseID int64
 	var submissionsOpen bool
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT
 		    course_id,
 		    submissions_enabled
@@ -264,7 +263,7 @@ func CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *http.Request, d
 		return
 	}
 
-	if !portal2.CanAccessCourse(db, userID, courseID, ctx) {
+	if !portal2.CanAccessCourse(h.DB, userID, courseID, ctx) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -291,7 +290,7 @@ func CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *http.Request, d
 		return
 	}
 
-	newSubID, err := sf.NextID()
+	newSubID, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -300,7 +299,7 @@ func CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *http.Request, d
 
 	// Store a new pending submission, or resume the student's existing pending submission.
 	var submissionID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		INSERT INTO assignment_submissions (id, assignment_id, submitted_by, notes)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (assignment_id, submitted_by)
@@ -326,10 +325,10 @@ func CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *http.Request, d
 	})
 }
 
-func InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake, s3 *minio.Client) {
+func (h *Handler) InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, db, ctx, helpers2.AccTypeStudent)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -385,14 +384,14 @@ func InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.Request, db *
 	}
 
 	// generate id & completion token
-	storageObjID, err := sf.NextID()
+	storageObjID, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	subAttachmentID, err := sf.NextID()
+	subAttachmentID, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -418,14 +417,14 @@ func InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.Request, db *
 
 	// Generate the URL before opening the transaction so no database lock is held
 	// while communicating with object storage.
-	url, err := s3.PresignedPutObject(ctx, bucketName, objectKey, 5*time.Minute)
+	url, err := h.S3.PresignedPutObject(ctx, bucketName, objectKey, 5*time.Minute)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -476,7 +475,7 @@ func InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.Request, db *
 
 	s := helpers2.UploadService{
 		Db:         tx,
-		S3:         s3,
+		S3:         h.S3,
 		Ctx:        ctx,
 		BucketName: bucketName,
 	}
@@ -510,10 +509,10 @@ func InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.Request, db *
 	})
 }
 
-func CompleteSubmissionCreationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) CompleteSubmissionCreationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, db, ctx, helpers2.AccTypeStudent)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -524,7 +523,7 @@ func CompleteSubmissionCreationHandler(w http.ResponseWriter, r *http.Request, d
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

@@ -1,97 +1,63 @@
 package staff
 
 import (
-	staff2 "app/internal/handlers/staff"
-	"database/sql"
-	"net/http"
+	staffhandlers "app/internal/handlers/staff"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
-	"github.com/sony/sonyflake/v2"
 )
 
-func SchoolRoutes(
-	db *sql.DB,
-	sf *sonyflake.Sonyflake,
-	s3 *minio.Client,
-) chi.Router {
+func SchoolRoutes(h *staffhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// List schools
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		staff2.SchoolListHandler(w, r, db)
-	})
+	r.Get("/", h.SchoolListHandler)
 
 	// Create school
-	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-		staff2.CreateSchoolHandler(w, r, db, sf)
-	})
+	r.Post("/", h.CreateSchoolHandler)
 
 	// School-specific
 	r.Route("/{schoolID}", func(r chi.Router) {
 		// View school dashboard
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			staff2.ViewSchoolDashboardHandler(w, r, db)
-		})
+		r.Get("/", h.ViewSchoolDashboardHandler)
 
 		// Update school
-		r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-			staff2.UpdateSchoolHandler(w, r, db, sf)
-		})
+		r.Patch("/", h.UpdateSchoolHandler)
 
 		// Delete school
-		r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-			staff2.DeleteSchoolHandler(w, r, db, sf)
-		})
+		r.Delete("/", h.DeleteSchoolHandler)
 
 		// Staff
-		r.Mount("/staff", SchoolStaffMemberRoutes(db, sf, s3))
+		r.Mount("/staff", SchoolStaffMemberRoutes(h))
 
 		// Create academic year
-		r.Post("/academic-years", func(w http.ResponseWriter, r *http.Request) {
-			staff2.CreateAcademicYearHandler(w, r, db, sf)
-		})
+		r.Post("/academic-years", h.CreateAcademicYearHandler)
 
 		// List academic years
-		r.Get("/academic-years", func(w http.ResponseWriter, r *http.Request) {
-			staff2.ListAcademicYearsHandler(w, r, db)
-		})
+		r.Get("/academic-years", h.ListAcademicYearsHandler)
 
 		// List grades
-		r.Get("/grades", func(w http.ResponseWriter, r *http.Request) {
-			staff2.ListGradesHandler(w, r, db)
-		})
+		r.Get("/grades", h.ListGradesHandler)
 
 		// Promote school
-		r.Post("/promote", func(w http.ResponseWriter, r *http.Request) {
-			staff2.SchoolPromotionHandler(w, r, db, sf)
-		})
+		r.Post("/promote", h.SchoolPromotionHandler)
 
 		// Clear active academic year
-		r.Put("/academic-years", func(w http.ResponseWriter, r *http.Request) {
-			staff2.ClearAcademicYearHandler(w, r, db, sf)
-		})
+		r.Put("/academic-years", h.ClearAcademicYearHandler)
 
 		// Roles
-		r.Mount("/roles", SchoolRoleRoutes(db, sf))
+		r.Mount("/roles", SchoolRoleRoutes(h))
 
 		// List logs
-		r.Get("/logs", func(w http.ResponseWriter, r *http.Request) {
-			staff2.ListSchoolLogsHandler(w, r, db)
-		})
+		r.Get("/logs", h.ListSchoolLogsHandler)
 
 		// List staff invitations
-		r.Get("/staff-invitations", func(w http.ResponseWriter, r *http.Request) {
-			staff2.ListSchoolInvitationsHandler(w, r, db)
-		})
+		r.Get("/staff-invitations", h.ListSchoolInvitationsHandler)
 
 		// Leave school (for staff members)
-		r.Delete("/leave", func(w http.ResponseWriter, r *http.Request) {
-			staff2.LeaveSchoolStaffHandler(w, r, db, sf)
-		})
+		r.Delete("/leave", h.LeaveSchoolStaffHandler)
 
 		// Students
-		r.Mount("/students", SchoolStudentRoutes(db, sf))
+		r.Mount("/students", SchoolStudentRoutes(h))
 	})
 
 	return r

@@ -18,16 +18,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/matoous/go-nanoid/v2"
-	"github.com/minio/minio-go/v7"
-	"github.com/sony/sonyflake/v2"
 	"github.com/wneessen/go-mail"
 )
 
-func ListUserInvitationsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListUserInvitationsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -56,7 +54,7 @@ func ListUserInvitationsHandler(w http.ResponseWriter, r *http.Request, db *sql.
 	var invitations []Invitation
 
 	// Get data from DB
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		WITH uid AS (
 		    SELECT email FROM users WHERE id = $1
 		)
@@ -112,10 +110,10 @@ func ListUserInvitationsHandler(w http.ResponseWriter, r *http.Request, db *sql.
 	})
 }
 
-func ListSchoolInvitationsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListSchoolInvitationsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -126,7 +124,7 @@ func ListSchoolInvitationsHandler(w http.ResponseWriter, r *http.Request, db *sq
 		return
 	}
 
-	if !schools.Can(schools.PermissionSchoolInviteList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSchoolInviteList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -147,7 +145,7 @@ func ListSchoolInvitationsHandler(w http.ResponseWriter, r *http.Request, db *sq
 	}
 	var invites []invite
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 			u.id, u.name, u.email,
 			i.id, i.user_email, i.status, i.created_at, i.expires_at
@@ -191,7 +189,7 @@ func ListSchoolInvitationsHandler(w http.ResponseWriter, r *http.Request, db *sq
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -204,10 +202,10 @@ func ListSchoolInvitationsHandler(w http.ResponseWriter, r *http.Request, db *sq
 	})
 }
 
-func CancelSchoolInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CancelSchoolInvitationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -220,7 +218,7 @@ func CancelSchoolInvitationHandler(w http.ResponseWriter, r *http.Request, db *s
 
 	var schoolID int64
 	var invEmail string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT school_id, user_email FROM staff_invitations WHERE id = $1
 	`, invID).Scan(&schoolID, &invEmail); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -232,12 +230,12 @@ func CancelSchoolInvitationHandler(w http.ResponseWriter, r *http.Request, db *s
 		return
 	}
 
-	if !schools.Can(schools.PermissionSchoolInviteCancel, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSchoolInviteCancel, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -257,7 +255,7 @@ func CancelSchoolInvitationHandler(w http.ResponseWriter, r *http.Request, db *s
 	}
 
 	details := fmt.Sprintf("{user} canceled the staff invitation sent to %s.", invEmail)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationCancel, schools.TypeEdit, "Staff invitation canceled", "{user} canceled a staff invitation.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationCancel, schools.TypeEdit, "Staff invitation canceled", "{user} canceled a staff invitation.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -278,7 +276,7 @@ func CancelSchoolInvitationHandler(w http.ResponseWriter, r *http.Request, db *s
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func ViewInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ViewInvitationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// No auth required for this route, token is enough to view
@@ -301,7 +299,7 @@ func ViewInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var inv StaffInvitation
 
 	// Get invitation data
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT
 		    si.id, si.user_email, s.name, u.name, u.email, si.status, si.created_at, si.expires_at
 		FROM staff_invitations si
@@ -343,11 +341,11 @@ func ViewInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	})
 }
 
-func SendStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) SendStaffInvitationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -361,7 +359,7 @@ func SendStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.
 	}
 
 	// Check permissions
-	allowed := schools.Can(schools.PermissionStaffCreate, userID, schoolID, ctx, db)
+	allowed := schools.Can(schools.PermissionStaffCreate, userID, schoolID, ctx, h.DB)
 	if !allowed {
 		w.WriteHeader(http.StatusForbidden)
 		return
@@ -417,7 +415,7 @@ func SendStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -476,7 +474,7 @@ func SendStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.
 
 	// If the owner is trying to add themselves, create the staff member instantly instead of sending an invitation.
 	if ownerAddingSelf && selfEmail == p.Email {
-		staffID, err := sf.NextID()
+		staffID, err := h.Sf.NextID()
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -539,7 +537,7 @@ func SendStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.
 	tokenHash := helpers2.MakeHash256(token)
 
 	// Generate invitation ID
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -565,7 +563,7 @@ func SendStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.
 	if p.Importance == "" {
 		p.Importance = "normal"
 	}
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationCreate, schools.TypeCreate, "Staff invitation sent", "{user} invited '"+p.Email+"' to join the school.", tx, ctx, sf, "{user} sent a staff invitation to '"+p.Email+"' with "+p.Importance+" importance."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationCreate, schools.TypeCreate, "Staff invitation sent", "{user} invited '"+p.Email+"' to join the school.", tx, ctx, h.Sf, "{user} sent a staff invitation to '"+p.Email+"' with "+p.Importance+" importance."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -603,11 +601,11 @@ You've been invited to join a school as a staff member. Click the link below to 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -625,7 +623,7 @@ func AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sq
 	var inv StaffInvitation
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -671,7 +669,7 @@ func AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sq
 	}
 
 	// Generate ID
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -707,14 +705,14 @@ func AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sq
 	}
 
 	// Log invitation action
-	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffInvitationDelete, schools.TypeDelete, "Staff invitation accepted", "{user} accepted a staff invitation.", tx, ctx, sf, "{user} accepted the staff invitation sent to '"+inv.UserEmail+"'."); err != nil {
+	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffInvitationDelete, schools.TypeDelete, "Staff invitation accepted", "{user} accepted a staff invitation.", tx, ctx, h.Sf, "{user} accepted the staff invitation sent to '"+inv.UserEmail+"'."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffCreate, schools.TypeCreate, "Staff member added", "{user} joined the school staff_helpers.", tx, ctx, sf, "{user} was added as a staff member after accepting an invitation."); err != nil {
+	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffCreate, schools.TypeCreate, "Staff member added", "{user} joined the school staff_helpers.", tx, ctx, h.Sf, "{user} was added as a staff member after accepting an invitation."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -730,11 +728,11 @@ func AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sq
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func RejectStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) RejectStaffInvitationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -744,7 +742,7 @@ func RejectStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sq
 	tokenHash := helpers2.MakeHash256(token)
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -799,7 +797,7 @@ func RejectStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sq
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationEdit, schools.TypeEdit, "Staff invitation rejected", "{user} rejected a staff invitation.", tx, ctx, sf, "{user} rejected a staff invitation by token."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationEdit, schools.TypeEdit, "Staff invitation rejected", "{user} rejected a staff invitation.", tx, ctx, h.Sf, "{user} rejected a staff invitation by token."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -815,11 +813,11 @@ func RejectStaffInvitationHandler(w http.ResponseWriter, r *http.Request, db *sq
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -840,7 +838,7 @@ func AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request, db
 	var inv StaffInvitation
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -872,7 +870,7 @@ func AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request, db
 	}
 
 	// Generate ID
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -908,14 +906,14 @@ func AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request, db
 	}
 
 	// Log invitation action
-	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffInvitationDelete, schools.TypeOther, "Staff invitation accepted", "{user} accepted a staff invitation.", tx, ctx, sf, "{user} accepted staff invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
+	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffInvitationDelete, schools.TypeOther, "Staff invitation accepted", "{user} accepted a staff invitation.", tx, ctx, h.Sf, "{user} accepted staff invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffCreate, schools.TypeCreate, "Staff member added", "{user} joined the school staff_helpers.", tx, ctx, sf, "{user} was added as a staff member from invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
+	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffCreate, schools.TypeCreate, "Staff member added", "{user} joined the school staff_helpers.", tx, ctx, h.Sf, "{user} was added as a staff member from invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -931,11 +929,11 @@ func AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request, db
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func RejectStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) RejectStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -949,7 +947,7 @@ func RejectStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request, db
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1004,7 +1002,7 @@ func RejectStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request, db
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationEdit, schools.TypeOther, "Staff invitation rejected", "{user} rejected a staff invitation.", tx, ctx, sf, "{user} rejected staff invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationEdit, schools.TypeOther, "Staff invitation rejected", "{user} rejected a staff invitation.", tx, ctx, h.Sf, "{user} rejected staff invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -1020,11 +1018,11 @@ func RejectStaffInvitationByIDHandler(w http.ResponseWriter, r *http.Request, db
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func ListStaffMembersHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) ListStaffMembersHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -1038,7 +1036,7 @@ func ListStaffMembersHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionStaffView, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionStaffView, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -1067,7 +1065,7 @@ func ListStaffMembersHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	}
 
 	// Get staff members
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    s.id,
 		    s.user_id,
@@ -1150,7 +1148,7 @@ func ListStaffMembersHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 			// Profile pic
 			if bucketName != nil && objectKey != nil && filename != nil && contentType != nil {
 				// Generate presigned URL
-				url, err := s3.PresignedGetObject(ctx, *bucketName, *objectKey, 15*time.Minute, nil)
+				url, err := h.S3.PresignedGetObject(ctx, *bucketName, *objectKey, 15*time.Minute, nil)
 				if err != nil {
 					log.Println(err)
 					w.WriteHeader(http.StatusInternalServerError)
@@ -1196,7 +1194,7 @@ func ListStaffMembersHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	}
 
 	// Get user access
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1210,10 +1208,10 @@ func ListStaffMembersHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	})
 }
 
-func DeleteStaffMemberHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) DeleteStaffMemberHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -1224,7 +1222,7 @@ func DeleteStaffMemberHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1359,7 +1357,7 @@ func DeleteStaffMemberHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 		return
 	}
 
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffDelete, schools.TypeDelete, "Staff member removed", "{user} removed "+targetName+" from the staff_helpers.", tx, ctx, sf, "{user} removed staff member "+targetName+" <"+targetEmail+">."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffDelete, schools.TypeDelete, "Staff member removed", "{user} removed "+targetName+" from the staff_helpers.", tx, ctx, h.Sf, "{user} removed staff member "+targetName+" <"+targetEmail+">."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -1374,10 +1372,10 @@ func DeleteStaffMemberHandler(w http.ResponseWriter, r *http.Request, db *sql.DB
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func LeaveSchoolStaffHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) LeaveSchoolStaffHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -1388,7 +1386,7 @@ func LeaveSchoolStaffHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1433,7 +1431,7 @@ func LeaveSchoolStaffHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	}
 
 	details := fmt.Sprintf("%s <%s> left the school's staff members.", userName, userEmail)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolLeave, schools.TypeDelete, "User left", "{user} left the school staff_helpers.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolLeave, schools.TypeDelete, "User left", "{user} left the school staff_helpers.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

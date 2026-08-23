@@ -1,54 +1,34 @@
 package staff
 
 import (
-	h "app/internal/handlers/staff"
-	"database/sql"
-	"net/http"
+	staffhandlers "app/internal/handlers/staff"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sony/sonyflake/v2"
 )
 
-func StaffInvitationRoutes(
-	db *sql.DB,
-	sf *sonyflake.Sonyflake,
-) chi.Router {
+func StaffInvitationRoutes(h *staffhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// List user invitations
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		h.ListUserInvitationsHandler(w, r, db)
-	})
+	r.Get("/", h.ListUserInvitationsHandler)
 
 	// Reject invitation by ID
-	r.Post("/by-id/{invitationID}/reject", func(w http.ResponseWriter, r *http.Request) {
-		h.RejectStaffInvitationByIDHandler(w, r, db, sf)
-	})
+	r.Post("/by-id/{invitationID}/reject", h.RejectStaffInvitationByIDHandler)
 
 	// Accept invitation by ID
-	r.Post("/by-id/{invitationID}/accept", func(w http.ResponseWriter, r *http.Request) {
-		h.AcceptStaffInvitationByIDHandler(w, r, db, sf)
-	})
+	r.Post("/by-id/{invitationID}/accept", h.AcceptStaffInvitationByIDHandler)
 
 	// View invitation
-	r.Get("/{token}", func(w http.ResponseWriter, r *http.Request) {
-		h.ViewInvitationHandler(w, r, db)
-	})
+	r.Get("/{token}", h.ViewInvitationHandler)
 
 	// Reject invitation
-	r.Post("/{token}/reject", func(w http.ResponseWriter, r *http.Request) {
-		h.RejectStaffInvitationHandler(w, r, db, sf)
-	})
+	r.Post("/{token}/reject", h.RejectStaffInvitationHandler)
 
 	// Accept invitation
-	r.Post("/{token}/accept", func(w http.ResponseWriter, r *http.Request) {
-		h.AcceptStaffInvitationHandler(w, r, db, sf)
-	})
+	r.Post("/{token}/accept", h.AcceptStaffInvitationHandler)
 
 	// Cancel invitation
-	r.Post("/{invitationID}/cancel", func(w http.ResponseWriter, r *http.Request) {
-		h.CancelSchoolInvitationHandler(w, r, db, sf)
-	})
+	r.Post("/{invitationID}/cancel", h.CancelSchoolInvitationHandler)
 
 	return r
 }

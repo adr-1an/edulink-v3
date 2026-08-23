@@ -16,9 +16,8 @@ import (
 )
 
 // Latest updates
-// Minor: Added rate limiting
-// Patch: changed ip source header
-const version = "3.10.5"
+// Minor: Restructured route handler calls
+const version = "3.11.5"
 
 func main() {
 	fmt.Printf("Starting EduLink API v%s\n", version)

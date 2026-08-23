@@ -14,10 +14,10 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func GradeSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) GradeSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -28,7 +28,7 @@ func GradeSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 		return
 	}
 
-	schoolID, err := SubToSchoolID(subID, db, ctx)
+	schoolID, err := SubToSchoolID(subID, h.DB, ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -39,7 +39,7 @@ func GradeSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 		return
 	}
 
-	if !schools.Can(schools.PermissionSubmissionGrade, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSubmissionGrade, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -64,7 +64,7 @@ func GradeSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 	}
 
 	var exists bool
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT EXISTS (
 		    SELECT 1 FROM assignment_submissions WHERE id = $1 AND (status = 'pending' OR status = 'returned')
 		)
@@ -79,7 +79,7 @@ func GradeSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 		return
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		INSERT INTO submission_scores (submission_id, graded_by, score_percentage, notes)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (submission_id) DO UPDATE
@@ -96,10 +96,10 @@ func GradeSubmissionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 	w.WriteHeader(http.StatusCreated)
 }
 
-func ClearSubmissionScoreHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ClearSubmissionScoreHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -110,7 +110,7 @@ func ClearSubmissionScoreHandler(w http.ResponseWriter, r *http.Request, db *sql
 		return
 	}
 
-	schoolID, err := SubToSchoolID(subID, db, ctx)
+	schoolID, err := SubToSchoolID(subID, h.DB, ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -121,12 +121,12 @@ func ClearSubmissionScoreHandler(w http.ResponseWriter, r *http.Request, db *sql
 		return
 	}
 
-	if !schools.Can(schools.PermissionSubmissionRemoveGrade, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSubmissionRemoveGrade, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		DELETE FROM submission_scores WHERE submission_id = $1
 	`, subID); err != nil {
 		log.Println(err)

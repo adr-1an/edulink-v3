@@ -9,14 +9,12 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-
-	"github.com/minio/minio-go/v7"
 )
 
-func ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal.TokenToUID(w, r, db, ctx, helpers.AccTypeStudent)
+	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -48,7 +46,7 @@ func ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 	}
 	var assignments []assignment
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    p.id,
 		    p.title,
@@ -234,7 +232,7 @@ func ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Request, db *sql.D
 		return
 	}
 
-	attachments, err := listAssignmentSubmissionAttachments(ctx, db, submissionIDs, s3)
+	attachments, err := listAssignmentSubmissionAttachments(ctx, h.DB, submissionIDs, h.S3)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

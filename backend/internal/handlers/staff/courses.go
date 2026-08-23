@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sony/sonyflake/v2"
 )
 
 func parseCoursePayload(name, description, color string) (string, string, string) {
@@ -88,11 +87,11 @@ func getCourseGradeAndSchoolID(db *sql.DB, ctx context.Context, courseID int64) 
 	return gradeID, schoolID, nil
 }
 
-func CreateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CreateCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -106,7 +105,7 @@ func CreateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 
 	// Get the grade's school ID
 	var schoolID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id
 		FROM academic_years y
 		JOIN grades g
@@ -119,7 +118,7 @@ func CreateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionCourseCreate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionCourseCreate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -152,7 +151,7 @@ func CreateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -173,7 +172,7 @@ func CreateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Generate ID
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -198,7 +197,7 @@ func CreateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionCourseCreate, schools.TypeCreate, "Course created", "{user} created the course '"+p.Name+"'.", tx, ctx, sf, "{user} created course '"+p.Name+"' with color '#"+p.Color+"' and description '"+p.Description+"'."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionCourseCreate, schools.TypeCreate, "Course created", "{user} created the course '"+p.Name+"'.", tx, ctx, h.Sf, "{user} created course '"+p.Name+"' with color '#"+p.Color+"' and description '"+p.Description+"'."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -214,11 +213,11 @@ func CreateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	w.WriteHeader(http.StatusCreated)
 }
 
-func UpdateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -231,7 +230,7 @@ func UpdateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Get grade and school ID
-	gradeID, schoolID, err := getCourseGradeAndSchoolID(db, ctx, courseID)
+	gradeID, schoolID, err := getCourseGradeAndSchoolID(h.DB, ctx, courseID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -243,7 +242,7 @@ func UpdateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionCourseUpdate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionCourseUpdate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -274,7 +273,7 @@ func UpdateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -329,7 +328,7 @@ func UpdateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 
 	// Log action
 	details := "{user} updated the course name from '" + oldName + "' to '" + p.Name + "', description from '" + oldDescription + "' to '" + p.Description + "', and color from '#" + oldColor + "' to '#" + p.Color + "'."
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionCourseEdit, schools.TypeEdit, "Course updated", "{user} updated the course '"+p.Name+"'.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionCourseEdit, schools.TypeEdit, "Course updated", "{user} updated the course '"+p.Name+"'.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -345,10 +344,10 @@ func UpdateCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func DeleteCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) DeleteCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -359,7 +358,7 @@ func DeleteCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 		return
 	}
 
-	_, schoolID, err := getCourseGradeAndSchoolID(db, ctx, courseID)
+	_, schoolID, err := getCourseGradeAndSchoolID(h.DB, ctx, courseID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -370,12 +369,12 @@ func DeleteCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 		return
 	}
 
-	if !schools.Can(schools.PermissionCourseDelete, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionCourseDelete, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -412,7 +411,7 @@ func DeleteCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 		return
 	}
 
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionCourseDelete, schools.TypeDelete, "Course deleted", "{user} deleted the course '"+courseName+"'.", tx, ctx, sf, "{user} deleted course '"+courseName+"' with ID "+strconv.FormatInt(courseID, 10)+"."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionCourseDelete, schools.TypeDelete, "Course deleted", "{user} deleted the course '"+courseName+"'.", tx, ctx, h.Sf, "{user} deleted course '"+courseName+"' with ID "+strconv.FormatInt(courseID, 10)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -427,10 +426,10 @@ func DeleteCourseHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func ListCoursesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -442,7 +441,7 @@ func ListCoursesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	var schoolID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id
 		FROM grades g
 		JOIN academic_years y
@@ -454,12 +453,12 @@ func ListCoursesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	if !schools.Can(schools.PermissionCourseList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionCourseList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -506,7 +505,7 @@ func ListCoursesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Get user access
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

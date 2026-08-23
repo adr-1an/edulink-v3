@@ -12,13 +12,12 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
 )
 
-func ListCoursesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, db, ctx, helpers2.AccTypeStudent)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -37,7 +36,7 @@ func ListCoursesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 	var courses []course
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    g.id,
 		    g.name,
@@ -85,10 +84,10 @@ func ListCoursesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	})
 }
 
-func CourseDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, db, ctx, helpers2.AccTypeStudent)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -99,7 +98,7 @@ func CourseDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 		return
 	}
 
-	if !portal2.CanAccessCourse(db, userID, courseID, ctx) {
+	if !portal2.CanAccessCourse(h.DB, userID, courseID, ctx) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -131,7 +130,7 @@ func CourseDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 	}
 	var posts []post
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    p.id,
 		    
@@ -225,7 +224,7 @@ func CourseDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 
 		// Post attachments
 		if aID.Valid && aKey.Valid && aBucketName.Valid && aFilename.Valid {
-			url, err := s3.PresignedGetObject(ctx, aBucketName.String, aKey.String, 15*time.Minute, nil)
+			url, err := h.S3.PresignedGetObject(ctx, aBucketName.String, aKey.String, 15*time.Minute, nil)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -245,7 +244,7 @@ func CourseDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 
 		// User pfp
 		if pfpKey != nil && pfpBucketName != nil && pfpFilename != nil && pfpContentType != nil {
-			url, err := s3.PresignedGetObject(ctx, *pfpBucketName, *pfpKey, 15*time.Minute, nil)
+			url, err := h.S3.PresignedGetObject(ctx, *pfpBucketName, *pfpKey, 15*time.Minute, nil)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -282,7 +281,7 @@ func CourseDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 	}
 	var assignments []assignment
 
-	rows, err = db.QueryContext(ctx, `
+	rows, err = h.DB.QueryContext(ctx, `
 		SELECT
 		    p.id, p.title,
 		    
@@ -374,7 +373,7 @@ func CourseDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 		return
 	}
 
-	attachments, err := listAssignmentSubmissionAttachments(ctx, db, submissionIDs, s3)
+	attachments, err := listAssignmentSubmissionAttachments(ctx, h.DB, submissionIDs, h.S3)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -406,7 +405,7 @@ func CourseDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 	}
 	var c course
 
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT
 		    g.id,
 		    g.name,

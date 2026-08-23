@@ -17,13 +17,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/minio/minio-go/v7"
-	"github.com/sony/sonyflake/v2"
 )
 
-func InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake, s3 *minio.Client) {
+func (h *Handler) InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -35,7 +34,7 @@ func InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http.Request, db 
 	}
 
 	var schoolID int64
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id
 		FROM course_posts p
 		JOIN courses c
@@ -55,7 +54,7 @@ func InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http.Request, db 
 		return
 	}
 
-	if !schools.Can(schools.PermissionPostAttachmentCreate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionPostAttachmentCreate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -99,14 +98,14 @@ func InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http.Request, db 
 	}
 
 	// generate id & completion token
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	postAttachmentID, err := sf.NextID()
+	postAttachmentID, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -130,8 +129,8 @@ func InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http.Request, db 
 
 	// store row
 	s := helpers2.UploadService{
-		Db:         db,
-		S3:         s3,
+		Db:         h.DB,
+		S3:         h.S3,
 		Ctx:        ctx,
 		BucketName: bucketName,
 	}
@@ -144,7 +143,7 @@ func InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http.Request, db 
 		return
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		INSERT INTO post_attachments (id, post_id, storage_object_id)
 		VALUES ($1, $2, $3)
 	`, postAttachmentID, postID, id); err != nil {
@@ -154,7 +153,7 @@ func InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http.Request, db 
 	}
 
 	// generate presigned url
-	url, err := s3.PresignedPutObject(ctx, bucketName, objectKey, 5*time.Minute)
+	url, err := h.S3.PresignedPutObject(ctx, bucketName, objectKey, 5*time.Minute)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -168,10 +167,10 @@ func InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http.Request, db 
 	})
 }
 
-func DeletePostAttachmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, s3 *minio.Client) {
+func (h *Handler) DeletePostAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -185,7 +184,7 @@ func DeletePostAttachmentHandler(w http.ResponseWriter, r *http.Request, db *sql
 	var schoolID int64
 	var bucketName string
 	var objKey string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id, so.bucket_name, so.object_key
 		FROM post_attachments pa
 		JOIN course_posts p
@@ -210,13 +209,13 @@ func DeletePostAttachmentHandler(w http.ResponseWriter, r *http.Request, db *sql
 		return
 	}
 
-	if !schools.Can(schools.PermissionPostAttachmentDelete, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionPostAttachmentDelete, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
 	// delete from db
-	if _, err := db.ExecContext(ctx, `
+	if _, err := h.DB.ExecContext(ctx, `
 		WITH oid AS (
 		    DELETE FROM post_attachments WHERE id = $1 RETURNING storage_object_id
 		)
@@ -228,7 +227,7 @@ func DeletePostAttachmentHandler(w http.ResponseWriter, r *http.Request, db *sql
 	}
 
 	// delete from s3
-	if err := s3.RemoveObject(ctx, bucketName, objKey, minio.RemoveObjectOptions{}); err != nil {
+	if err := h.S3.RemoveObject(ctx, bucketName, objKey, minio.RemoveObjectOptions{}); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

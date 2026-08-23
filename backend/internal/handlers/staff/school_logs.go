@@ -3,7 +3,6 @@ package staff
 import (
 	"app/internal/helpers/staff"
 	"app/internal/helpers/staff/schools"
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -12,10 +11,10 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func ListSchoolLogsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListSchoolLogsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -26,7 +25,7 @@ func ListSchoolLogsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	if !schools.Can(schools.PermissionLogsList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionLogsList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -49,7 +48,7 @@ func ListSchoolLogsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 	var logs []schoolLog
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    l.id,
 		    l.action,
@@ -102,7 +101,7 @@ func ListSchoolLogsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

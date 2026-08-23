@@ -20,11 +20,11 @@ import (
 	"golang.org/x/text/language"
 )
 
-func SchoolListHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -47,7 +47,7 @@ func SchoolListHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var rows *sql.Rows
 	switch false { // Replaced showDeleted with false
 	case true:
-		rows, err = db.QueryContext(ctx, `
+		rows, err = h.DB.QueryContext(ctx, `
 	SELECT DISTINCT s.id, s.owner_id, s.name, s.region_code
 		FROM schools s
 		WHERE s.owner_id = $1
@@ -58,7 +58,7 @@ func SchoolListHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	   )
 `, userID, schools.PermissionSchoolView)
 	default:
-		rows, err = db.QueryContext(ctx, `
+		rows, err = h.DB.QueryContext(ctx, `
 		SELECT DISTINCT s.id, s.owner_id, s.name, s.region_code
 		FROM schools s
 		WHERE s.owner_id = $1
@@ -102,11 +102,11 @@ func SchoolListHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	})
 }
 
-func CreateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CreateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -155,7 +155,7 @@ func CreateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Generate ID
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -163,7 +163,7 @@ func CreateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -187,7 +187,7 @@ func CreateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(id, userID, schools.ActionSchoolCreate, schools.TypeCreate, "School created", "{user} created the school '"+p.Name+"'.", tx, ctx, sf, "{user} created school '"+p.Name+"' in region '"+p.RegionCode+"'."); err != nil {
+	if err := schools.StoreSchoolLog(id, userID, schools.ActionSchoolCreate, schools.TypeCreate, "School created", "{user} created the school '"+p.Name+"'.", tx, ctx, h.Sf, "{user} created school '"+p.Name+"' in region '"+p.RegionCode+"'."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -203,11 +203,11 @@ func CreateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	w.WriteHeader(http.StatusCreated)
 }
 
-func UpdateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -229,7 +229,7 @@ func UpdateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	var p Payload
 
 	// School permission check
-	if !schools.Can(schools.PermissionSchoolUpdate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSchoolUpdate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -245,7 +245,7 @@ func UpdateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	if p.ActiveAcademicYearID != nil &&
 		// If p.ActiveAcademicYearID isn't null, it means the user is trying to change the currently active academic year.
 		// To do that, they need the academicYear.toggle permission.
-		!schools.Can(schools.PermissionAcademicYearToggleActive, userID, schoolID, ctx, db) {
+		!schools.Can(schools.PermissionAcademicYearToggleActive, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -279,7 +279,7 @@ func UpdateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -370,7 +370,7 @@ func UpdateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 
 	// Log action
 	details := "{user} updated the school name from '" + oldName + "' to '" + p.Name + "' and region from '" + oldRegionCode + "' to '" + p.RegionCode + "'." + activeYearDetails
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolEdit, schools.TypeEdit, "School updated", "{user} updated the school '"+p.Name+"'.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolEdit, schools.TypeEdit, "School updated", "{user} updated the school '"+p.Name+"'.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -386,11 +386,11 @@ func UpdateSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func DeleteSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) DeleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -404,14 +404,14 @@ func DeleteSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 	}
 
 	// Permission check
-	if !schools.Can(schools.SchoolOwner, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.SchoolOwner, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
 	// Check if the account has 2fa enabled
 	var tfa string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT two_factor_status FROM users WHERE id = $1
 	`, userID).Scan(&tfa); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -433,7 +433,7 @@ func DeleteSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 		}
 		tokenHash := helpers.MakeHash256(token)
 
-		id, err := sf.NextID()
+		id, err := h.Sf.NextID()
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -453,7 +453,7 @@ func DeleteSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 		}
 
 		expiresAt := time.Now().Add(15 * time.Minute)
-		if _, err := db.ExecContext(ctx, `
+		if _, err := h.DB.ExecContext(ctx, `
 			INSERT INTO two_factor_challenges (id, user_id, purpose, token_hash, expires_at, metadata)
 			VALUES ($1, $2, $3, $4, $5, $6)
 		`, id, userID, ChallengePurposeSchoolDeletion, tokenHash, expiresAt, metadata); err != nil {
@@ -475,8 +475,8 @@ func DeleteSchoolHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf 
 
 	CompleteSchoolDeletion(CompleteSchoolDeletionPayload{
 		W:   w,
-		DB:  db,
-		Sf:  sf,
+		DB:  h.DB,
+		Sf:  h.Sf,
 		Ctx: ctx,
 		Meta: SchoolDeletionChallengeMetadata{
 			UserID:   userID,
@@ -545,11 +545,11 @@ func CompleteSchoolDeletion(p CompleteSchoolDeletionPayload) {
 	p.W.WriteHeader(http.StatusNoContent)
 }
 
-func ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -563,7 +563,7 @@ func ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionSchoolView, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSchoolView, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -590,7 +590,7 @@ func ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.
 	var gs []Grade
 
 	// Get school info
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT
 		    id, name, region_code, created_at, updated_at
 		FROM schools
@@ -609,7 +609,7 @@ func ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Request, db *sql.
 	}
 
 	// Get grades
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT g.id, g.academic_year_id, g.level, g.name, g.created_at
 		FROM grades g
 		JOIN academic_years y

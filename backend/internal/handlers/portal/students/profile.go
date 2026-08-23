@@ -3,16 +3,15 @@ package students
 import (
 	"app/internal/helpers"
 	"app/internal/helpers/portal"
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 )
 
-func GetProfileHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal.TokenToUID(w, r, db, ctx, helpers.AccTypeEither)
+	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeEither)
 	if err != nil {
 		return
 	}
@@ -40,7 +39,7 @@ func GetProfileHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 	var p profile
 
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT
 		    u.name, u.email,
 		    s.name, s.region_code,

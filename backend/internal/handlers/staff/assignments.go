@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sony/sonyflake/v2"
 )
 
 type payload struct {
@@ -113,10 +112,10 @@ func assignmentToCourseID(assignmentID int64, db *sql.DB, ctx context.Context) (
 	return courseID, nil
 }
 
-func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -127,7 +126,7 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -135,7 +134,7 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	schoolID, err := courseToSchoolID(courseID, db, ctx)
+	schoolID, err := courseToSchoolID(courseID, h.DB, ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -146,7 +145,7 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		return
 	}
 
-	if !schools2.Can(schools2.PermissionCourseAssignmentCreate, userID, schoolID, ctx, db) {
+	if !schools2.Can(schools2.PermissionCourseAssignmentCreate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -165,7 +164,7 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		return
 	}
 
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -174,7 +173,7 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 
 	var refPostSchoolID int64
 	if p.RefPostID != nil {
-		if err := db.QueryRowContext(ctx, `
+		if err := h.DB.QueryRowContext(ctx, `
 		SELECT y.school_id
 		FROM course_posts p
 		JOIN courses c
@@ -231,7 +230,7 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	}
 
 	details := fmt.Sprintf("{user} created the assignment '%s' with submissions %s.", p.Title, submissions)
-	if err := schools2.StoreSchoolLog(schoolID, userID, schools2.ActionAssignmentCreate, schools2.TypeCreate, "Assignment created", "{user} created an assignment", tx, ctx, sf, details); err != nil {
+	if err := schools2.StoreSchoolLog(schoolID, userID, schools2.ActionAssignmentCreate, schools2.TypeCreate, "Assignment created", "{user} created an assignment", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -246,10 +245,10 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	w.WriteHeader(http.StatusCreated)
 }
 
-func ListAssignmentsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListAssignmentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -260,14 +259,14 @@ func ListAssignmentsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 		return
 	}
 
-	schoolID, err := courseToSchoolID(courseID, db, ctx)
+	schoolID, err := courseToSchoolID(courseID, h.DB, ctx)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if !schools2.Can(schools2.PermissionCourseAssignmentList, userID, schoolID, ctx, db) {
+	if !schools2.Can(schools2.PermissionCourseAssignmentList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -289,7 +288,7 @@ func ListAssignmentsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 	}
 	var assignments []assignment
 
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    p.id, p.title,
 		    
@@ -351,7 +350,7 @@ func ListAssignmentsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 		return
 	}
 
-	access, err := schools2.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools2.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -364,10 +363,10 @@ func ListAssignmentsHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) 
 	})
 }
 
-func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -378,7 +377,7 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		return
 	}
 
-	schoolID, err := assignmentToSchoolID(assignmentID, db, ctx)
+	schoolID, err := assignmentToSchoolID(assignmentID, h.DB, ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -389,7 +388,7 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		return
 	}
 
-	if !schools2.Can(schools2.PermissionCourseAssignmentUpdate, userID, schoolID, ctx, db) {
+	if !schools2.Can(schools2.PermissionCourseAssignmentUpdate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -410,7 +409,7 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	}
 
 	if p.RefPostID != nil {
-		courseID, err := assignmentToCourseID(assignmentID, db, ctx)
+		courseID, err := assignmentToCourseID(assignmentID, h.DB, ctx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				w.WriteHeader(http.StatusForbidden)
@@ -422,7 +421,7 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		}
 
 		var postCourseID int64
-		if err := db.QueryRowContext(ctx, `
+		if err := h.DB.QueryRowContext(ctx, `
 			SELECT course_id FROM course_posts WHERE id = $1
 		`, p.RefPostID).Scan(&postCourseID); err != nil {
 			log.Println(err)
@@ -436,7 +435,7 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		}
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -469,7 +468,7 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	}
 
 	details := fmt.Sprintf("{user} edited the assignment '%s'.", p.Title)
-	if err := schools2.StoreSchoolLog(schoolID, userID, schools2.ActionAssignmentEdit, schools2.TypeEdit, "Assignment updated", "{user} edited an assignment.", tx, ctx, sf, details); err != nil {
+	if err := schools2.StoreSchoolLog(schoolID, userID, schools2.ActionAssignmentEdit, schools2.TypeEdit, "Assignment updated", "{user} edited an assignment.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -484,10 +483,10 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func DeleteAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) DeleteAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -498,7 +497,7 @@ func DeleteAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		return
 	}
 
-	schoolID, err := assignmentToSchoolID(assignmentID, db, ctx)
+	schoolID, err := assignmentToSchoolID(assignmentID, h.DB, ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
@@ -509,12 +508,12 @@ func DeleteAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		return
 	}
 
-	if !schools2.Can(schools2.PermissionCourseAssignmentDelete, userID, schoolID, ctx, db) {
+	if !schools2.Can(schools2.PermissionCourseAssignmentDelete, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -523,7 +522,7 @@ func DeleteAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	defer func() { _ = tx.Rollback() }()
 
 	var assignmentName string
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT title FROM assignments WHERE id = $1
 	`, assignmentID).Scan(&assignmentName); err != nil {
 		log.Println(err)
@@ -541,7 +540,7 @@ func DeleteAssignmentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	}
 
 	details := fmt.Sprintf("{user} deleted the assignment '%s'.", assignmentName)
-	if err := schools2.StoreSchoolLog(schoolID, userID, schools2.ActionAssignmentDelete, schools2.TypeDelete, "Assignment deleted", "{user} deleted an assignment.", tx, ctx, sf, details); err != nil {
+	if err := schools2.StoreSchoolLog(schoolID, userID, schools2.ActionAssignmentDelete, schools2.TypeDelete, "Assignment deleted", "{user} deleted an assignment.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -12,14 +12,13 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sony/sonyflake/v2"
 )
 
-func ListGradesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (h *Handler) ListGradesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -34,7 +33,7 @@ func ListGradesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionGradeList, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionGradeList, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -48,7 +47,7 @@ func ListGradesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var grades []Grade
 
 	// Fetch from DB
-	rows, err := db.QueryContext(ctx, `
+	rows, err := h.DB.QueryContext(ctx, `
 		SELECT g.id, g.name, g.level
 		FROM grades g
 		JOIN academic_years y
@@ -81,7 +80,7 @@ func ListGradesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// Get user permissions
-	access, err := schools.GetAllUserPermissions(ctx, db, userID, schoolID)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -96,23 +95,23 @@ func ListGradesHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	})
 }
 
-func CreateGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) CreateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
 
 	// Get school ID
-	schoolID, yearID, err := schools.YearToSchoolID(db, w, r, ctx)
+	schoolID, yearID, err := schools.YearToSchoolID(h.DB, w, r, ctx)
 	if err != nil {
 		return
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionGradeCreate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionGradeCreate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -164,7 +163,7 @@ func CreateGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *
 
 	// Check for grade level & name conflict
 	var exists bool
-	if err := db.QueryRowContext(ctx, `
+	if err := h.DB.QueryRowContext(ctx, `
 		SELECT EXISTS (
 		    SELECT 1 FROM grades WHERE academic_year_id = $1 AND name = $2 AND level = $3
 		)
@@ -180,7 +179,7 @@ func CreateGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *
 	}
 
 	// Generate ID
-	id, err := sf.NextID()
+	id, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -188,7 +187,7 @@ func CreateGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -211,7 +210,7 @@ func CreateGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionGradeCreate, schools.TypeCreate, "Grade created", "{user} created the grade '"+p.Name+"'.", tx, ctx, sf, "{user} created grade '"+p.Name+"' at level "+strconv.Itoa(p.Level)+"."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionGradeCreate, schools.TypeCreate, "Grade created", "{user} created the grade '"+p.Name+"'.", tx, ctx, h.Sf, "{user} created grade '"+p.Name+"' at level "+strconv.Itoa(p.Level)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -227,23 +226,23 @@ func CreateGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *
 	w.WriteHeader(http.StatusCreated)
 }
 
-func UpdateGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) UpdateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
 
 	// Get school ID
-	schoolID, gradeID, err := schools.GradeToSchoolID(db, w, r, ctx)
+	schoolID, gradeID, err := schools.GradeToSchoolID(h.DB, w, r, ctx)
 	if err != nil {
 		return
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionGradeUpdate, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionGradeUpdate, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -293,7 +292,7 @@ func UpdateGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *
 	p.Name = strings.Replace(p.Name, "{level}", strconv.Itoa(p.Level), 1)
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -355,7 +354,7 @@ func UpdateGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *
 
 	// Log action
 	details := "{user} updated the grade name from '" + oldName + "' to '" + p.Name + "' and level from " + strconv.Itoa(oldLevel) + " to " + strconv.Itoa(p.Level) + "."
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionGradeEdit, schools.TypeEdit, "Grade updated", "{user} updated the grade '"+p.Name+"'.", tx, ctx, sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionGradeEdit, schools.TypeEdit, "Grade updated", "{user} updated the grade '"+p.Name+"'.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -371,29 +370,29 @@ func UpdateGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func DeleteGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) DeleteGradeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
 
 	// Get school ID
-	schoolID, gradeID, err := schools.GradeToSchoolID(db, w, r, ctx)
+	schoolID, gradeID, err := schools.GradeToSchoolID(h.DB, w, r, ctx)
 	if err != nil {
 		return
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionGradeDelete, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionGradeDelete, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -424,7 +423,7 @@ func DeleteGradeHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionGradeDelete, schools.TypeDelete, "Grade deleted", "{user} deleted the grade '"+gradeName+"'.", tx, ctx, sf, "{user} deleted grade '"+gradeName+"' at level "+strconv.Itoa(gradeLevel)+"."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionGradeDelete, schools.TypeDelete, "Grade deleted", "{user} deleted the grade '"+gradeName+"'.", tx, ctx, h.Sf, "{user} deleted grade '"+gradeName+"' at level "+strconv.Itoa(gradeLevel)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

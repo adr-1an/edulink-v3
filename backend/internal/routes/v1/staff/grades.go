@@ -1,33 +1,23 @@
 package staff
 
 import (
-	h "app/internal/handlers/staff"
-	"database/sql"
-	"net/http"
+	staffhandlers "app/internal/handlers/staff"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sony/sonyflake/v2"
 )
 
-func GradeRoutes(
-	db *sql.DB,
-	sf *sonyflake.Sonyflake,
-) chi.Router {
+func GradeRoutes(h *staffhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{gradeID}", func(r chi.Router) {
 		// Update grade
-		r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-			h.UpdateGradeHandler(w, r, db, sf)
-		})
+		r.Patch("/", h.UpdateGradeHandler)
 
 		// Delete grade
-		r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-			h.DeleteGradeHandler(w, r, db, sf)
-		})
+		r.Delete("/", h.DeleteGradeHandler)
 
 		// Courses
-		r.Mount("/courses", GradeCourseRoutes(db, sf))
+		r.Mount("/courses", GradeCourseRoutes(h))
 	})
 
 	return r

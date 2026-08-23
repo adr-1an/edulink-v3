@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sony/sonyflake/v2"
 )
 
 // SchoolPromotionHandler promotes all the grades in the currently active Academic Year.
@@ -21,11 +20,11 @@ import (
 // - Creating a new Academic Year
 // - Optionally copying grades, courses, student/teacher/parent accounts etc.
 // - If grades are selected for copying, their level value can optionally be bumped by 1.
-func SchoolPromotionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, sf *sonyflake.Sonyflake) {
+func (h *Handler) SchoolPromotionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, db, ctx)
+	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
@@ -39,13 +38,13 @@ func SchoolPromotionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionSchoolPromote, userID, schoolID, ctx, db) {
+	if !schools.Can(schools.PermissionSchoolPromote, userID, schoolID, ctx, h.DB) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
 	// Start tx
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -133,7 +132,7 @@ func SchoolPromotionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 
 	// -- 3. Create new school year --
 	// Generate ID
-	newAcademicYearID, err := sf.NextID()
+	newAcademicYearID, err := h.Sf.NextID()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -226,7 +225,7 @@ func SchoolPromotionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 		if len(grades) > 0 {
 			// For each grade, generate a new ID
 			for i := range grades {
-				newID, err := sf.NextID()
+				newID, err := h.Sf.NextID()
 				if err != nil {
 					log.Println(err)
 					w.WriteHeader(http.StatusInternalServerError)
@@ -288,7 +287,7 @@ func SchoolPromotionHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 	if p.Opts.PromoteGradeLevels {
 		promotionDetails += " Grade levels were promoted."
 	}
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolPromote, schools.TypeOther, "School promoted", "{user} promoted the school to academic year "+strconv.Itoa(p.NewAcademicYear.From)+"-"+strconv.Itoa(p.NewAcademicYear.To)+".", tx, ctx, sf, promotionDetails); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolPromote, schools.TypeOther, "School promoted", "{user} promoted the school to academic year "+strconv.Itoa(p.NewAcademicYear.From)+"-"+strconv.Itoa(p.NewAcademicYear.To)+".", tx, ctx, h.Sf, promotionDetails); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

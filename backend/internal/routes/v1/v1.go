@@ -1,8 +1,11 @@
 package v1
 
 import (
+	portalhandlers "app/internal/handlers/portal"
+	"app/internal/handlers/portal/students"
+	"app/internal/handlers/staff"
 	"app/internal/routes/v1/portal"
-	"app/internal/routes/v1/staff"
+	staffRoutes "app/internal/routes/v1/staff"
 	"database/sql"
 	"net/http"
 	"time"
@@ -21,6 +24,25 @@ func MainRouter(
 	trustForwarded bool,
 ) chi.Router {
 	r := chi.NewRouter()
+
+	// Staff handler
+	h := staff.Handler{
+		DB: db,
+		Sf: sf,
+		S3: s3,
+	}
+
+	// Portal handlers
+	portalHandler := portalhandlers.Handler{
+		DB: db,
+		Sf: sf,
+		S3: s3,
+	}
+	studentHandler := students.Handler{
+		DB: db,
+		Sf: sf,
+		S3: s3,
+	}
 
 	r.Use(middleware.RequestID)
 
@@ -42,10 +64,10 @@ func MainRouter(
 	// API v1
 	r.Route("/v1", func(r chi.Router) {
 		// Staff app
-		r.Mount("/staff", staff.MainStaffRoutes(db, sf, s3))
+		r.Mount("/staff", staffRoutes.MainStaffRoutes(&h))
 
 		// Portal app
-		r.Mount("/portal", portal.MainPortalRoutes(db, sf, s3))
+		r.Mount("/portal", portal.MainPortalRoutes(&portalHandler, &studentHandler))
 	})
 
 	return r

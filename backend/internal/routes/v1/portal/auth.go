@@ -1,35 +1,25 @@
 package portal
 
 import (
-	"app/internal/handlers/portal"
-	"database/sql"
-	"net/http"
+	portalhandlers "app/internal/handlers/portal"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func AuthRoutes(db *sql.DB) chi.Router {
+func AuthRoutes(h *portalhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// Login
-	r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
-		portal.LoginHandler(w, r, db)
-	})
+	r.Post("/login", h.LoginHandler)
 
 	// Token check
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		portal.TokenCheckHandler(w, r, db)
-	})
+	r.Get("/", h.TokenCheckHandler)
 
 	// Logout
-	r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-		portal.LogoutHandler(w, r, db)
-	})
+	r.Delete("/", h.LogoutHandler)
 
 	// Activate account
-	r.Post("/activate/{token}", func(w http.ResponseWriter, r *http.Request) {
-		portal.AccountActivationHandler(w, r, db)
-	})
+	r.Post("/activate/{token}", h.AccountActivationHandler)
 
 	return r
 }

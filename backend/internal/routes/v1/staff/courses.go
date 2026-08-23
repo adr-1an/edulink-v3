@@ -1,65 +1,52 @@
 package staff
 
 import (
-	staff2 "app/internal/handlers/staff"
-	"database/sql"
+	staffhandlers "app/internal/handlers/staff"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
-	"github.com/sony/sonyflake/v2"
 )
 
-func GradeCourseRoutes(db *sql.DB, sf *sonyflake.Sonyflake) chi.Router {
+func GradeCourseRoutes(h *staffhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// Create course
-	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-		staff2.CreateCourseHandler(w, r, db, sf)
-	})
+	r.Post("/", h.CreateCourseHandler)
 
 	// List courses
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		staff2.ListCoursesHandler(w, r, db)
-	})
+	r.Get("/", h.ListCoursesHandler)
 
 	return r
 }
 
-func CourseRoutes(db *sql.DB, sf *sonyflake.Sonyflake, s3 *minio.Client) chi.Router {
+func CourseRoutes(h *staffhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{courseID}", func(r chi.Router) {
 		// Update course
-		r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-			staff2.UpdateCourseHandler(w, r, db, sf)
-		})
+		r.Patch("/", h.UpdateCourseHandler)
 
 		// Delete course
-		r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-			staff2.DeleteCourseHandler(w, r, db, sf)
-		})
+		r.Delete("/", h.DeleteCourseHandler)
 
 		// Posts
-		r.Mount("/posts", CoursePostRoutes(db, sf, s3))
+		r.Mount("/posts", CoursePostRoutes(h))
 
 		// Assign student to course
 		r.Post("/students", func(w http.ResponseWriter, r *http.Request) {
-			staff2.AddOrRemoveCourseStudentHandler(w, r, db, sf, true)
+			h.AddOrRemoveCourseStudentHandler(w, r, true)
 		})
 
 		// Remove student from course
 		r.Delete("/students", func(w http.ResponseWriter, r *http.Request) {
-			staff2.AddOrRemoveCourseStudentHandler(w, r, db, sf, false)
+			h.AddOrRemoveCourseStudentHandler(w, r, false)
 		})
 
 		// List course students
-		r.Get("/students", func(w http.ResponseWriter, r *http.Request) {
-			staff2.ListCourseStudentsHandler(w, r, db)
-		})
+		r.Get("/students", h.ListCourseStudentsHandler)
 
 		// Assignments
-		r.Mount("/assignments", CourseAssignmentRoutes(db, sf))
+		r.Mount("/assignments", CourseAssignmentRoutes(h))
 	})
 
 	return r
