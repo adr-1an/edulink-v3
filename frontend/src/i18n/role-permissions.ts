@@ -75,13 +75,6 @@ const polishCategories: Record<string, string> = {
     log: "Dziennik audytu",
 }
 
-const polishPresets: Record<string, {name: string; description: string}> = {
-    administrator: {name: "Administrator", description: "Pełny dostęp do wszystkich dostępnych uprawnień."},
-    "academic-manager": {name: "Opiekun dydaktyczny", description: "Zarządza latami szkolnymi i strukturą klas."},
-    "staff-manager": {name: "Opiekun personelu", description: "Zarządza dostępem personelu i przypisanymi rolami."},
-    teacher: {name: "Nauczyciel", description: "Wyświetla szkołę, lata szkolne, klasy i kursy."},
-}
-
 export function localizedPermissionLabel(locale: Locale, permission: string, englishLabel: string) {
     return locale === "pl" ? polishPermissionLabels[permission] ?? englishLabel : englishLabel
 }
@@ -92,8 +85,4 @@ export function localizedPermissionDescription(locale: Locale, label: string, en
 
 export function localizedPermissionCategory(locale: Locale, category: string, englishLabel: string) {
     return locale === "pl" ? polishCategories[category] ?? englishLabel : englishLabel
-}
-
-export function localizedPermissionPreset(locale: Locale, id: string, name: string, description: string) {
-    return locale === "pl" ? polishPresets[id] ?? {name, description} : {name, description}
 }

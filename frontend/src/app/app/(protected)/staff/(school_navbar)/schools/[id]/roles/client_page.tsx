@@ -4,12 +4,11 @@ import React, {useRef, useState} from "react"
 import {Reorder, useDragControls} from "framer-motion"
 import {useRouter} from "next/navigation"
 import {
-    BookOpen, CircleHelp, Crown, Eye, GripVertical, KeyRound, Pencil, Plus, ShieldCheck,
-    Trash2, TriangleAlert, UserCog, type LucideIcon,
+    CircleHelp, GripVertical, KeyRound, Pencil, Plus, ShieldCheck,
+    Trash2, TriangleAlert,
 } from "lucide-react"
 import {toast} from "sonner"
 import PageTitle from "@/components/app/page_title"
-import LocalDateTime from "@/components/local-date-time"
 import {
     AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFooter,
     AlertDialogHeader, AlertDialogPopup, AlertDialogTitle,
@@ -41,7 +40,7 @@ import {
 import {useLocale} from "@/i18n/provider"
 import {
     localizedPermissionCategory, localizedPermissionDescription,
-    localizedPermissionLabel, localizedPermissionPreset,
+    localizedPermissionLabel,
 } from "@/i18n/role-permissions"
 
 interface Role {
@@ -184,52 +183,6 @@ const permissionCategoryLabels: Record<string, string> = {
     student: "Students",
     log: "Logs",
 }
-
-interface PermissionPreset {
-    id: string
-    name: string
-    description: string
-    icon: LucideIcon
-    permissions: string[] | "all"
-}
-
-const permissionPresets: PermissionPreset[] = [
-    {
-        id: "administrator",
-        name: "Administrator",
-        description: "Full access to every available permission.",
-        icon: Crown,
-        permissions: "all",
-    },
-    {
-        id: "academic-manager",
-        name: "Academic manager",
-        description: "Manages academic years and grade structure.",
-        icon: BookOpen,
-        permissions: [
-            "school.view", "school.promote", "academicYear.create", "academicYear.list",
-            "academicYear.toggleActive", "academicYear.delete", "grade.list", "grade.create",
-            "grade.update", "grade.delete", "course.list", "course.create", "course.update", "course.delete",
-        ],
-    },
-    {
-        id: "staff-manager",
-        name: "Staff manager",
-        description: "Manages staff access and assigned roles.",
-        icon: UserCog,
-        permissions: [
-            "school.view", "staff.view", "staff.create", "staff.delete", "staff.role.add",
-            "staff.role.remove", "staff.role.list", "school.invite.list", "school.invite.cancel", "role.list",
-        ],
-    },
-    {
-        id: "teacher",
-        name: "Teacher",
-        description: "Views the school, academic years, and grades.",
-        icon: Eye,
-        permissions: ["school.view", "academicYear.list", "grade.list", "course.list", "course.post.list"],
-    },
-]
 
 function fallbackPermissionLabel(permission: string) {
     const action = permission.split(".").slice(1).join(" ")
@@ -391,8 +344,6 @@ export default function RolesClientPage({schoolID, roles, availablePermissions, 
     const [permissionRole, setPermissionRole] = useState<Role | null>(null)
     const [enabledPermissions, setEnabledPermissions] = useState<Set<string>>(new Set())
     const [pendingPermissions, setPendingPermissions] = useState<Set<string>>(new Set())
-    const [applyingPreset, setApplyingPreset] = useState<string | null>(null)
-    const [presetProgress, setPresetProgress] = useState<{completed: number; total: number} | null>(null)
 
     async function createRole(event: React.SubmitEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -420,12 +371,10 @@ export default function RolesClientPage({schoolID, roles, availablePermissions, 
         setPermissionRole(role)
         setEnabledPermissions(new Set(role.permissions ?? []))
         setPendingPermissions(new Set())
-        setApplyingPreset(null)
-        setPresetProgress(null)
     }
 
     async function setRolePermission(permission: string, allow: boolean) {
-        if (!permissionRole || applyingPreset || pendingPermissions.has(permission)) return
+        if (!permissionRole || pendingPermissions.has(permission)) return
         const targetRole = permissionRole
 
         setEnabledPermissions((current) => {
@@ -464,65 +413,6 @@ export default function RolesClientPage({schoolID, roles, availablePermissions, 
             latestOrderRef.current = updatedRoles
             return updatedRoles
         })
-    }
-
-    async function applyPermissionPreset(preset: PermissionPreset) {
-        if (!permissionRole || applyingPreset) return
-        const targetRole = permissionRole
-        const originalPermissions = new Set(enabledPermissions)
-        const desiredPermissions = new Set(
-            (preset.permissions === "all" ? availablePermissions : preset.permissions)
-                .filter((permission) => availablePermissions.includes(permission)),
-        )
-        const changes = availablePermissions
-            .filter((permission) => originalPermissions.has(permission) !== desiredPermissions.has(permission))
-            .map((permission) => ({permission, allow: desiredPermissions.has(permission)}))
-
-        if (!changes.length) {
-            toast.success(t("staff.roles.presetAlreadyApplied", {name: localizedPermissionPreset(locale, preset.id, preset.name, preset.description).name}))
-            return
-        }
-
-        setApplyingPreset(preset.id)
-        setPresetProgress({completed: 0, total: changes.length})
-        setPendingPermissions(new Set(changes.map(({permission}) => permission)))
-        setEnabledPermissions(desiredPermissions)
-
-        const results = await Promise.all(changes.map(async (change) => {
-            const res = await handleSetRolePermission(targetRole.id, change.permission, change.allow)
-            setPresetProgress((current) => current
-                ? {...current, completed: current.completed + 1}
-                : current
-            )
-            return {...change, ok: res.ok}
-        }))
-
-        const finalPermissions = new Set(originalPermissions)
-        for (const result of results) {
-            if (!result.ok) continue
-            if (result.allow) finalPermissions.add(result.permission)
-            else finalPermissions.delete(result.permission)
-        }
-
-        setEnabledPermissions(finalPermissions)
-        setOrderedRoles((currentRoles) => {
-            const updatedRoles = currentRoles.map((role) => role.id === targetRole.id
-                ? {...role, permissions: [...finalPermissions].sort()}
-                : role
-            )
-            latestOrderRef.current = updatedRoles
-            return updatedRoles
-        })
-        setPendingPermissions(new Set())
-        setApplyingPreset(null)
-        setPresetProgress(null)
-
-        const failed = results.filter((result) => !result.ok).length
-        if (failed) {
-            toast.error(t("staff.roles.presetPartial", {name: localizedPermissionPreset(locale, preset.id, preset.name, preset.description).name, count: failed}))
-        } else {
-            toast.success(t("staff.roles.presetApplied", {name: localizedPermissionPreset(locale, preset.id, preset.name, preset.description).name}))
-        }
     }
 
     async function updateRole(event: React.SubmitEvent<HTMLFormElement>) {
@@ -804,7 +694,7 @@ export default function RolesClientPage({schoolID, roles, availablePermissions, 
             </Dialog>
 
             <Dialog open={permissionRole !== null} onOpenChange={(open) => {
-                if (!open && pendingPermissions.size === 0 && !applyingPreset) setPermissionRole(null)
+                if (!open && pendingPermissions.size === 0) setPermissionRole(null)
             }}>
                 <DialogPopup className="sm:max-w-2xl">
                     <DialogHeader>
@@ -820,41 +710,6 @@ export default function RolesClientPage({schoolID, roles, availablePermissions, 
                         </div>
                     </DialogHeader>
                     <DialogPanel className="max-h-[65vh] space-y-5 overflow-y-auto">
-                        <section className="space-y-2.5">
-                            <div>
-                                <h3 className="text-sm font-semibold">{t("staff.roles.presets")}</h3>
-                                <p className="text-xs text-muted-foreground">{t("staff.roles.presetsDescription")}</p>
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                                {permissionPresets.map((preset) => {
-                                    const Icon = preset.icon
-                                    const localizedPreset = localizedPermissionPreset(locale, preset.id, preset.name, preset.description)
-                                    return (
-                                        <Button
-                                            key={preset.id}
-                                            variant="outline"
-                                            className="h-auto min-h-16 justify-start whitespace-normal px-3 py-2.5 text-left"
-                                            loading={applyingPreset === preset.id}
-                                            disabled={applyingPreset !== null || pendingPermissions.size > 0}
-                                            onClick={() => applyPermissionPreset(preset)}
-                                        >
-                                            <Icon className="self-start" />
-                                            <span className="min-w-0">
-                                                <span className="block font-medium">{localizedPreset.name}</span>
-                                                <span className="block text-xs font-normal text-muted-foreground">{localizedPreset.description}</span>
-                                            </span>
-                                        </Button>
-                                    )
-                                })}
-                            </div>
-                            {presetProgress && (
-                                <div className="flex items-center justify-between rounded-lg bg-primary/8 px-3 py-2 text-xs text-primary">
-                                    <span>{t("staff.roles.applyingPreset")}</span>
-                                    <span className="font-medium tabular-nums">{presetProgress.completed}/{presetProgress.total}</span>
-                                </div>
-                            )}
-                        </section>
-
                         <div className="flex items-center justify-between rounded-lg bg-muted/45 px-3 py-2.5 text-sm">
                             <span className="text-muted-foreground">{t("staff.roles.enabledPermissions")}</span>
                             <Badge variant="secondary">
@@ -884,7 +739,7 @@ export default function RolesClientPage({schoolID, roles, availablePermissions, 
                                                     id={switchID}
                                                     className={destructive ? "data-checked:bg-destructive" : undefined}
                                                     checked={enabledPermissions.has(permission)}
-                                                    disabled={pending || applyingPreset !== null}
+                                                    disabled={pending}
                                                     aria-label={t(enabledPermissions.has(permission) ? "staff.roles.disablePermission" : "staff.roles.enablePermission", {label})}
                                                     onCheckedChange={(checked) => setRolePermission(permission, checked)}
                                                 />
