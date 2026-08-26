@@ -1,90 +1,14 @@
 package staff
 
 import (
-	helpers2 "app/internal/helpers"
+	"app/internal/application/staff/auth"
+	schoolService "app/internal/application/staff/schools"
 	"app/internal/helpers/staff"
-	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
-	"strings"
-	"time"
-
-	"github.com/pquerna/otp/totp"
 )
-
-type TwoFactorChallengePurpose string
-
-const (
-	ChallengePurposeLogin          TwoFactorChallengePurpose = "login"
-	ChallengePurposeSchoolDeletion TwoFactorChallengePurpose = "schoolDeletion"
-)
-
-func (p TwoFactorChallengePurpose) String() string {
-	return string(p)
-}
-
-func verifyTfa(
-	w http.ResponseWriter,
-	db *sql.DB,
-	ctx context.Context,
-	userID int64,
-	p challengeCompletionPayload,
-	challengeID int64,
-	tokenHash []byte,
-) (bool, error) {
-	var secretKey []byte
-	if err := db.QueryRowContext(ctx, `
-			SELECT totp_secret FROM users WHERE id = $1
-		`, userID).Scan(&secretKey); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusForbidden)
-		} else {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		return false, err
-	}
-
-	appKey, err := helpers2.LoadAppEncKey()
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return false, err
-	}
-	secret, err := helpers2.DecryptString(secretKey, appKey)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return false, err
-	}
-
-	if !totp.Validate(p.Code, secret) {
-		w.WriteHeader(http.StatusUnauthorized)
-		return false, err
-	}
-
-	var consumedID int64
-	if err := db.QueryRowContext(ctx, `
-		DELETE FROM two_factor_challenges
-		WHERE id = $1
-		AND token_hash = $2
-		AND expires_at > NOW()
-		RETURNING id
-		`, challengeID, tokenHash).Scan(&consumedID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		return false, err
-	}
-
-	return true, nil
-}
 
 type challengeCompletionPayload struct {
 	Code           string `json:"code"`
@@ -102,129 +26,60 @@ func (h *Handler) CompleteChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p.Code = strings.TrimSpace(p.Code)
+	res, err := h.App.Staff.Auth.CompleteChallenge(ctx, &auth.CompleteChallengeInput{
+		Code:           p.Code,
+		ChallengeToken: p.ChallengeToken,
+	})
 
-	if len(p.Code) != 6 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
+	if err != nil {
+		switch {
+		case errors.Is(err, auth.ErrInvalidCode):
+			w.WriteHeader(http.StatusUnprocessableEntity)
 
-	tokenHash := helpers2.MakeHash256(p.ChallengeToken)
-
-	// Get challenge info
-	var id int64
-	var userID int64
-	var purpose TwoFactorChallengePurpose
-	var dbMetadata json.RawMessage
-	var expiresAt time.Time
-
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT id, user_id, purpose, metadata, expires_at
-		FROM two_factor_challenges
-		WHERE token_hash = $1
-	`, tokenHash).Scan(&id, &userID, &purpose, &dbMetadata, &expiresAt); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		case errors.Is(err, auth.ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
+
+		case errors.Is(err, auth.ErrExpiredChallenge):
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code": staff_helpers.ErrorCodeExpiredToken,
+			})
+
+		case errors.Is(err, auth.ErrInvalidTwoFactorCode):
+			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code": staff_helpers.ErrorCodeInvalidToken,
 			})
-		} else {
-			log.Println(err)
+
+		case errors.Is(err, auth.ErrForbidden):
+			w.WriteHeader(http.StatusForbidden)
+
+		case errors.Is(err, auth.ErrUnsupportedChallengePurpose):
+			w.WriteHeader(http.StatusNotImplemented)
+
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+
 		return
 	}
 
-	if expiresAt.Before(time.Now()) {
-		w.WriteHeader(http.StatusUnprocessableEntity)
+	switch res.Type {
+	case auth.CompleteChallengeLogin:
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeExpiredToken,
+			"token": res.SessionToken,
 		})
-		return
-	}
 
-	switch purpose {
-	case ChallengePurposeLogin:
-		var meta LoginChallengeMetadata
-
-		if err := json.Unmarshal(dbMetadata, &meta); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		ok, err := verifyTfa(w, h.DB, ctx, userID, p, id, tokenHash)
+	case auth.CompleteChallengeSchoolDeletion:
+		err := h.App.Staff.Schools.DeleteSchool(ctx, &schoolService.DeleteSchoolInput{
+			UserID:   res.SchoolDeletion.UserID,
+			SchoolID: res.SchoolDeletion.SchoolID,
+		})
 		if err != nil {
-			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if !ok {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		CompleteLogin(CompleteLoginPayload{
-			W:   w,
-			DB:  h.DB,
-			Ctx: ctx,
-			Meta: LoginChallengeMetadata{
-				UserID:       meta.UserID,
-				StayLoggedIn: meta.StayLoggedIn,
-				IP:           meta.IP,
-				UserAgent:    meta.UserAgent,
-			},
-		})
-
-	case ChallengePurposeSchoolDeletion:
-		var meta SchoolDeletionChallengeMetadata
-
-		if err := json.Unmarshal(dbMetadata, &meta); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		ok, err := verifyTfa(w, h.DB, ctx, userID, p, id, tokenHash)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		if !ok {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		CompleteSchoolDeletion(CompleteSchoolDeletionPayload{
-			W:   w,
-			DB:  h.DB,
-			Sf:  h.Sf,
-			Ctx: ctx,
-			Meta: SchoolDeletionChallengeMetadata{
-				UserID:   meta.UserID,
-				SchoolID: meta.SchoolID,
-			},
-		})
-
-	default:
-		w.WriteHeader(http.StatusNotImplemented)
-		return
+		w.WriteHeader(http.StatusNoContent)
 	}
-}
-
-// Challenge metadata types
-
-type LoginChallengeMetadata struct {
-	UserID       int64   `json:"userId"`
-	StayLoggedIn bool    `json:"stayLoggedIn"`
-	IP           *string `json:"ip"`
-	UserAgent    string  `json:"userAgent"`
-}
-
-type SchoolDeletionChallengeMetadata struct {
-	UserID   int64 `json:"userId"`
-	SchoolID int64 `json:"schoolId"`
 }

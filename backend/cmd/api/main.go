@@ -1,6 +1,7 @@
 package main
 
 import (
+	"app/internal/application"
 	"app/internal/helpers"
 	utils2 "app/internal/infra"
 	"app/internal/routes/v1"
@@ -16,8 +17,9 @@ import (
 )
 
 // Latest updates
-// Minor: Restructured route handler calls
-const version = "3.11.5"
+// Minor: migrated some app logic from handlers to services
+// This change will be done in batches as it requires major rewrites
+const version = "3.12.5"
 
 func main() {
 	fmt.Printf("Starting EduLink API v%s\n", version)
@@ -71,8 +73,11 @@ func main() {
 
 	trustForwardedFor := os.Getenv("TRUST_X_FORWARDED_FOR") == "true"
 
+	// Init app
+	app := application.New(db, sf, s3)
+
 	// Init routes
-	r := v1.MainRouter(db, sf, s3, trustForwardedFor)
+	r := v1.MainRouter(db, sf, s3, app, trustForwardedFor)
 
 	// Start server
 	port := fmt.Sprintf(":%s", os.Getenv("APP_PORT"))

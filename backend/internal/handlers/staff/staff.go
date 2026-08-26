@@ -712,7 +712,7 @@ func (h *Handler) AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffCreate, schools.TypeCreate, "Staff member added", "{user} joined the school staff_helpers.", tx, ctx, h.Sf, "{user} was added as a staff member after accepting an invitation."); err != nil {
+	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffCreate, schools.TypeCreate, "Staff member added", "{user} joined the school.", tx, ctx, h.Sf, "{user} was added as a staff member after accepting an invitation."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -913,7 +913,7 @@ func (h *Handler) AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *htt
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffCreate, schools.TypeCreate, "Staff member added", "{user} joined the school staff_helpers.", tx, ctx, h.Sf, "{user} was added as a staff member from invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
+	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffCreate, schools.TypeCreate, "Staff member added", "{user} joined the school.", tx, ctx, h.Sf, "{user} was added as a staff member from invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -1357,7 +1357,7 @@ func (h *Handler) DeleteStaffMemberHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffDelete, schools.TypeDelete, "Staff member removed", "{user} removed "+targetName+" from the staff_helpers.", tx, ctx, h.Sf, "{user} removed staff member "+targetName+" <"+targetEmail+">."); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffDelete, schools.TypeDelete, "Staff member removed", "{user} removed "+targetName+" from the school staff.", tx, ctx, h.Sf, "{user} removed staff member "+targetName+" <"+targetEmail+">."); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -1431,7 +1431,7 @@ func (h *Handler) LeaveSchoolStaffHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	details := fmt.Sprintf("%s <%s> left the school's staff members.", userName, userEmail)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolLeave, schools.TypeDelete, "User left", "{user} left the school staff_helpers.", tx, ctx, h.Sf, details); err != nil {
+	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolLeave, schools.TypeDelete, "User left", "{user} left the school.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -11,6 +11,7 @@ import {Badge} from "@/components/ui/badge"
 import {Button} from "@/components/ui/button"
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 import {getTranslations} from "@/i18n/server"
+import PasswordUpdateCard from "../../password_update_card"
 
 export async function generateMetadata() {
     const {t} = await getTranslations()
@@ -125,6 +126,8 @@ export default async function Page() {
                     <LanguageSwitcher className="sm:w-48" />
                 </CardContent>
             </Card>
+
+            <PasswordUpdateCard />
 
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.8fr)]">
                 <Card>

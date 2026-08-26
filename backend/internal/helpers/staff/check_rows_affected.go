@@ -2,6 +2,7 @@ package staff_helpers
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 )
@@ -19,6 +20,20 @@ func RowsAffectedOr500(res sql.Result, w http.ResponseWriter) error {
 	if rowsAffected == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		return err
+	}
+
+	return nil
+}
+
+func RowsAffected(res sql.Result) error {
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errors.New("no rows affected")
 	}
 
 	return nil

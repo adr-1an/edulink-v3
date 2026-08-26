@@ -1,6 +1,7 @@
 package portal
 
 import (
+	"app/internal/application/portal/auth"
 	"app/internal/helpers"
 	"app/internal/helpers/portal"
 	staffhelpers "app/internal/helpers/staff"
@@ -299,4 +300,48 @@ func (h *Handler) AccountActivationHandler(w http.ResponseWriter, r *http.Reques
 		Ctx:    ctx,
 		UserID: userID,
 	})
+}
+
+func (h *Handler) PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeEither)
+	if err != nil {
+		return
+	}
+
+	type payload struct {
+		Current string `json:"currentPassword"`
+		New     string `json:"newPassword"`
+	}
+	var p payload
+
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&p); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = h.App.Portal.Auth.UpdatePassword(ctx, &auth.UpdatePasswordInput{
+		UserID:      userID,
+		OldPassword: p.Current,
+		NewPassword: p.New,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, auth.ErrUnauthorized):
+			w.WriteHeader(http.StatusUnauthorized)
+
+		case errors.Is(err, auth.ErrUnprocessableEntity):
+			w.WriteHeader(http.StatusUnprocessableEntity)
+
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

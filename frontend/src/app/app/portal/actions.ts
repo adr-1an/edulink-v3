@@ -3,6 +3,7 @@
 import {cookies} from "next/headers"
 import {portalHome} from "@/lib/portal_auth"
 import {portalActivationErrorFromResponse} from "@/lib/portal_activation"
+import {validatePortalPasswordUpdate} from "@/lib/portal_password"
 import {verifyTurnstile} from "@/lib/turnstile"
 
 interface LoginResponse {
@@ -164,4 +165,41 @@ export async function handlePortalLogout() {
 
     cookieStore.delete("portal_token")
     return {ok: true as const}
+}
+
+export type PortalPasswordUpdateResult =
+    | {ok: true}
+    | {ok: false; code: "invalid" | "unauthorized" | "network" | "server"}
+
+export async function handlePortalPasswordUpdate(
+    currentPassword: string,
+    newPassword: string,
+    confirmation: string,
+): Promise<PortalPasswordUpdateResult> {
+    if (validatePortalPasswordUpdate(currentPassword, newPassword, confirmation)) {
+        return {ok: false, code: "invalid"}
+    }
+
+    const token = (await cookies()).get("portal_token")?.value
+    if (!token) return {ok: false, code: "unauthorized"}
+
+    let response: Response
+    try {
+        response = await fetch(`${process.env.API_URL}/v1/portal/auth/password`, {
+            method: "PUT",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({currentPassword, newPassword}),
+            cache: "no-store",
+        })
+    } catch {
+        return {ok: false, code: "network"}
+    }
+
+    if (response.ok) return {ok: true}
+    if (response.status === 401 || response.status === 403) return {ok: false, code: "unauthorized"}
+    if (response.status === 400 || response.status === 422) return {ok: false, code: "invalid"}
+    return {ok: false, code: "server"}
 }

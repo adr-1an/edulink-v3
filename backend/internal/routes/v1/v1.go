@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"app/internal/application"
 	portalhandlers "app/internal/handlers/portal"
 	"app/internal/handlers/portal/students"
 	"app/internal/handlers/staff"
@@ -21,27 +22,31 @@ func MainRouter(
 	db *sql.DB,
 	sf *sonyflake.Sonyflake,
 	s3 *minio.Client,
+	app *application.Application,
 	trustForwarded bool,
 ) chi.Router {
 	r := chi.NewRouter()
 
 	// Staff handler
 	h := staff.Handler{
-		DB: db,
-		Sf: sf,
-		S3: s3,
+		DB:  db,
+		Sf:  sf,
+		S3:  s3,
+		App: app,
 	}
 
 	// Portal handlers
 	portalHandler := portalhandlers.Handler{
-		DB: db,
-		Sf: sf,
-		S3: s3,
+		DB:  db,
+		Sf:  sf,
+		S3:  s3,
+		App: app,
 	}
 	studentHandler := students.Handler{
-		DB: db,
-		Sf: sf,
-		S3: s3,
+		DB:  db,
+		Sf:  sf,
+		S3:  s3,
+		App: app,
 	}
 
 	r.Use(middleware.RequestID)

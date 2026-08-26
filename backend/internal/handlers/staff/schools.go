@@ -1,23 +1,21 @@
 package staff
 
 import (
+	"app/internal/application/staff/auth"
+	schoolService "app/internal/application/staff/schools"
 	"app/internal/helpers"
 	"app/internal/helpers/staff"
 	"app/internal/helpers/staff/schools"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/sony/sonyflake/v2"
-	"golang.org/x/text/language"
 )
 
 func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
@@ -34,66 +32,27 @@ func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
 	// showDeleted := r.URL.Query().Get("showDeleted") == "true"
 	// Not in use for now
 
-	// School struct
-	type School struct {
+	res, err := h.App.Staff.Schools.ListSchools(ctx, &schoolService.ListSchoolsInput{
+		UserID: userID,
+	})
+
+	type school struct {
 		ID         string `json:"id"`
 		OwnerID    string `json:"ownerId"`
 		Name       string `json:"name"`
 		RegionCode string `json:"regionCode"`
 	}
-	var schoolList []School
+	var schoolList []school
 
-	// Get all schools the user has access to
-	var rows *sql.Rows
-	switch false { // Replaced showDeleted with false
-	case true:
-		rows, err = h.DB.QueryContext(ctx, `
-	SELECT DISTINCT s.id, s.owner_id, s.name, s.region_code
-		FROM schools s
-		WHERE s.owner_id = $1
-	   	OR EXISTS (
-			SELECT 1
-			FROM school_staff ss
-		  	WHERE ss.user_id = $1
-	   )
-`, userID, schools.PermissionSchoolView)
-	default:
-		rows, err = h.DB.QueryContext(ctx, `
-		SELECT DISTINCT s.id, s.owner_id, s.name, s.region_code
-		FROM schools s
-		WHERE s.owner_id = $1
-   		AND s.deleted_at IS NULL
-	   	OR EXISTS (
-			SELECT 1
-			FROM school_staff ss
-		  	WHERE ss.user_id = $1
-		  	AND deleted_at IS NULL
-	   )
-	`, userID)
-	}
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = rows.Close() }()
-
-	for rows.Next() {
-		var school School
-
-		if err := rows.Scan(&school.ID, &school.OwnerID, &school.Name, &school.RegionCode); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+	if res != nil {
+		for _, s := range res.Schools {
+			schoolList = append(schoolList, school{
+				ID:         s.ID,
+				OwnerID:    s.OwnerID,
+				Name:       s.Name,
+				RegionCode: s.RegionCode,
+			})
 		}
-
-		schoolList = append(schoolList, school)
-	}
-
-	if err := rows.Err(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -126,77 +85,38 @@ func (h *Handler) CreateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse & validate
-	p.Name = strings.TrimSpace(p.Name)
-	p.RegionCode = strings.TrimSpace(strings.ToUpper(strings.ReplaceAll(p.RegionCode, " ", "")))
+	err = h.App.Staff.Schools.CreateSchool(ctx, &schoolService.CreateSchoolInput{
+		UserID: userID,
+		School: schoolService.CreateSchool{
+			Name:       p.Name,
+			RegionCode: p.RegionCode,
+		},
+	})
 
-	if p.Name == "" || len(p.Name) > 64 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeInvalidName,
-		})
-		return
-	}
-
-	if p.RegionCode != "" {
-		region, err := language.ParseRegion(p.RegionCode)
-		if err != nil {
+	if err != nil {
+		switch {
+		case errors.Is(err, schoolService.ErrBadRequest):
 			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
 
-		if !region.IsCountry() {
+		case errors.Is(err, schoolService.ErrInvalidName):
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code": staff_helpers.ErrorCodeInvalidName,
+			})
+
+		case errors.Is(err, schoolService.ErrInvalidRegionCode):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code": staff_helpers.ErrorCodeInvalidRegionCode,
 			})
-			return
+
+		case errors.Is(err, schoolService.ErrBadRequest):
+			w.WriteHeader(http.StatusBadRequest)
+
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
 		}
-	}
 
-	// Generate ID
-	id, err := h.Sf.NextID()
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Start tx
-	tx, err := h.DB.BeginTx(ctx, nil)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	// Store
-	res, err := tx.ExecContext(ctx, `
-		INSERT INTO schools (id, owner_id, name, region_code)
-		VALUES ($1, $2, $3, $4)
-	`, id, userID, p.Name, p.RegionCode)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
-		return
-	}
-
-	// Log action
-	if err := schools.StoreSchoolLog(id, userID, schools.ActionSchoolCreate, schools.TypeCreate, "School created", "{user} created the school '"+p.Name+"'.", tx, ctx, h.Sf, "{user} created school '"+p.Name+"' in region '"+p.RegionCode+"'."); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Commit tx
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -228,12 +148,6 @@ func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var p Payload
 
-	// School permission check
-	if !schools.Can(schools.PermissionSchoolUpdate, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
 	// Decode
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -242,144 +156,40 @@ func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p.ActiveAcademicYearID != nil &&
-		// If p.ActiveAcademicYearID isn't null, it means the user is trying to change the currently active academic year.
-		// To do that, they need the academicYear.toggle permission.
-		!schools.Can(schools.PermissionAcademicYearToggleActive, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
+	err = h.App.Staff.Schools.UpdateSchool(ctx, &schoolService.UpdateSchoolInput{
+		UserID:   userID,
+		SchoolID: schoolID,
+		School: schoolService.SchoolUpdate{
+			Name:                 p.Name,
+			RegionCode:           p.RegionCode,
+			ActiveAcademicYearID: p.ActiveAcademicYearID,
+		},
+	})
 
-	// Parse & validate
-	p.Name = strings.TrimSpace(p.Name)
-	p.RegionCode = strings.TrimSpace(strings.ToUpper(strings.ReplaceAll(p.RegionCode, " ", "")))
+	if err != nil {
+		switch {
+		case errors.Is(err, schoolService.ErrNoPermission), errors.Is(err, schoolService.ErrForbidden):
+			w.WriteHeader(http.StatusForbidden)
 
-	if p.Name == "" || len(p.Name) > 64 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeInvalidName,
-		})
-		return
-	}
+		case errors.Is(err, schoolService.ErrInvalidName):
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code": staff_helpers.ErrorCodeInvalidName,
+			})
 
-	if p.RegionCode != "" {
-		region, err := language.ParseRegion(p.RegionCode)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		if !region.IsCountry() {
+		case errors.Is(err, schoolService.ErrInvalidRegionCode):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code": staff_helpers.ErrorCodeInvalidRegionCode,
 			})
-			return
-		}
-	}
 
-	// Start tx
-	tx, err := h.DB.BeginTx(ctx, nil)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
+		case errors.Is(err, schoolService.ErrBadRequest):
+			w.WriteHeader(http.StatusBadRequest)
 
-	var oldName string
-	var oldRegionCode string
-	if err := tx.QueryRowContext(ctx, `
-		SELECT name, region_code
-		FROM schools
-		WHERE id = $1
-	`, schoolID).Scan(&oldName, &oldRegionCode); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	activeYearDetails := ""
-	if p.ActiveAcademicYearID != nil {
-		// Get the Academic Year's school ID
-		var yearSchoolID int64
-		var newStartYear int
-		var newEndYear int
-		if err := tx.QueryRowContext(ctx, `
-		SELECT school_id, start_year, end_year FROM academic_years WHERE id = $1
-	`, p.ActiveAcademicYearID).Scan(&yearSchoolID, &newStartYear, &newEndYear); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				w.WriteHeader(http.StatusForbidden)
-			} else {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-			return
-		}
-
-		if yearSchoolID != schoolID {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		activeYearDetails = " Active academic year was set to " + strconv.Itoa(newStartYear) + "-" + strconv.Itoa(newEndYear) + "."
-
-		// Deactivate old year
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE academic_years
-			SET is_active = false
-			WHERE school_id = $1
-			AND is_active = true
-		`, schoolID); err != nil {
-			log.Println(err)
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
-			return
 		}
 
-		// Activate new year
-		res, err := tx.ExecContext(ctx, `
-			UPDATE academic_years
-			SET is_active = true
-			WHERE id = $1
-			AND is_active = false
-		`, p.ActiveAcademicYearID)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
-			return
-		}
-	}
-
-	// Update
-	res, err := tx.ExecContext(ctx, `
-		UPDATE schools
-		SET name = $1, region_code = $2, updated_at = NOW()
-		WHERE id = $3
-	`, p.Name, p.RegionCode, schoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
-		return
-	}
-
-	// Log action
-	details := "{user} updated the school name from '" + oldName + "' to '" + p.Name + "' and region from '" + oldRegionCode + "' to '" + p.RegionCode + "'." + activeYearDetails
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolEdit, schools.TypeEdit, "School updated", "{user} updated the school '"+p.Name+"'.", tx, ctx, h.Sf, details); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Commit tx
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -389,58 +199,69 @@ func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Get user ID
+	// Authenticate
 	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
 	if err != nil {
 		return
 	}
 
-	// Get school id
-	schoolIDStr := chi.URLParam(r, "schoolID")
-	schoolID, err := strconv.ParseInt(schoolIDStr, 10, 64)
+	// Parse school ID
+	schoolID, err := strconv.ParseInt(chi.URLParam(r, "schoolID"), 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	// Permission check
-	if !schools.Can(schools.SchoolOwner, userID, schoolID, ctx, h.DB) {
+	if !schools.Can(
+		schools.SchoolOwner,
+		userID,
+		schoolID,
+		ctx,
+		h.DB,
+	) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	// Check if the account has 2fa enabled
+	// Check whether 2FA is enabled
 	var tfa string
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT two_factor_status FROM users WHERE id = $1
-	`, userID).Scan(&tfa); err != nil {
+
+	err = h.DB.QueryRowContext(ctx, `
+		SELECT two_factor_status
+		FROM users
+		WHERE id = $1
+	`, userID).Scan(&tfa)
+
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
 		} else {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+
 		return
 	}
 
-	if tfa == TwoFAStatusEnabled {
-		// Generate challenge token
+	if tfa == auth.TwoFAStatusEnabled {
 		token, err := gonanoid.New(128)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
 		tokenHash := helpers.MakeHash256(token)
 
-		id, err := h.Sf.NextID()
+		id, err := h.App.Staff.Auth.Sf.NextID()
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		meta := SchoolDeletionChallengeMetadata{
+		meta := auth.SchoolDeletionChallengeMetadata{
 			UserID:   userID,
 			SchoolID: schoolID,
 		}
@@ -453,96 +274,58 @@ func (h *Handler) DeleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		expiresAt := time.Now().Add(15 * time.Minute)
-		if _, err := h.DB.ExecContext(ctx, `
-			INSERT INTO two_factor_challenges (id, user_id, purpose, token_hash, expires_at, metadata)
+
+		_, err = h.DB.ExecContext(ctx, `
+			INSERT INTO two_factor_challenges (
+				id,
+				user_id,
+				purpose,
+				token_hash,
+				expires_at,
+				metadata
+			)
 			VALUES ($1, $2, $3, $4, $5, $6)
-		`, id, userID, ChallengePurposeSchoolDeletion, tokenHash, expiresAt, metadata); err != nil {
+		`,
+			id,
+			userID,
+			auth.ChallengePurposeSchoolDeletion,
+			tokenHash,
+			expiresAt,
+			metadata,
+		)
+
+		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		// Return challenge data
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"twoFactorChallenge": map[string]any{
 				"token":     token,
-				"purpose":   ChallengePurposeSchoolDeletion,
+				"purpose":   auth.ChallengePurposeSchoolDeletion,
 				"expiresAt": expiresAt,
 			},
 		})
+
 		return
 	}
 
-	CompleteSchoolDeletion(CompleteSchoolDeletionPayload{
-		W:   w,
-		DB:  h.DB,
-		Sf:  h.Sf,
-		Ctx: ctx,
-		Meta: SchoolDeletionChallengeMetadata{
+	// No 2FA required -> delete immediately
+	err = h.App.Staff.Schools.DeleteSchool(
+		ctx,
+		&schoolService.DeleteSchoolInput{
 			UserID:   userID,
 			SchoolID: schoolID,
 		},
-	})
-}
+	)
 
-type CompleteSchoolDeletionPayload struct {
-	W    http.ResponseWriter
-	DB   *sql.DB
-	Sf   *sonyflake.Sonyflake
-	Ctx  context.Context
-	Meta SchoolDeletionChallengeMetadata
-}
-
-func CompleteSchoolDeletion(p CompleteSchoolDeletionPayload) {
-	// Start tx
-	tx, err := p.DB.BeginTx(p.Ctx, nil)
 	if err != nil {
-		log.Println(err)
-		p.W.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	var schoolName string
-	if err := tx.QueryRowContext(p.Ctx, `
-		SELECT name FROM schools WHERE id = $1
-	`, p.Meta.SchoolID).Scan(&schoolName); err != nil {
-		log.Println(err)
-		p.W.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// Delete school (update deleted_at)
-	res, err := tx.ExecContext(p.Ctx, `
-		UPDATE schools
-		SET deleted_at = NOW()
-		WHERE id = $1
-	`, p.Meta.SchoolID)
-	if err != nil {
-		log.Println(err)
-		p.W.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := staff_helpers.RowsAffectedOr500(res, p.W); err != nil {
-		return
-	}
-
-	// Log action
-	if err := schools.StoreSchoolLog(p.Meta.SchoolID, p.Meta.UserID, schools.ActionSchoolDelete, schools.TypeDelete, "School deleted", "{user} deleted the school '"+schoolName+"'.", tx, p.Ctx, p.Sf, "{user} deleted school '"+schoolName+"' with ID "+strconv.FormatInt(p.Meta.SchoolID, 10)+"."); err != nil {
-		log.Println(err)
-		p.W.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Commit tx
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		p.W.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	p.W.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Request) {
@@ -562,94 +345,24 @@ func (h *Handler) ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Check permissions
-	if !schools.Can(schools.PermissionSchoolView, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
+	res, err := h.App.Staff.Schools.ViewSchool(ctx, &schoolService.SchoolViewInput{
+		UserID:   userID,
+		SchoolID: schoolID,
+	})
 
-	// Structs
-	type Grade struct {
-		ID             string `json:"id"`
-		AcademicYearID string `json:"academicYearId"`
-		Level          int    `json:"level"`
-		Name           string `json:"name"`
-		CreatedAt      string `json:"createdAt"`
-	}
-
-	type School struct {
-		ID         string  `json:"id"`
-		Name       string  `json:"name"`
-		RegionCode string  `json:"regionCode"`
-		Grades     []Grade `json:"grades"`
-		CreatedAt  string  `json:"createdAt"`
-		UpdatedAt  string  `json:"updatedAt"`
-	}
-
-	var s School
-	var gs []Grade
-
-	// Get school info
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT
-		    id, name, region_code, created_at, updated_at
-		FROM schools
-		WHERE id = $1
-		AND deleted_at IS NULL
-	`, schoolID).Scan(
-		&s.ID,
-		&s.Name,
-		&s.RegionCode,
-		&s.CreatedAt,
-		&s.UpdatedAt,
-	); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Get grades
-	rows, err := h.DB.QueryContext(ctx, `
-		SELECT g.id, g.academic_year_id, g.level, g.name, g.created_at
-		FROM grades g
-		JOIN academic_years y
-		ON g.academic_year_id = y.id
-		JOIN schools s
-		ON y.school_id = s.id
-		WHERE s.id = $1
-		AND y.is_active = true
-	`, schoolID)
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = rows.Close() }()
+		switch {
+		case errors.Is(err, schoolService.ErrNoPermission):
+			w.WriteHeader(http.StatusForbidden)
 
-	// Scan rows
-	for rows.Next() {
-		var g Grade
-
-		if err := rows.Scan(&g.ID, &g.AcademicYearID, &g.Level, &g.Name, &g.CreatedAt); err != nil {
-			log.Println(err)
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
-			return
 		}
 
-		gs = append(gs, g)
-	}
-
-	// Check for errors
-	if err := rows.Err(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// Return data
-	s.Grades = gs
-
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"school": s,
+		"school": res.School,
 	})
 }

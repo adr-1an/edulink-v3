@@ -21,5 +21,8 @@ func AuthRoutes(h *portalhandlers.Handler) chi.Router {
 	// Activate account
 	r.Post("/activate/{token}", h.AccountActivationHandler)
 
+	// Change password
+	r.Put("/password", h.PasswordChangeHandler)
+
 	return r
 }

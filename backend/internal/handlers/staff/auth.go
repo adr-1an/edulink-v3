@@ -1,9 +1,9 @@
 package staff
 
 import (
+	"app/internal/application/staff/auth"
 	helpers2 "app/internal/helpers"
 	"app/internal/helpers/staff"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/go-chi/chi/v5"
@@ -39,130 +38,20 @@ func (h *Handler) SendRegistrationLinkHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Parse
-	p.Email = strings.ToLower(strings.TrimSpace(p.Email))
+	err := h.App.Staff.Auth.SendRegistrationLink(ctx, &auth.SendRegistrationLinkInput{
+		Email: p.Email,
+	})
 
-	// Validate
-	if p.Email == "" || len(p.Email) < 5 || len(p.Email) > 254 {
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+
+	case errors.Is(err, auth.ErrUnprocessableEntity):
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
 
-	// Start tx
-	tx, err := h.DB.BeginTx(ctx, nil)
-	if err != nil {
-		log.Println(err)
+	default:
 		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
-	defer func() {
-		err = tx.Rollback()
-		if err != nil && !errors.Is(err, sql.ErrTxDone) {
-			fmt.Println(err)
-		}
-	}()
-
-	// Check for email conflict
-	var emailConflict bool
-	if err := tx.QueryRowContext(ctx, `
-		SELECT EXISTS (
-		    SELECT 1 FROM users u
-		 	WHERE u.email = $1
-		)
-	`, p.Email).Scan(&emailConflict); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if emailConflict {
-		// Email is already taken, fake ok response
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	// Check if an active token already exists
-	var validTokenExists bool
-	if err := tx.QueryRowContext(ctx, `
-		SELECT EXISTS (
-		    SELECT 1 FROM registration_tokens rt
-		 	WHERE rt.email = $1
-		 	AND rt.expires_at > NOW()
-		)
-	`, p.Email).Scan(&validTokenExists); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if validTokenExists {
-		// A valid token already exists, fake ok response
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	// Generate token & hash
-	token, err := gonanoid.New(128)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	tokenHash := helpers2.MakeHash256(token)
-
-	// Store registration token
-	res, err := h.DB.ExecContext(ctx, `
-		INSERT INTO registration_tokens (token_hash, email, expires_at)
-		VALUES ($1, $2, NOW() + INTERVAL '1 hour')
-		ON CONFLICT (email) DO UPDATE
-		    SET
-		        token_hash = EXCLUDED.token_hash,
-		        expires_at = EXCLUDED.expires_at,
-		        created_at = NOW()
-		WHERE registration_tokens.expires_at <= NOW()
-	`, tokenHash, p.Email)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if affected == 0 {
-		// Valid token with this email exists, fake ok response
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	// Send email
-	frontendURL := os.Getenv("FRONTEND_URL")
-	appName := os.Getenv("APP_NAME")
-	registrationURL := fmt.Sprintf("%s/auth/register/%s", frontendURL, token)
-	msg := fmt.Sprintf("Hi! Let's complete your %s registration: %s", appName, registrationURL)
-	email := helpers2.Mail{
-		To:          p.Email,
-		Subject:     "Complete your registration",
-		Body:        msg,
-		Importance:  mail.ImportanceHigh,
-		ContentType: mail.TypeTextPlain,
-	}
-
-	// Send email
-	go func() {
-		if err := helpers2.SendMail(email); err != nil {
-			log.Println(err)
-		}
-	}()
-
-	// Commit tx
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // CheckRegistrationTokenHandler checks whether the given registration token is valid
@@ -171,28 +60,26 @@ func (h *Handler) CheckRegistrationTokenHandler(w http.ResponseWriter, r *http.R
 	ctx := r.Context()
 
 	token := chi.URLParam(r, "token")
-	tokenHash := helpers2.MakeHash256(token)
 
-	// Get the email from the token
-	var email string
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT email
-		FROM registration_tokens
-		WHERE token_hash = $1
-		AND expires_at > NOW()
-	`, tokenHash).Scan(&email); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	res, err := h.App.Staff.Auth.CheckRegistrationToken(ctx, &auth.CheckRegistrationTokenInput{
+		Token: token,
+	})
+
+	if err != nil {
+		switch {
+		case errors.Is(err, auth.ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
-		} else {
-			log.Println(err)
+
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"email": email,
+		"email": res.Email,
 	})
 }
 
@@ -220,98 +107,26 @@ func (h *Handler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse
-	p.Name = strings.TrimSpace(p.Name)
-	p.Phone = strings.TrimSpace(p.Phone)
-
-	// Validate
-
-	// Name
-	if p.Name == "" ||
-		len(p.Name) < 1 ||
-		len(p.Name) > 128 ||
-		// Password
-		p.Password == "" ||
-		len(p.Password) < 8 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	// Phone
-	if p.Phone != "" {
-		if len(p.Phone) < 3 || len(p.Phone) > 32 {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			return
-		}
-	}
-
-	// Get token & hash it
 	token := chi.URLParam(r, "token")
-	tokenHash := helpers2.MakeHash256(token)
 
-	// Start tx
-	tx, err := h.DB.BeginTx(ctx, nil)
+	err := h.App.Staff.Auth.Register(ctx, &auth.RegisterInput{
+		Name:              p.Name,
+		Phone:             p.Phone,
+		Password:          p.Password,
+		RegistrationToken: token,
+	})
+
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() {
-		err = tx.Rollback()
-		if err != nil && !errors.Is(err, sql.ErrTxDone) {
-			log.Println(err)
-		}
-	}()
+		switch {
+		case errors.Is(err, auth.ErrUnprocessableEntity):
+			w.WriteHeader(http.StatusUnprocessableEntity)
 
-	// Get email from token
-	var email string
-	if err := tx.QueryRowContext(ctx, `
-		DELETE FROM registration_tokens
-		WHERE token_hash = $1
-		AND expires_at > NOW()
-		RETURNING email
-	`, tokenHash).Scan(&email); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		case errors.Is(err, auth.ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
-		} else {
-			log.Println(err)
+
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		return
-	}
-
-	// Generate ID
-	id, err := h.Sf.NextID()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
-		return
-	}
-
-	// Hash password
-	passwordHash, err := argon2id.CreateHash(p.Password, argon2id.DefaultParams)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
-		return
-	}
-
-	// Store user
-	_, err = h.DB.ExecContext(ctx, `
-		INSERT INTO users (id, name, email, phone, password_hash)
-		VALUES ($1, $2, $3, $4, $5)
-	`, id, p.Name, email, p.Phone, passwordHash)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
-		return
-	}
-
-	// Commit tx
-	if err = tx.Commit(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -348,169 +163,41 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse
-	p.Email = strings.TrimSpace(strings.ToLower(p.Email))
+	res, err := h.App.Staff.Auth.Login(ctx, &auth.LoginInput{
+		Email:        p.Email,
+		Password:     p.Password,
+		StayLoggedIn: p.StayLoggedIn,
+		IP:           ip,
+		UserAgent:    userAgent,
+	})
 
-	// Validate
-	if p.Email == "" || len(p.Email) < 5 || len(p.Email) > 254 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	// Get user password
-	var userID int64
-	var passwordHash string
-	err := h.DB.QueryRowContext(ctx, `
-		SELECT id, password_hash FROM users WHERE email = $1
-	`, p.Email).Scan(&userID, &passwordHash)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		switch {
+		case errors.Is(err, auth.ErrUnprocessableEntity):
+			w.WriteHeader(http.StatusUnprocessableEntity)
+
+		case errors.Is(err, auth.ErrUnauthorized):
 			w.WriteHeader(http.StatusUnauthorized)
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println(err)
 		}
+
 		return
 	}
 
-	// Compare password and hash
-	match, err := argon2id.ComparePasswordAndHash(p.Password, passwordHash)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
-		return
-	}
+	switch res.Type {
+	case auth.LoginResultSuccess:
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"token": res.Token,
+		})
 
-	if !match {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	// Check if the account requires a 2FA challenge
-	var tfa string
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT two_factor_status FROM users WHERE id = $1
-	`, userID).Scan(&tfa); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusUnauthorized)
-		} else {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		return
-	}
-
-	if tfa == TwoFAStatusEnabled {
-		// Generate challenge token
-		token, err := gonanoid.New(128)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		tokenHash := helpers2.MakeHash256(token)
-
-		id, err := h.Sf.NextID()
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		meta := LoginChallengeMetadata{
-			UserID:       userID,
-			StayLoggedIn: p.StayLoggedIn,
-			IP:           ip,
-			UserAgent:    userAgent,
-		}
-
-		metadata, err := json.Marshal(meta)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		expiresAt := time.Now().Add(15 * time.Minute)
-		if _, err := h.DB.ExecContext(ctx, `
-			INSERT INTO two_factor_challenges (id, user_id, purpose, token_hash, expires_at, metadata)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`, id, userID, ChallengePurposeLogin, tokenHash, expiresAt, metadata); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		// Return challenge token, purpose and expiry
+	case auth.LoginResultTwoFactor:
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"twoFactorChallenge": map[string]any{
-				"token":     token,
-				"purpose":   ChallengePurposeLogin,
-				"expiresAt": expiresAt,
+				"token":     res.TwoFactorChallenge.Token,
+				"purpose":   res.TwoFactorChallenge.Purpose,
+				"expiresAt": res.TwoFactorChallenge.ExpiresAt,
 			},
 		})
-		return
 	}
-
-	// If not, continue
-	CompleteLogin(CompleteLoginPayload{
-		W:   w,
-		DB:  h.DB,
-		Ctx: ctx,
-		Meta: LoginChallengeMetadata{
-			UserID:       userID,
-			StayLoggedIn: p.StayLoggedIn,
-			IP:           ip,
-			UserAgent:    userAgent,
-		},
-	})
-}
-
-type CompleteLoginPayload struct {
-	W    http.ResponseWriter
-	DB   *sql.DB
-	Ctx  context.Context
-	Meta LoginChallengeMetadata
-}
-
-func CompleteLogin(p CompleteLoginPayload) {
-	// Generate session token & hash
-	sessionToken, err := gonanoid.New(128)
-	if err != nil {
-		p.W.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
-		return
-	}
-	sessionTokenHash := helpers2.MakeHash256(sessionToken)
-
-	// Store session token
-	// If stayLoggedIn == true, expire session in 3 months
-	// If stayLoggedIn == false, expire session in 24 hours
-	now := time.Now()
-	expiresAt := now
-	if p.Meta.StayLoggedIn {
-		// Expires in 3 months
-		expiresAt = now.AddDate(0, 3, 0)
-	} else {
-		// Expires in 1 day
-		expiresAt = now.AddDate(0, 0, 1)
-	}
-
-	_, err = p.DB.ExecContext(p.Ctx, `
-		INSERT INTO sessions (token_hash, user_id, created_from_ip, user_agent, expires_at)
-		VALUES ($1, $2, $3, $4, $5)
-	`, sessionTokenHash, p.Meta.UserID, p.Meta.IP, p.Meta.UserAgent, expiresAt)
-	if err != nil {
-		p.W.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
-		return
-	}
-
-	// Return the session token
-	p.W.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(p.W).Encode(map[string]any{
-		"token": sessionToken,
-	})
 }
 
 // TokenCheckHandler checks whether the given token is valid and not expired.
@@ -519,32 +206,34 @@ func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get token & hash
-	tokenHash, err := staff_helpers.TokenToHash(w, r)
-	if err != nil {
-		return
-	}
-
-	// Check if token is valid
-	var exists bool
-	err = h.DB.QueryRowContext(ctx, `
-		SELECT EXISTS (
-		    SELECT 1 FROM sessions
-			WHERE token_hash = $1
-			AND expires_at > NOW()
-			AND revoked_at IS NULL
-		)
-	`, tokenHash).Scan(&exists)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
-		return
-	}
-
-	if !exists {
+	token := r.Header.Get("Authorization")
+	if token == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeInvalidToken,
+			"code": staff_helpers.ErrorCodeNoToken,
 		})
+		return
+	}
+	token = strings.TrimPrefix(token, "Bearer ")
+
+	valid, err := h.App.Staff.Auth.CheckToken(ctx, &auth.CheckTokenInput{
+		Token: token,
+	})
+
+	if err != nil {
+		switch {
+		case errors.Is(err, auth.ErrUnauthorized):
+			w.WriteHeader(http.StatusUnauthorized)
+
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
+		return
+	}
+
+	if !valid {
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -784,12 +473,6 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-const (
-	TwoFAStatusEnabled  string = "enabled"
-	TwoFAStatusPending  string = "pending"
-	TwoFAStatusDisabled string = "disabled"
-)
-
 func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -813,7 +496,7 @@ func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if status == TwoFAStatusEnabled {
+	if status == auth.TwoFAStatusEnabled {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
@@ -859,7 +542,7 @@ func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 		SET totp_secret = $1,
 		    two_factor_status = $2
 		WHERE id = $3
-	`, encSecret, TwoFAStatusPending, userID); err != nil {
+	`, encSecret, auth.TwoFAStatusPending, userID); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -908,7 +591,7 @@ func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 	var totpSecret []byte
 	if err := tx.QueryRowContext(ctx, `
 		SELECT totp_secret FROM users WHERE id = $1 AND two_factor_status = $2
-	`, userID, TwoFAStatusPending).Scan(&totpSecret); err != nil {
+	`, userID, auth.TwoFAStatusPending).Scan(&totpSecret); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
 		} else {
@@ -941,7 +624,7 @@ func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 		UPDATE users
 		SET two_factor_status = $1
 		WHERE id = $2
-	`, TwoFAStatusEnabled, userID); err != nil {
+	`, auth.TwoFAStatusEnabled, userID); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -1075,7 +758,7 @@ func (h *Handler) Disable2faHandler(w http.ResponseWriter, r *http.Request) {
 		SET two_factor_status = $1,
 		    totp_secret = NULL
 		WHERE id = $2
-	`, TwoFAStatusDisabled, userID); err != nil {
+	`, auth.TwoFAStatusDisabled, userID); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -1141,7 +824,7 @@ func (h *Handler) RecoverTwoFactorHandler(w http.ResponseWriter, r *http.Request
 		SET totp_secret = NULL, two_factor_status = $1
 		WHERE id = $2
 		AND two_factor_status = $3
-	`, TwoFAStatusDisabled, userID, TwoFAStatusEnabled); err != nil {
+	`, auth.TwoFAStatusDisabled, userID, auth.TwoFAStatusEnabled); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

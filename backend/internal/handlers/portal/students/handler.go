@@ -1,6 +1,7 @@
 package students
 
 import (
+	"app/internal/application"
 	"database/sql"
 
 	"github.com/minio/minio-go/v7"
@@ -8,7 +9,8 @@ import (
 )
 
 type Handler struct {
-	DB *sql.DB
-	Sf *sonyflake.Sonyflake
-	S3 *minio.Client
+	DB  *sql.DB
+	Sf  *sonyflake.Sonyflake
+	S3  *minio.Client
+	App *application.Application
 }
