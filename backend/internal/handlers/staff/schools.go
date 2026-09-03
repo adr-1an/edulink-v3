@@ -22,7 +22,7 @@ func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -46,9 +46,12 @@ func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
 
 	if res != nil {
 		for _, s := range res.Schools {
+			idStr := strconv.FormatInt(s.ID, 10)
+			ownerIdStr := strconv.FormatInt(s.OwnerID, 10)
+
 			schoolList = append(schoolList, school{
-				ID:         s.ID,
-				OwnerID:    s.OwnerID,
+				ID:         idStr,
+				OwnerID:    ownerIdStr,
 				Name:       s.Name,
 				RegionCode: s.RegionCode,
 			})
@@ -65,7 +68,7 @@ func (h *Handler) CreateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -127,7 +130,7 @@ func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -200,7 +203,7 @@ func (h *Handler) DeleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Authenticate
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -332,7 +335,7 @@ func (h *Handler) ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

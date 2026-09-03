@@ -115,7 +115,7 @@ func assignmentToCourseID(assignmentID int64, db *sql.DB, ctx context.Context) (
 func (h *Handler) CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -248,7 +248,7 @@ func (h *Handler) CreateAssignmentHandler(w http.ResponseWriter, r *http.Request
 func (h *Handler) ListAssignmentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -366,7 +366,7 @@ func (h *Handler) ListAssignmentsHandler(w http.ResponseWriter, r *http.Request)
 func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -486,7 +486,7 @@ func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request
 func (h *Handler) DeleteAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

@@ -1,0 +1,3 @@
+ALTER TABLE IF EXISTS portal_user_profile_pictures
+ADD CONSTRAINT portal_user_profile_pictures_portal_user_id_unique
+UNIQUE (portal_user_id);

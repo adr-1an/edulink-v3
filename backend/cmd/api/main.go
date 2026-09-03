@@ -17,9 +17,9 @@ import (
 )
 
 // Latest updates
-// Minor: migrated some app logic from handlers to services
+// Minor: added student profile pictures, removed rate limiting (it should be done externally)
 // This change will be done in batches as it requires major rewrites
-const version = "3.12.5"
+const version = "3.13.6"
 
 func main() {
 	fmt.Printf("Starting EduLink API v%s\n", version)

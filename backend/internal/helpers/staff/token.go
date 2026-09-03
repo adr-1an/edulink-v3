@@ -10,9 +10,9 @@ import (
 	"strings"
 )
 
-// TokenToUID is a handler helper function used to return the ID of the user who owns the token provided
+// TokenToUserID is a handler helper function used to return the ID of the user who owns the token provided
 // in the request.
-func TokenToUID(w http.ResponseWriter, r *http.Request, db *sql.DB, ctx context.Context) (int64, error) {
+func TokenToUserID(ctx context.Context, w http.ResponseWriter, r *http.Request, db *sql.DB) (int64, error) {
 	token := r.Header.Get("Authorization")
 	if token == "" {
 		w.WriteHeader(http.StatusUnauthorized)

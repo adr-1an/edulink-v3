@@ -1,16 +1,16 @@
 "use client"
 
-import {useEffect, useMemo, useState} from "react"
+import {useEffect, useMemo, useRef, useState} from "react"
 import Link from "next/link"
 import {useRouter} from "next/navigation"
 import {
-    ArrowLeft, CalendarDays, CheckCircle2, ClipboardCheck, Clock3, Eye, FileCheck2, GraduationCap,
+    ArrowLeft, CalendarDays, Camera, CheckCircle2, ClipboardCheck, Clock3, Eye, FileCheck2, GraduationCap,
     KeyRound, Mail, NotebookText, Pencil, Phone, Search, SearchX, ShieldCheck, Trash2, TriangleAlert,
     UserRound,
 } from "lucide-react"
 import {toast} from "sonner"
 import LocalDateTime from "@/components/local-date-time"
-import {Avatar, AvatarFallback} from "@/components/ui/avatar"
+import UserAvatar from "@/components/app/user_avatar"
 import {Badge} from "@/components/ui/badge"
 import {Button} from "@/components/ui/button"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
@@ -19,16 +19,21 @@ import {
 } from "@/components/ui/dialog"
 import {
     AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFooter,
-    AlertDialogHeader, AlertDialogPopup, AlertDialogTitle,
+    AlertDialogHeader, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {Field, FieldLabel} from "@/components/ui/field"
 import {Input} from "@/components/ui/input"
 import {Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle} from "@/components/ui/empty"
+import {Progress} from "@/components/ui/progress"
 import {Tabs, TabsList, TabsTab} from "@/components/ui/tabs"
 import {useLocale} from "@/i18n/provider"
 import {type Locale} from "@/i18n/config"
+import {type MessageKey} from "@/i18n/messages"
+import {type ProfilePicture} from "@/lib/profile_picture"
+import {invalidateProfilePictureCache} from "@/lib/profile_picture_cache"
 import {hasSchoolPermission, type SchoolAccess} from "@/lib/school_access"
 import {getActiveSchoolSnapshot, rememberCurrentSchoolAccess} from "@/lib/school_navigation"
+import {uploadToPresignedURL} from "@/lib/upload_to_presigned_url"
 import {
     handleDeleteStudent, handleUpdateStudent,
 } from "@/app/app/(protected)/staff/(school_navbar)/schools/[id]/students/actions"
@@ -37,6 +42,12 @@ import StudentForm, {
     studentDraftToInput, type StudentDraft,
 } from "@/app/app/(protected)/staff/(school_navbar)/schools/[id]/students/student_form"
 import {scoreAccent} from "@/lib/score"
+import {
+    handleCompleteStudentProfilePictureUpload,
+    handleInitStudentProfilePictureUpload,
+    handleRemoveStudentProfilePicture,
+    type StudentProfilePictureErrorCode,
+} from "./actions"
 
 export interface StaffStudentProfile {
     id: string
@@ -48,6 +59,7 @@ export interface StaffStudentProfile {
     notes: string
     accountEnabled: boolean
     createdAt: string
+    profilePicture: ProfilePicture | null
 }
 
 export interface StudentAssignmentSubmission {
@@ -75,12 +87,21 @@ export interface StudentAssignmentSubmission {
 type SubmissionFilter = "all" | "graded" | "ungraded"
 const SUBMISSIONS_PAGE_SIZE = 8
 
+const profilePictureErrorKeys = {
+    invalid_upload: "staff.studentProfile.profilePicture.error.upload",
+    network: "staff.studentProfile.profilePicture.error.network",
+    unauthorized: "staff.studentProfile.profilePicture.error.unauthorized",
+    forbidden: "staff.studentProfile.profilePicture.error.forbidden",
+    validation: "staff.studentProfile.profilePicture.error.validation",
+    server: "staff.studentProfile.profilePicture.error.server",
+    upload: "staff.studentProfile.profilePicture.error.upload",
+    invalid_student: "staff.studentProfile.profilePicture.error.invalidStudent",
+    invalid_file: "staff.studentProfile.profilePicture.error.invalidFile",
+    conflict: "staff.studentProfile.profilePicture.error.conflict",
+} satisfies Record<StudentProfilePictureErrorCode, MessageKey>
+
 function normalizeColor(value: string) {
     return /^[0-9A-Fa-f]{6}$/.test(value) ? `#${value}` : "#6366F1"
-}
-
-function initials(student: Pick<StaffStudentProfile, "name" | "lastName">) {
-    return `${student.name[0] ?? ""}${student.lastName[0] ?? ""}`.toUpperCase() || "?"
 }
 
 function formatDateOnly(value: string, locale: Locale) {
@@ -115,6 +136,12 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
     const router = useRouter()
     const {locale, t} = useLocale()
     const [student, setStudent] = useState(initialStudent)
+    const [profilePictureOverride, setProfilePictureOverride] = useState<ProfilePicture | null>()
+    const profilePictureInput = useRef<HTMLInputElement>(null)
+    const profilePicturePreviewURL = useRef<string | null>(null)
+    const [profilePictureUploading, setProfilePictureUploading] = useState(false)
+    const [profilePictureRemoving, setProfilePictureRemoving] = useState(false)
+    const [profilePictureProgress, setProfilePictureProgress] = useState(0)
     const [editOpen, setEditOpen] = useState(false)
     const [draft, setDraft] = useState<StudentDraft>(() => studentDraft(initialStudent))
     const [saving, setSaving] = useState(false)
@@ -129,6 +156,9 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
     const canListSubmissions = hasSchoolPermission(access, "submission.list")
     const canViewSubmissions = hasSchoolPermission(access, "submission.view")
     const fullName = `${student.name} ${student.lastName}`
+    const profilePicture = profilePictureOverride === undefined
+        ? initialStudent.profilePicture
+        : profilePictureOverride
     const sortedSubmissions = useMemo(() => [...assignmentSubmissions].sort((left, right) =>
         Date.parse(right.submittedAt) - Date.parse(left.submittedAt)
     ), [assignmentSubmissions])
@@ -152,6 +182,77 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
     useEffect(() => {
         rememberCurrentSchoolAccess(access)
     }, [access])
+
+    useEffect(() => () => {
+        if (profilePicturePreviewURL.current) URL.revokeObjectURL(profilePicturePreviewURL.current)
+    }, [])
+
+    async function uploadProfilePicture(event: React.ChangeEvent<HTMLInputElement>) {
+        const file = event.target.files?.[0]
+        event.target.value = ""
+        if (!file || !canUpdate || profilePicture || profilePictureUploading) return
+
+        setProfilePictureUploading(true)
+        setProfilePictureProgress(0)
+
+        const initialized = await handleInitStudentProfilePictureUpload(student.id, {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+        })
+        if (!initialized.ok) {
+            setProfilePictureUploading(false)
+            return toast.error(t(profilePictureErrorKeys[initialized.code]))
+        }
+
+        try {
+            await uploadToPresignedURL(file, initialized.upload.url, setProfilePictureProgress)
+        } catch {
+            const cleanup = await handleRemoveStudentProfilePicture(student.id)
+            setProfilePictureUploading(false)
+            toast.error(t("staff.studentProfile.profilePicture.error.upload"))
+            if (!cleanup.ok) toast.error(t("staff.studentProfile.profilePicture.error.cleanup"))
+            return
+        }
+
+        const completed = await handleCompleteStudentProfilePictureUpload(
+            initialized.upload.id,
+            initialized.upload.completionToken,
+        )
+        if (!completed.ok) {
+            const cleanup = await handleRemoveStudentProfilePicture(student.id)
+            setProfilePictureUploading(false)
+            toast.error(t(profilePictureErrorKeys[completed.code]))
+            if (!cleanup.ok) toast.error(t("staff.studentProfile.profilePicture.error.cleanup"))
+            return
+        }
+
+        const previewURL = URL.createObjectURL(file)
+        profilePicturePreviewURL.current = previewURL
+        setProfilePictureOverride({presignedUrl: previewURL})
+        setProfilePictureUploading(false)
+        invalidateProfilePictureCache(`student:${student.id}`)
+        toast.success(t("staff.studentProfile.profilePicture.uploaded"))
+        router.refresh()
+    }
+
+    async function removeProfilePicture() {
+        if (!canUpdate || profilePictureRemoving) return
+
+        setProfilePictureRemoving(true)
+        const result = await handleRemoveStudentProfilePicture(student.id)
+        setProfilePictureRemoving(false)
+        if (!result.ok) return toast.error(t(profilePictureErrorKeys[result.code]))
+
+        if (profilePicturePreviewURL.current) {
+            URL.revokeObjectURL(profilePicturePreviewURL.current)
+            profilePicturePreviewURL.current = null
+        }
+        setProfilePictureOverride(null)
+        invalidateProfilePictureCache(`student:${student.id}`)
+        toast.success(t("staff.studentProfile.profilePicture.removed"))
+        router.refresh()
+    }
 
     function openEdit() {
         setDraft(studentDraft(student))
@@ -206,7 +307,13 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
 
             <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 items-center gap-4">
-                    <Avatar className="size-16 border text-lg"><AvatarFallback>{initials(student)}</AvatarFallback></Avatar>
+                    <UserAvatar
+                        className="size-16 border shadow-xs"
+                        fallbackClassName="text-lg font-semibold"
+                        name={fullName}
+                        src={profilePicture?.presignedUrl}
+                        cacheKey={`student:${student.id}`}
+                    />
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                             <h1 className="wrap-break-word text-3xl font-semibold tracking-tight sm:text-4xl">{fullName}</h1>
@@ -218,6 +325,70 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
                         <a className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline" href={`mailto:${student.email}`}>
                             <Mail className="size-4" /> {student.email}
                         </a>
+                        {canUpdate && (
+                            <div className="mt-2">
+                                {!profilePicture ? (
+                                    <>
+                                        <input
+                                            ref={profilePictureInput}
+                                            className="sr-only"
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/gif,image/webp"
+                                            disabled={profilePictureUploading}
+                                            onChange={uploadProfilePicture}
+                                        />
+                                        <Button
+                                            type="button"
+                                            size="xs"
+                                            variant="outline"
+                                            loading={profilePictureUploading}
+                                            disabled={profilePictureUploading}
+                                            onClick={() => profilePictureInput.current?.click()}
+                                        >
+                                            <Camera /> {t("staff.studentProfile.profilePicture.add")}
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger render={<Button type="button" size="xs" variant="destructive-outline" />}>
+                                            <Trash2 /> {t("staff.studentProfile.profilePicture.remove")}
+                                        </AlertDialogTrigger>
+                                        <AlertDialogPopup>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>{t("staff.studentProfile.profilePicture.removeTitle", {name: fullName})}</AlertDialogTitle>
+                                                <AlertDialogDescription>{t("staff.studentProfile.profilePicture.removeDescription")}</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogClose render={<Button variant="outline" disabled={profilePictureRemoving} />}>
+                                                    {t("common.cancel")}
+                                                </AlertDialogClose>
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    loading={profilePictureRemoving}
+                                                    disabled={profilePictureRemoving}
+                                                    onClick={removeProfilePicture}
+                                                >
+                                                    {t("staff.studentProfile.profilePicture.removeConfirm")}
+                                                </Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogPopup>
+                                    </AlertDialog>
+                                )}
+                                {profilePictureUploading && (
+                                    <div className="mt-2 w-52 max-w-full space-y-1.5">
+                                        <Progress value={profilePictureProgress} />
+                                        <p className="text-xs text-muted-foreground">
+                                            {t(profilePictureProgress < 100
+                                                ? "staff.studentProfile.profilePicture.uploading"
+                                                : "staff.studentProfile.profilePicture.verifying", {
+                                                progress: profilePictureProgress,
+                                            })}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
                 {(canUpdate || canDelete) && (

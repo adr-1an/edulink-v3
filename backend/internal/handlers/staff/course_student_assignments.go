@@ -35,7 +35,7 @@ func getCourseSchoolID(courseID int64, tx *sql.Tx) (int64, error) {
 func (h *Handler) AddOrRemoveCourseStudentHandler(w http.ResponseWriter, r *http.Request, assign bool) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -193,7 +193,7 @@ WHERE portal_user_id = $1 AND course_id = $2
 func (h *Handler) ListCourseStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

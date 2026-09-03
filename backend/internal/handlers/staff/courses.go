@@ -91,7 +91,7 @@ func (h *Handler) CreateCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -217,7 +217,7 @@ func (h *Handler) UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -347,7 +347,7 @@ func (h *Handler) UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -429,7 +429,7 @@ func (h *Handler) DeleteCourseHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

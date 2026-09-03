@@ -21,7 +21,7 @@ func (h *Handler) CompleteUploadHandler(w http.ResponseWriter, r *http.Request) 
 
 	doCleanup := true
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

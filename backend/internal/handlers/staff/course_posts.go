@@ -44,7 +44,7 @@ func parseAndValidate(p CoursePostPayload) (CoursePostPayload, error) {
 func (h *Handler) CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -144,7 +144,7 @@ func (h *Handler) CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdatePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -255,7 +255,7 @@ func (h *Handler) UpdatePostHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListPostsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -436,7 +436,7 @@ func (h *Handler) ListPostsHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeletePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -523,7 +523,7 @@ func (h *Handler) DeletePostHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ViewPostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

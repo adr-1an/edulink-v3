@@ -24,7 +24,7 @@ func (h *Handler) SchoolPromotionHandler(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

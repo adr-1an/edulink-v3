@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS portal_user_profile_pictures;

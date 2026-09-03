@@ -2,9 +2,16 @@
 
 import {cookies} from "next/headers"
 
+export type UploadCompletionErrorCode =
+    | "invalid_upload" | "network" | "unauthorized" | "forbidden" | "validation" | "server" | "upload"
+
+function failure(code: UploadCompletionErrorCode, message: string) {
+    return {ok: false as const, code, message}
+}
+
 export async function handleCompleteUpload(objectID: string, completionToken: string) {
     if (!/^\d+$/.test(objectID) || !completionToken) {
-        return {ok: false as const, message: "The upload completion details are invalid."}
+        return failure("invalid_upload", "The upload completion details are invalid.")
     }
 
     const token = (await cookies()).get("token")?.value
@@ -19,17 +26,17 @@ export async function handleCompleteUpload(objectID: string, completionToken: st
             body: JSON.stringify({completionToken}),
         })
     } catch {
-        return {ok: false as const, message: "Network error while completing the upload."}
+        return failure("network", "Network error while completing the upload.")
     }
 
     if (res.ok) return {ok: true as const}
-    if (res.status === 401) return {ok: false as const, message: "Unauthorized."}
-    if (res.status === 403) return {ok: false as const, message: "The upload could not be verified."}
+    if (res.status === 401) return failure("unauthorized", "Unauthorized.")
+    if (res.status === 403) return failure("forbidden", "The upload could not be verified.")
     if (res.status === 422) {
-        return {ok: false as const, message: "The uploaded file did not match its declared size or type."}
+        return failure("validation", "The uploaded file did not match its declared size or type.")
     }
-    return {
-        ok: false as const,
-        message: res.status === 500 ? "The server couldn't complete the upload." : "Unable to complete the upload.",
-    }
+    return failure(
+        res.status === 500 ? "server" : "upload",
+        res.status === 500 ? "The server couldn't complete the upload." : "Unable to complete the upload.",
+    )
 }

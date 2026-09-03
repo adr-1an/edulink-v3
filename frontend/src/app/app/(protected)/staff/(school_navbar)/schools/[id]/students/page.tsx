@@ -5,6 +5,7 @@ import {emptySchoolAccess, type SchoolAccess} from "@/lib/school_access"
 import StudentsClientPage, {type Student} from "./client_page"
 import {getTranslations} from "@/i18n/server"
 import {type Locale} from "@/i18n/config"
+import {normalizeProfilePictureURL} from "@/lib/profile_picture"
 
 export async function generateMetadata() {
     const {t} = await getTranslations()
@@ -14,7 +15,8 @@ export async function generateMetadata() {
 interface RawStudent {
     id: string
     name: string
-    last_name: string
+    lastName: string
+    profilePictureURL?: unknown
     dateOfBirth: string | null
     email: string | null
     phone: string | null
@@ -66,7 +68,8 @@ export default async function Page({params}: {params: Promise<{id: string}>}) {
     const students: Student[] = (Array.isArray(data.students) ? data.students : []).map((student) => ({
         id: student.id,
         name: student.name,
-        lastName: student.last_name,
+        lastName: student.lastName,
+        profilePictureURL: normalizeProfilePictureURL(student.profilePictureURL),
         dateOfBirth: dateOnly(student.dateOfBirth),
         dateOfBirthLabel: formatDateOnly(student.dateOfBirth, locale),
         email: student.email ?? "",
@@ -76,6 +79,6 @@ export default async function Page({params}: {params: Promise<{id: string}>}) {
         createdAt: student.createdAt,
     }))
 
-    const snapshot = students.map((student) => `${student.id}:${student.name}:${student.lastName}:${student.email}:${student.accountEnabled}`).join("|")
+    const snapshot = students.map((student) => `${student.id}:${student.name}:${student.lastName}:${student.email}:${student.accountEnabled}:${student.profilePictureURL ? "picture" : "initials"}`).join("|")
     return <StudentsClientPage key={snapshot} schoolID={id} initialStudents={students} access={data.access ?? emptySchoolAccess} />
 }

@@ -6,11 +6,12 @@ import {
 } from "lucide-react"
 import ErrorPage from "@/components/app/error"
 import LanguageSwitcher from "@/components/app/language-switcher"
-import {Avatar, AvatarFallback} from "@/components/ui/avatar"
+import UserAvatar from "@/components/app/user_avatar"
 import {Badge} from "@/components/ui/badge"
 import {Button} from "@/components/ui/button"
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 import {getTranslations} from "@/i18n/server"
+import {normalizeProfilePictureURL} from "@/lib/profile_picture"
 import PasswordUpdateCard from "../../password_update_card"
 
 export async function generateMetadata() {
@@ -19,6 +20,7 @@ export async function generateMetadata() {
 }
 
 interface StudentProfile {
+    pfpUrl?: unknown
     name: string
     lastName: string
     email: string
@@ -37,10 +39,6 @@ interface StudentProfile {
 
 interface ProfileResponse {
     profile?: StudentProfile
-}
-
-function initials(name: string, lastName: string) {
-    return `${name[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase() || "?"
 }
 
 function formatDateOfBirth(value: string, locale: string, fallback: string) {
@@ -86,13 +84,18 @@ export default async function Page() {
     if (!profile) return <ErrorPage message={t("profile.student.error.incomplete")} icon={CircleX} />
 
     const fullName = `${profile.name} ${profile.lastName}`.trim()
+    const profilePictureURL = normalizeProfilePictureURL(profile.pfpUrl)
     return (
         <div className="space-y-6">
             <header className="flex flex-col justify-between gap-5 rounded-3xl border bg-card p-5 shadow-xs sm:flex-row sm:items-center sm:p-7">
                 <div className="flex min-w-0 items-center gap-4">
-                    <Avatar className="size-14 border shadow-xs sm:size-16">
-                        <AvatarFallback className="text-lg font-semibold">{initials(profile.name, profile.lastName)}</AvatarFallback>
-                    </Avatar>
+                    <UserAvatar
+                        className="size-14 border shadow-xs sm:size-16"
+                        fallbackClassName="text-lg font-semibold"
+                        name={fullName}
+                        src={profilePictureURL}
+                        cacheKey="portal:current-user"
+                    />
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                             <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">{fullName}</h1>

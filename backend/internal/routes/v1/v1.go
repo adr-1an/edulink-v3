@@ -2,18 +2,16 @@ package v1
 
 import (
 	"app/internal/application"
-	portalhandlers "app/internal/handlers/portal"
+	portalHandlers "app/internal/handlers/portal"
 	"app/internal/handlers/portal/students"
 	"app/internal/handlers/staff"
 	"app/internal/routes/v1/portal"
 	staffRoutes "app/internal/routes/v1/staff"
 	"database/sql"
-	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/httprate"
 	"github.com/minio/minio-go/v7"
 	"github.com/sony/sonyflake/v2"
 )
@@ -36,7 +34,7 @@ func MainRouter(
 	}
 
 	// Portal handlers
-	portalHandler := portalhandlers.Handler{
+	portalHandler := portalHandlers.Handler{
 		DB:  db,
 		Sf:  sf,
 		S3:  s3,
@@ -62,9 +60,6 @@ func MainRouter(
 	r.Use(middleware.Timeout(15 * time.Second))
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(middleware.SetHeader("Content-Type", "application/json"))
-	r.Use(httprate.LimitBy(1000, time.Minute, func(r *http.Request) (string, error) {
-		return httprate.CanonicalizeIP(middleware.GetClientIP(r.Context())), nil
-	}))
 
 	// API v1
 	r.Route("/v1", func(r chi.Router) {

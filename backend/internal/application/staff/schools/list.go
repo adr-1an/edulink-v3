@@ -14,8 +14,8 @@ type ListSchoolsResult struct {
 }
 
 type School struct {
-	ID         string
-	OwnerID    string
+	ID         int64
+	OwnerID    int64
 	Name       string
 	RegionCode string
 }

@@ -1,0 +1,2 @@
+ALTER TABLE IF EXISTS portal_user_profile_pictures
+DROP CONSTRAINT IF EXISTS portal_user_profile_pictures_portal_user_id_unique;

@@ -32,6 +32,7 @@ const (
 	UploadCategoryPostAttachments       UploadCategory = "post-attachments"
 	UploadCategoryUserProfilePics       UploadCategory = "user-profile-pictures"
 	UploadCategorySubmissionAttachments UploadCategory = "submission-attachments"
+	UploadCategoryStudentProfilePics    UploadCategory = "student-profile-pics"
 )
 
 func (s UploadService) StoreStorageObjectsRow(
@@ -45,15 +46,15 @@ func (s UploadService) StoreStorageObjectsRow(
 ) error {
 	if _, err := s.Db.ExecContext(s.Ctx, `
 		INSERT INTO storage_objects (
-		                             id,
-		                             completion_token,
-		                             uploaded_by, bucket_name,
-		                             object_key,
-		                             original_file_name,
-		                             declared_file_size,
-		                             declared_content_type,
-		                             status
-		                             )
+			 id,
+			 completion_token,
+			 uploaded_by, bucket_name,
+			 object_key,
+			 original_file_name,
+			 declared_file_size,
+			 declared_content_type,
+			 status
+			 )
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`, id,
 		completionToken,
@@ -82,16 +83,16 @@ func (s UploadService) PortalStoreStorageObjectsRow(
 ) error {
 	if _, err := s.Db.ExecContext(s.Ctx, `
 		INSERT INTO portal_storage_objects (
-		                                    id,
-		                                    completion_token,
-		                                    uploaded_by,
-		                                    bucket_name,
-		                                    object_key,
-		                                    original_file_name,
-		                                    declared_file_size,
-		                                    declared_content_type,
-		                                    status
-		                                    )
+			id,
+			completion_token,
+			uploaded_by,
+			bucket_name,
+			object_key,
+			original_file_name,
+			declared_file_size,
+			declared_content_type,
+			status
+			)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`,
 		id,

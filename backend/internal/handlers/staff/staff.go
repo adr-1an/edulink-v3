@@ -25,7 +25,7 @@ func (h *Handler) ListUserInvitationsHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -113,7 +113,7 @@ func (h *Handler) ListUserInvitationsHandler(w http.ResponseWriter, r *http.Requ
 func (h *Handler) ListSchoolInvitationsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -205,7 +205,7 @@ func (h *Handler) ListSchoolInvitationsHandler(w http.ResponseWriter, r *http.Re
 func (h *Handler) CancelSchoolInvitationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -345,7 +345,7 @@ func (h *Handler) SendStaffInvitationHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -605,7 +605,7 @@ func (h *Handler) AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -732,7 +732,7 @@ func (h *Handler) RejectStaffInvitationHandler(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -817,7 +817,7 @@ func (h *Handler) AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *htt
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -933,7 +933,7 @@ func (h *Handler) RejectStaffInvitationByIDHandler(w http.ResponseWriter, r *htt
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -1022,7 +1022,7 @@ func (h *Handler) ListStaffMembersHandler(w http.ResponseWriter, r *http.Request
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -1211,7 +1211,7 @@ func (h *Handler) ListStaffMembersHandler(w http.ResponseWriter, r *http.Request
 func (h *Handler) DeleteStaffMemberHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -1375,7 +1375,7 @@ func (h *Handler) DeleteStaffMemberHandler(w http.ResponseWriter, r *http.Reques
 func (h *Handler) LeaveSchoolStaffHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

@@ -17,7 +17,7 @@ func (h *Handler) ListAcademicYearsHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -96,7 +96,7 @@ func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -225,7 +225,7 @@ func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -323,7 +323,7 @@ func (h *Handler) ClearAcademicYearHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

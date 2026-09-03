@@ -40,7 +40,7 @@ func SubToSchoolID(subID int64, db *sql.DB, ctx context.Context) (int64, error) 
 func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -183,7 +183,7 @@ func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *htt
 func (h *Handler) ViewSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -434,7 +434,7 @@ func (h *Handler) ViewSubmissionHandler(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -498,7 +498,7 @@ func (h *Handler) ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request
 func (h *Handler) DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

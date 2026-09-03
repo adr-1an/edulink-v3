@@ -3,6 +3,7 @@ import {redirect} from "next/navigation"
 import {CircleX, GlobeX, ServerCrash} from "lucide-react"
 import ErrorPage from "@/components/app/error"
 import {getTranslations} from "@/i18n/server"
+import {normalizeProfilePicture} from "@/lib/profile_picture"
 import {emptySchoolAccess, isSchoolAccess, type SchoolAccess} from "@/lib/school_access"
 import StudentProfileClientPage, {type StaffStudentProfile} from "./client_page"
 import {type StudentAssignmentSubmission} from "./client_page"
@@ -20,7 +21,7 @@ function normalizeDateOnly(value: unknown) {
 
 function normalizeStudent(value: unknown): StaffStudentProfile | null {
     if (!value || typeof value !== "object") return null
-    const student = value as Partial<StaffStudentProfile>
+    const student = value as Partial<Omit<StaffStudentProfile, "profilePicture">> & {profilePicture?: unknown}
     const dateOfBirth = normalizeDateOnly(student.dateOfBirth)
 
     if (typeof student.id !== "string" || !/^\d+$/.test(student.id)) return null
@@ -43,6 +44,7 @@ function normalizeStudent(value: unknown): StaffStudentProfile | null {
         notes: student.notes ?? "",
         accountEnabled: student.accountEnabled,
         createdAt: student.createdAt,
+        profilePicture: normalizeProfilePicture(student.profilePicture),
     }
 }
 

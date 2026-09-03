@@ -33,6 +33,12 @@ func StudentRoutes(h *staffhandlers.Handler) chi.Router {
 
 		// View student profile
 		r.Get("/", h.ViewStudentHandler)
+
+		// Upload profile picture
+		r.Post("/profile-picture", h.UploadStudentPfpHandler)
+
+		// Delete profile picture
+		r.Delete("/profile-picture", h.RemoveStudentPfpHandler)
 	})
 
 	return r

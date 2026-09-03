@@ -14,7 +14,7 @@ func MainPortalRoutes(h *portalhandlers.Handler, studentHandler *students.Handle
 	r.Mount("/auth", AuthRoutes(h))
 
 	// Get profile
-	r.Get("/profile", studentHandler.GetProfileHandler)
+	r.Get("/profile", h.GetProfileHandler)
 
 	// Courses
 	r.Mount("/courses", CourseRoutes(studentHandler))

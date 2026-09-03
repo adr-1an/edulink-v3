@@ -8,7 +8,7 @@ import {
     CalendarDays, ChevronLeft, ChevronRight, FileUp, GraduationCap, Mail, Pencil, Phone, Plus, Search, Trash2, TriangleAlert, UserRoundCheck, X,
 } from "lucide-react"
 import PageTitle from "@/components/app/page_title"
-import {Avatar, AvatarFallback} from "@/components/ui/avatar"
+import UserAvatar from "@/components/app/user_avatar"
 import {Badge} from "@/components/ui/badge"
 import {Button} from "@/components/ui/button"
 import {Card, CardContent} from "@/components/ui/card"
@@ -35,6 +35,7 @@ export interface Student {
     id: string
     name: string
     lastName: string
+    profilePictureURL: string | null
     dateOfBirth: string | null
     dateOfBirthLabel: string | null
     email: string
@@ -45,10 +46,6 @@ export interface Student {
 }
 
 const pageSize = 20
-
-function initials(student: Pick<Student, "name" | "lastName">) {
-    return `${student.name[0] ?? ""}${student.lastName[0] ?? ""}`.toUpperCase() || "?"
-}
 
 function formatDateOnly(value: string | null, locale: Locale) {
     if (!value) return null
@@ -224,7 +221,12 @@ export default function StudentsClientPage({schoolID, initialStudents, access}: 
                     <div className="divide-y">
                         {visibleStudents.map((student) => (
                             <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5" key={student.id}>
-                                <Avatar className="size-10 border"><AvatarFallback>{initials(student)}</AvatarFallback></Avatar>
+                                <UserAvatar
+                                    className="size-10 border"
+                                    name={`${student.name} ${student.lastName}`}
+                                    src={student.profilePictureURL}
+                                    cacheKey={`student:${student.id}`}
+                                />
                                 <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                         {canView ? (

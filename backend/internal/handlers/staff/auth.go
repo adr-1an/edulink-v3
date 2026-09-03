@@ -476,7 +476,7 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -556,7 +556,7 @@ func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -680,7 +680,7 @@ func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Disable2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

@@ -1,6 +1,7 @@
 package staff
 
 import (
+	students2 "app/internal/application/staff/students"
 	"app/internal/handlers/portal/students"
 	helpers2 "app/internal/helpers"
 	"app/internal/helpers/staff"
@@ -95,7 +96,7 @@ func studentToSchoolID(ctx context.Context, db *sql.DB, studentID int64) (int64,
 func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -230,7 +231,7 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -382,7 +383,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -448,7 +449,7 @@ func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -459,72 +460,54 @@ func (h *Handler) ListStudentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !schools.Can(schools.PermissionStudentList, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	tx, err := h.DB.BeginTx(ctx, nil)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
-
 	type student struct {
-		ID             string    `json:"id"`
-		Name           string    `json:"name"`
-		LastName       string    `json:"last_name"`
-		DoB            *string   `json:"dateOfBirth"`
-		Email          *string   `json:"email"`
-		Phone          *string   `json:"phone"`
-		Notes          *string   `json:"notes"`
-		AccountEnabled bool      `json:"accountEnabled"`
-		CreatedAt      time.Time `json:"createdAt"`
+		ID                string    `json:"id"`
+		Name              string    `json:"name"`
+		LastName          string    `json:"lastName"`
+		ProfilePictureURL *string   `json:"profilePictureURL"`
+		DoB               *string   `json:"dateOfBirth"`
+		Email             *string   `json:"email"`
+		Phone             *string   `json:"phone"`
+		Notes             *string   `json:"notes"`
+		AccountEnabled    bool      `json:"accountEnabled"`
+		CreatedAt         time.Time `json:"createdAt"`
 	}
 	var studentList []student
 
-	rows, err := tx.QueryContext(ctx, `
-		SELECT
-		    id, name, last_name, date_of_birth, email, phone, notes, account_enabled, created_at
-		FROM portal_users
-		WHERE school_id = $1
-		AND account_type = $2
-	`, schoolID, helpers2.AccTypeStudent)
+	res, err := h.App.Staff.Students.ListStudents(ctx, &students2.ListStudentsInput{
+		UserID:   userID,
+		SchoolID: schoolID,
+	})
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = rows.Close() }()
+		switch {
+		case errors.Is(err, students2.ErrForbidden):
+			w.WriteHeader(http.StatusForbidden)
 
-	for rows.Next() {
-		var s student
-
-		if err := rows.Scan(
-			&s.ID,
-			&s.Name,
-			&s.LastName,
-			&s.DoB,
-			&s.Email,
-			&s.Phone,
-			&s.Notes,
-			&s.AccountEnabled,
-			&s.CreatedAt,
-		); err != nil {
-			log.Println(err)
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
-			return
 		}
 
-		studentList = append(studentList, s)
+		return
 	}
 
-	if err := rows.Err(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if res != nil {
+		for _, s := range res.Students {
+			idStr := strconv.FormatInt(s.ID, 10)
+
+			studentList = append(studentList, student{
+
+				ID:                idStr,
+				Name:              s.Name,
+				LastName:          s.LastName,
+				ProfilePictureURL: s.ProfilePictureURL,
+				DoB:               s.DoB,
+				Email:             s.Email,
+				Phone:             s.Phone,
+				Notes:             s.Notes,
+				AccountEnabled:    s.AccountEnabled,
+				CreatedAt:         s.CreatedAt,
+			})
+		}
 	}
 
 	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
@@ -543,7 +526,7 @@ func (h *Handler) ListStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -602,16 +585,21 @@ func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 		Notes       *string          `json:"notes"`
 	}
 
+	type profilePicture struct {
+		PresignedURL string `json:"presignedUrl"`
+	}
+
 	type student struct {
-		ID             string    `json:"id"`
-		Name           string    `json:"name"`
-		Lastname       string    `json:"lastName"`
-		DoB            string    `json:"dateOfBirth"`
-		Email          string    `json:"email"`
-		Phone          *string   `json:"phone"`
-		Notes          *string   `json:"notes"`
-		AccountEnabled bool      `json:"accountEnabled"`
-		CreatedAt      time.Time `json:"createdAt"`
+		ProfilePicture *profilePicture `json:"profilePicture"`
+		ID             string          `json:"id"`
+		Name           string          `json:"name"`
+		Lastname       string          `json:"lastName"`
+		DoB            string          `json:"dateOfBirth"`
+		Email          string          `json:"email"`
+		Phone          *string         `json:"phone"`
+		Notes          *string         `json:"notes"`
+		AccountEnabled bool            `json:"accountEnabled"`
+		CreatedAt      time.Time       `json:"createdAt"`
 	}
 	var s student
 
@@ -729,9 +717,43 @@ func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 			submissions = append(submissions, *sub)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if err := rows.Close(); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	if s.Notes != nil && *s.Notes == "" {
 		s.Notes = nil
+	}
+
+	var pfpBucketName string
+	var pfpObjectKey string
+	if err := h.DB.QueryRowContext(ctx, `
+		SELECT so.bucket_name, so.object_key
+		FROM portal_user_profile_pictures p
+		JOIN storage_objects so ON so.id = p.storage_object_id
+		WHERE p.portal_user_id = $1
+		  AND so.status = $2
+	`, studentID, helpers2.StatusDone).Scan(&pfpBucketName, &pfpObjectKey); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		url, err := h.S3.PresignedGetObject(ctx, pfpBucketName, pfpObjectKey, 15*time.Minute, nil)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		s.ProfilePicture = &profilePicture{PresignedURL: url.String()}
 	}
 
 	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
@@ -751,7 +773,7 @@ func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUID(w, r, h.DB, ctx)
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -1063,4 +1085,101 @@ VALUES ($0,$0)
 	}
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *Handler) UploadStudentPfpHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	if err != nil {
+		return
+	}
+
+	portalUserID, err := strconv.ParseInt(chi.URLParam(r, "studentID"), 10, 64)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	type payload struct {
+		Name                string `json:"name"`
+		DeclaredSize        int64  `json:"declaredSize"`
+		DeclaredContentType string `json:"declaredContentType"`
+	}
+	var p payload
+
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&p); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	res, err := h.App.Staff.Students.UploadStudentProfilePicture(ctx, &students2.UploadProfilePictureInput{
+		UserID:       userID,
+		PortalUserID: portalUserID,
+		File: students2.UploadProfilePictureFile{
+			FileName:            p.Name,
+			DeclaredSize:        p.DeclaredSize,
+			DeclaredContentType: p.DeclaredContentType,
+		},
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, students2.ErrForbidden):
+			w.WriteHeader(http.StatusForbidden)
+
+		case errors.Is(err, students2.ErrInvalidData):
+			w.WriteHeader(http.StatusUnprocessableEntity)
+
+		case errors.Is(err, students2.ErrProfilePictureExists):
+			w.WriteHeader(http.StatusConflict)
+
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+
+		}
+
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"id":              strconv.FormatInt(res.ID, 10),
+		"completionToken": res.CompletionToken,
+		"url":             res.URL,
+	})
+}
+
+func (h *Handler) RemoveStudentPfpHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	if err != nil {
+		return
+	}
+
+	portalUserID, err := strconv.ParseInt(chi.URLParam(r, "studentID"), 10, 64)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := h.App.Staff.Students.ClearStudentProfilePicture(ctx, &students2.ClearStudentProfilePictureInput{
+		UserID:       userID,
+		PortalUserID: portalUserID,
+	}); err != nil {
+		switch {
+		case errors.Is(err, students2.ErrForbidden):
+			w.WriteHeader(http.StatusForbidden)
+
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
