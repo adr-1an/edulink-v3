@@ -319,7 +319,7 @@ export default function TwoFactorSetup({initialStatus}: {initialStatus: TwoFacto
                         ) : setupURL && secret ? (
                             <form className="space-y-5" onSubmit={verify}>
                                 <div className="grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
-                                    <div className="mx-auto rounded-2xl border bg-white p-2 shadow-sm">
+                                    <div className="mx-auto rounded-2xl border bg-white p-2">
                                         <QRCodeSVG
                                             value={setupURL}
                                             size={176}

@@ -308,7 +308,7 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
             <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 items-center gap-4">
                     <UserAvatar
-                        className="size-16 border shadow-xs"
+                        className="size-16 border"
                         fallbackClassName="text-lg font-semibold"
                         name={fullName}
                         src={profilePicture?.presignedUrl}

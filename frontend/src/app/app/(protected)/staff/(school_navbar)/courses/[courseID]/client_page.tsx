@@ -383,15 +383,14 @@ export default function CourseDashboardClientPage({
 
     return (
         <div className="space-y-8">
-            <header className="relative overflow-hidden rounded-3xl border bg-card p-5 shadow-xs sm:p-7">
-                <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-primary/8 blur-3xl" />
+            <header className="relative overflow-hidden rounded-2xl border bg-card p-5 sm:p-7">
                 <div className="relative">
                     <Button className="-ml-2 mb-5" size="sm" variant="ghost" onClick={() => router.back()}>
                         <ChevronLeft /> Back to courses
                     </Button>
                     <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
                         <div className="flex items-start gap-3">
-                            <span className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                            <span className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                                 <BookOpen className="size-5" />
                             </span>
                             <div className="min-w-0">

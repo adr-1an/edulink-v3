@@ -220,7 +220,7 @@ export default function StudentsClientPage({schoolID, initialStudents, access}: 
                 <Card className="overflow-hidden p-0">
                     <div className="divide-y">
                         {visibleStudents.map((student) => (
-                            <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5" key={student.id}>
+                            <div className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-muted/35 sm:flex-row sm:items-center sm:px-5" key={student.id}>
                                 <UserAvatar
                                     className="size-10 border"
                                     name={`${student.name} ${student.lastName}`}
@@ -336,7 +336,7 @@ function SummaryCard({icon: Icon, label, value}: {icon: typeof GraduationCap; la
     return (
         <Card className="py-4">
             <CardContent className="flex items-center gap-3 px-4">
-                <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4.5" /></span>
+                <span className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary"><Icon className="size-4.5" /></span>
                 <div><p className="text-xl font-semibold tabular-nums">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div>
             </CardContent>
         </Card>

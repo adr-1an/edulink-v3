@@ -348,7 +348,7 @@ export default function ClientPage({ data }: Props) {
             <Card className="p-5">
                 <div className="flex items-center gap-4">
                     <UserAvatar
-                        className="size-20 border shadow-sm"
+                        className="size-20 border"
                         fallbackClassName="text-xl"
                         name={data.user.name}
                         src={data.user.profilePicture?.presignedUrl}

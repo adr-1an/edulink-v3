@@ -295,7 +295,7 @@ export default function StaffClientPage({schoolID, staff, availableRoles, canLis
                                 name={selectedMember.user.name}
                                 src={selectedMember.user.profilePictureURL}
                                 cacheKey={`staff:${selectedMember.user.id}`}
-                                className="-mt-9 size-20 border-4 border-popover shadow-sm"
+                                className="-mt-9 size-20 border-4 border-popover"
                                 fallbackClassName="text-xl"
                             />
                             <div className="pt-1">

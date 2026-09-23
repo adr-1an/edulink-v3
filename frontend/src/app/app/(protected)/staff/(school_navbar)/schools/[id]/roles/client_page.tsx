@@ -265,7 +265,7 @@ function RoleListItem({role, busy, canUpdate, canDelete, canManagePermissions, o
                 </button>
 
                 <span
-                    className="size-5 shrink-0 rounded-full border-2 border-background shadow-sm ring-1 ring-border"
+                    className="size-5 shrink-0 rounded-full border-2 border-background ring-1 ring-border"
                     style={{backgroundColor: `#${role.color}`}}
                 />
                 <div className="min-w-0 flex-1">
@@ -673,7 +673,7 @@ export default function RolesClientPage({schoolID, roles, availablePermissions, 
                                 <p className="text-sm font-medium">{t("staff.roles.preview")}</p>
                                 <div className="overflow-hidden rounded-lg border bg-muted/30 p-2">
                                     {roleAbove && <RolePreviewRow role={{...roleAbove, position: roleAbove.position + 1}} />}
-                                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2.5 shadow-xs">
+                                    <div className="flex items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2.5">
                                         <div className="flex min-w-0 items-center gap-2">
                                             <span className="size-3 shrink-0 rounded-full" style={{backgroundColor: `#${normalizedColor}`}} />
                                             <span className="truncate text-sm font-medium">{name.trim() || t("staff.roles.newRole")}</span>
@@ -700,7 +700,7 @@ export default function RolesClientPage({schoolID, roles, availablePermissions, 
                     <DialogHeader>
                         <div className="flex items-start gap-3 pr-8">
                             <span
-                                className="mt-0.5 size-5 shrink-0 rounded-full border-2 border-background shadow-sm ring-1 ring-border"
+                                className="mt-0.5 size-5 shrink-0 rounded-full border-2 border-background ring-1 ring-border"
                                 style={{backgroundColor: `#${permissionRole?.color ?? "000000"}`}}
                             />
                             <div className="min-w-0">

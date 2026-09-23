@@ -199,7 +199,7 @@ export default function CoursesClientPage({gradeID, courses, access}: {
                                         <CardHeader>
                                             <div className="flex items-start gap-3">
                                                 <span
-                                                    className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm"
+                                                    className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full text-white"
                                                     style={{backgroundColor: `#${normalizeColor(course.color)}`}}
                                                 >
                                                     <BookOpen className="size-4" />

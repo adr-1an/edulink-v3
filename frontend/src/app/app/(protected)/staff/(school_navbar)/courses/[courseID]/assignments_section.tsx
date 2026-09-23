@@ -505,7 +505,7 @@ function AssignmentForm({draft, posts, saving, submitLabel, canViewPosts, onChan
                         <div className="relative mt-1 overflow-hidden rounded-xl border bg-muted/20 p-4 pl-5">
                             <span className="absolute inset-y-0 left-0 w-1" style={{backgroundColor: normalizeColor(selectedPost.accentColor)}} />
                             <div className="flex items-start gap-3">
-                                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-background text-muted-foreground shadow-xs">
+                                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground">
                                     <FileText className="size-4" />
                                 </span>
                                 <div className="min-w-0">

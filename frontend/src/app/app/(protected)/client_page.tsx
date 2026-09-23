@@ -517,7 +517,7 @@ function SchoolGroup({title, schools, regionNames, owned = false, onLeave}: {
                                 className="absolute inset-0 z-[1] rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                             />
                             <CardHeader className="pointer-events-none relative z-10 grid-cols-[auto_1fr] items-center gap-3">
-                                <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted shadow-sm">
+                                <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted">
                                     {school.regionCode ? (
                                         <ReactCountryFlag
                                             svg
