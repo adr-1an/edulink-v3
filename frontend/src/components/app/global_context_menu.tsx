@@ -233,7 +233,7 @@ export default function GlobalContextMenu() {
             ref={menuRef}
             role="menu"
             aria-label={t("context.label")}
-            className="fixed z-[100] w-56 rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
+            className="fixed z-[100] w-56 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-[0_18px_50px_rgb(0_0_0/0.14)] outline-none"
             style={{left: Math.max(8, menu.x), top: Math.max(8, menu.y)}}
             onContextMenu={(event) => event.preventDefault()}
             onKeyDown={handleMenuKeyDown}
