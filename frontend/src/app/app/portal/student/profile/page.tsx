@@ -87,10 +87,10 @@ export default async function Page() {
     const profilePictureURL = normalizeProfilePictureURL(profile.pfpUrl)
     return (
         <div className="space-y-6">
-            <header className="flex flex-col justify-between gap-5 rounded-3xl border bg-card p-5 shadow-xs sm:flex-row sm:items-center sm:p-7">
+            <header className="flex flex-col justify-between gap-5 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center sm:p-7">
                 <div className="flex min-w-0 items-center gap-4">
                     <UserAvatar
-                        className="size-14 border shadow-xs sm:size-16"
+                        className="size-14 border sm:size-16"
                         fallbackClassName="text-lg font-semibold"
                         name={fullName}
                         src={profilePictureURL}

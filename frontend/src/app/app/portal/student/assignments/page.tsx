@@ -101,11 +101,10 @@ export default async function Page() {
 
     return (
         <div className="space-y-6">
-            <section className="overflow-hidden rounded-3xl border bg-card shadow-xs">
-                <div className="relative overflow-hidden px-5 py-6 sm:px-7 sm:py-8">
-                    <div className="pointer-events-none absolute -right-16 -top-24 size-56 rounded-full bg-primary/8 blur-3xl" />
-                    <div className="relative flex items-start gap-4">
-                        <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary sm:size-12">
+            <section className="overflow-hidden rounded-2xl border bg-card">
+                <div className="overflow-hidden px-5 py-6 sm:px-7 sm:py-8">
+                    <div className="flex items-start gap-4">
+                        <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:size-12">
                             <ClipboardList className="size-5 sm:size-6" aria-hidden="true" />
                         </div>
                         <div>

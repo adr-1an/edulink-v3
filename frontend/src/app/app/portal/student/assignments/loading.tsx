@@ -3,7 +3,7 @@ import {Skeleton} from "@/components/ui/skeleton"
 export default function Loading() {
     return (
         <div className="space-y-6">
-            <section className="overflow-hidden rounded-3xl border bg-card">
+            <section className="overflow-hidden rounded-2xl border bg-card">
                 <div className="flex items-start gap-4 px-5 py-7 sm:px-7">
                     <Skeleton className="size-12 rounded-2xl" />
                     <div className="space-y-3">

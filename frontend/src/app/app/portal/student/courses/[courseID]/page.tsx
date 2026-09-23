@@ -126,14 +126,13 @@ export default async function Page({params}: {params: Promise<{courseID: string}
 
     return (
         <div className="space-y-6">
-            <header className="relative overflow-hidden rounded-3xl border bg-card p-5 shadow-xs sm:p-7">
+            <header className="relative overflow-hidden rounded-2xl border bg-card p-5 sm:p-7">
                 <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5" style={{backgroundColor: courseColor}} />
-                <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full blur-3xl" style={{backgroundColor: `color-mix(in srgb, ${courseColor} 10%, transparent)`}} />
                 <div className="relative pl-1">
                     <Button className="-ml-2 mb-5" size="sm" variant="ghost" render={<Link href="/app/portal/student" />}><ArrowLeft /> {t("course.back")}</Button>
                     <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
                         <div className="flex min-w-0 items-start gap-3.5">
-                            <span className="mt-0.5 flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm" style={{backgroundColor: courseColor}}><BookOpen className="size-5" /></span>
+                            <span className="mt-0.5 flex size-12 shrink-0 items-center justify-center rounded-full text-white" style={{backgroundColor: courseColor}}><BookOpen className="size-5" /></span>
                             <div className="min-w-0">
                                 <div className="mb-2 flex flex-wrap items-center gap-2">
                                     <Badge variant="secondary"><Layers3 /> {course.grade.name}</Badge>
@@ -143,7 +142,7 @@ export default async function Page({params}: {params: Promise<{courseID: string}
                                 {course.description && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">{course.description}</p>}
                             </div>
                         </div>
-                        <div className="flex shrink-0 divide-x rounded-2xl border bg-background/75 backdrop-blur">
+                        <div className="flex shrink-0 divide-x rounded-2xl border bg-background">
                             <div className="flex items-center gap-2 px-4 py-3">
                                 <FileText className="size-4 text-muted-foreground" />
                                 <div>
@@ -214,7 +213,7 @@ export default async function Page({params}: {params: Promise<{courseID: string}
                         </CardContent>
                     </Card>
 
-                    <Card className="border-dashed bg-card/60">
+                    <Card className="border-dashed bg-muted/25">
                         <CardContent className="py-5">
                             <p className="text-sm font-medium">{t("course.space")}</p>
                             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("course.spaceDescription")}</p>

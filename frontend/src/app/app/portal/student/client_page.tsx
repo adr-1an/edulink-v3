@@ -63,9 +63,8 @@ export default function StudentPortalPage({initialCourses, error}: {
 
     return (
         <div className="space-y-7">
-            <header className="relative overflow-hidden rounded-3xl border bg-card px-5 py-6 shadow-xs sm:px-7 sm:py-8">
-                <div className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full bg-primary/8 blur-3xl" />
-                <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+            <header className="overflow-hidden rounded-2xl border bg-card px-5 py-6 sm:px-7 sm:py-8">
+                <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
                     <div>
                         <Badge className="mb-3" variant="secondary"><Sparkles /> {t("portal.student.badge")}</Badge>
                         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{t("portal.student.title")}</h1>
@@ -152,7 +151,7 @@ export default function StudentPortalPage({initialCourses, error}: {
 
 function Metric({icon: Icon, label, value}: {icon: typeof BookOpen; label: string; value: number}) {
     return (
-        <div className="min-w-24 rounded-2xl border bg-background/75 px-4 py-3 backdrop-blur">
+        <div className="min-w-24 rounded-2xl bg-muted/55 px-4 py-3">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="size-3.5" /> {label}</div>
             <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
         </div>
@@ -163,11 +162,11 @@ function CourseCard({course, noDescription}: {course: PortalCourse; noDescriptio
     const color = courseColor(course.accentColor)
     return (
         <Link className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/app/portal/student/courses/${course.id}`}>
-            <Card className="relative min-h-44 overflow-hidden transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-0.5 group-hover:border-foreground/20 group-hover:shadow-md">
+            <Card className="relative min-h-44 overflow-hidden transition-colors duration-200 group-hover:border-foreground/20 group-hover:bg-muted/25">
                 <div className="absolute inset-y-0 left-0 w-1.5" style={{backgroundColor: color}} />
                 <CardHeader className="gap-3 pl-7">
                     <div className="flex items-start justify-between gap-3">
-                        <span className="flex size-9 items-center justify-center rounded-xl" style={{backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`, color}}><BookOpen className="size-4" /></span>
+                        <span className="flex size-9 items-center justify-center rounded-full" style={{backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`, color}}><BookOpen className="size-4" /></span>
                         <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                     </div>
                     <div>

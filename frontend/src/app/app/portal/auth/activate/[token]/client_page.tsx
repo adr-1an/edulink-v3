@@ -161,9 +161,8 @@ export default function PortalActivationPage({token}: {token: string}) {
 
 function ActivationShell({children}: {children: React.ReactNode}) {
     return (
-        <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-8 text-foreground sm:px-6">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,color-mix(in_oklab,var(--primary)_9%,transparent),transparent_28%),radial-gradient(circle_at_85%_80%,color-mix(in_oklab,var(--primary)_7%,transparent),transparent_30%)]" />
-            <div className="relative w-full max-w-lg">{children}</div>
+        <main className="flex min-h-screen items-center justify-center bg-background px-4 py-8 text-foreground sm:px-6">
+            <div className="w-full max-w-lg">{children}</div>
         </main>
     )
 }
