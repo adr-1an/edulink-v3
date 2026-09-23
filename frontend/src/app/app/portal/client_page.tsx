@@ -50,15 +50,14 @@ export default function PortalLoginPage({serviceUnavailable}: {serviceUnavailabl
     }
 
     return (
-        <main className="relative min-h-screen overflow-hidden bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,color-mix(in_oklab,var(--primary)_9%,transparent),transparent_28%),radial-gradient(circle_at_85%_80%,color-mix(in_oklab,var(--primary)_7%,transparent),transparent_30%)]" />
-            <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.75fr)]">
+        <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
+            <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.75fr)]">
                 <section className="hidden space-y-7 lg:block">
-                    <div className="inline-flex items-center gap-2 rounded-full border bg-card/80 px-3 py-1.5 text-sm font-medium shadow-xs backdrop-blur">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm font-medium">
                         <GraduationCap className="size-4" /> {t("portal.login.badge")}
                     </div>
                     <div className="max-w-2xl space-y-4">
-                        <h1 className="text-5xl font-semibold tracking-tight xl:text-6xl">{t("portal.login.heroTitle")}</h1>
+                        <h1 className="text-5xl font-semibold tracking-[-0.045em] xl:text-6xl">{t("portal.login.heroTitle")}</h1>
                         <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">{t("portal.login.heroDescription")}</p>
                     </div>
                     <div className="grid max-w-xl grid-cols-3 gap-3">
@@ -68,9 +67,9 @@ export default function PortalLoginPage({serviceUnavailable}: {serviceUnavailabl
                     </div>
                 </section>
 
-                <Card className="mx-auto w-full max-w-md overflow-hidden border-border/80 shadow-xl shadow-foreground/5">
+                <Card className="mx-auto w-full max-w-md overflow-hidden">
                     <CardHeader className="space-y-4 px-6 pt-7 sm:px-8">
-                        <span className="flex size-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground lg:hidden"><GraduationCap className="size-5" /></span>
+                        <span className="flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground lg:hidden"><GraduationCap className="size-5" /></span>
                         <div>
                             <CardTitle className="text-2xl">{t("portal.login.title")}</CardTitle>
                             <p className="mt-1.5 text-sm text-muted-foreground">{t("portal.login.description")}</p>
@@ -109,7 +108,7 @@ export default function PortalLoginPage({serviceUnavailable}: {serviceUnavailabl
 
 function PortalFeature({icon: Icon, label}: {icon: typeof BookOpen; label: string}) {
     return (
-        <div className="rounded-2xl border bg-card/75 p-4 shadow-xs backdrop-blur">
+        <div className="rounded-2xl bg-muted/55 p-4">
             <Icon className="mb-5 size-5 text-muted-foreground" />
             <p className="text-sm font-medium">{label}</p>
         </div>

@@ -37,18 +37,18 @@ export default function AppDemos() {
     const reduceMotion = useReducedMotion()
 
     return (
-        <section className="bg-white px-5 py-28 sm:px-8 sm:py-36" id="demo">
+        <section className="bg-background px-5 py-28 sm:px-8 sm:py-36" id="demo">
             <div className="mx-auto max-w-7xl">
                 <div className="mx-auto max-w-3xl text-center">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">Inside EduLink</p>
-                    <h2 className="mt-4 text-balance text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-6xl">Familiar from the first click.</h2>
-                    <p className="mx-auto mt-5 max-w-2xl text-balance text-base leading-7 text-slate-600 sm:text-lg">The same calm, consistent workspace follows you from the whole school down to a single course.</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Inside EduLink</p>
+                    <h2 className="mt-4 text-balance text-4xl font-semibold tracking-[-0.04em] text-foreground sm:text-6xl">Familiar from the first click.</h2>
+                    <p className="mx-auto mt-5 max-w-2xl text-balance text-base leading-7 text-muted-foreground sm:text-lg">The same calm, consistent workspace follows you from the whole school down to a single course.</p>
                 </div>
 
-                <div className="mx-auto mt-10 flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100 p-1" role="tablist" aria-label="Sample EduLink pages">
+                <div className="mx-auto mt-10 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-muted p-1" role="tablist" aria-label="Sample EduLink pages">
                     {demoTabs.map((tab) => (
                         <button
-                            className={`shrink-0 rounded-lg px-3.5 py-2 text-xs font-semibold transition sm:text-sm ${activePage === tab.id ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                            className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition sm:text-sm ${activePage === tab.id ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                             type="button"
                             role="tab"
                             aria-selected={activePage === tab.id}
@@ -60,14 +60,14 @@ export default function AppDemos() {
                     ))}
                 </div>
 
-                <div className="relative mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-2 shadow-[0_35px_100px_-45px_rgba(15,23,42,.35)] sm:p-3">
-                    <div className="flex h-10 items-center justify-between rounded-t-[1.2rem] border border-b-0 border-slate-200 bg-slate-50 px-4" aria-hidden="true">
-                        <div className="flex gap-1.5"><span className="size-2 rounded-full bg-slate-300" /><span className="size-2 rounded-full bg-slate-300" /><span className="size-2 rounded-full bg-slate-300" /></div>
-                        <p className="text-[10px] font-medium text-slate-400">Sample workspace</p>
+                <div className="relative mt-8 overflow-hidden rounded-[1.75rem] border border-border bg-background p-2 sm:p-3">
+                    <div className="flex h-10 items-center justify-between rounded-t-[1.2rem] border border-b-0 border-border bg-muted px-4" aria-hidden="true">
+                        <div className="flex gap-1.5"><span className="size-2 rounded-full bg-muted-foreground/35" /><span className="size-2 rounded-full bg-muted-foreground/35" /><span className="size-2 rounded-full bg-muted-foreground/35" /></div>
+                        <p className="text-[10px] font-medium text-muted-foreground">Sample workspace</p>
                         <div className="size-5" />
                     </div>
 
-                    <div className="grid h-[640px] overflow-hidden rounded-b-[1.2rem] border border-slate-200 bg-gradient-to-br from-white via-white to-slate-50 text-slate-950 md:grid-cols-[10.5rem_minmax(0,1fr)]">
+                    <div className="grid h-[640px] overflow-hidden rounded-b-[1.2rem] border border-border bg-background text-foreground md:grid-cols-[10.5rem_minmax(0,1fr)]">
                         <DemoSidebar activePage={activePage} />
                         <div className="min-w-0 overflow-y-auto p-4 sm:p-6" inert>
                             <MobileDemoNavigation activePage={activePage} />
@@ -87,7 +87,7 @@ export default function AppDemos() {
                         </div>
                     </div>
                 </div>
-                <p className="mt-4 text-center text-xs text-slate-400">Interactive sample using the same interface patterns as the app.</p>
+                <p className="mt-4 text-center text-xs text-muted-foreground">Interactive sample using the same interface patterns as the app.</p>
             </div>
         </section>
     )
@@ -103,16 +103,16 @@ function DemoSidebar({activePage}: {activePage: DemoPage}) {
     ]
 
     return (
-        <aside className="hidden border-r border-slate-200 bg-white px-3 py-5 md:flex md:flex-col" aria-hidden="true">
-            <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">School menu</p>
+        <aside className="hidden border-r border-border bg-muted/55 px-3 py-5 md:flex md:flex-col" aria-hidden="true">
+            <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">School menu</p>
             <div className="space-y-0.5">
                 {navigation.map(({label, icon: Icon, active}) => (
-                    <div className={`flex items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium ${active ? "bg-slate-100 text-slate-950" : "text-slate-500"}`} key={label}>
+                    <div className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium ${active ? "bg-sidebar-accent text-primary" : "text-muted-foreground"}`} key={label}>
                         <Icon className="size-3.5" /> {label}
                     </div>
                 ))}
             </div>
-            <div className="mt-auto flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-slate-500"><ArrowLeft className="size-3.5" /> All schools</div>
+            <div className="mt-auto flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-muted-foreground"><ArrowLeft className="size-3.5" /> All schools</div>
         </aside>
     )
 }
@@ -120,9 +120,9 @@ function DemoSidebar({activePage}: {activePage: DemoPage}) {
 function MobileDemoNavigation({activePage}: {activePage: DemoPage}) {
     const label = activePage === "school" ? "Dashboard" : activePage === "courses" ? "Courses" : "Course dashboard"
     return (
-        <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-3 md:hidden" aria-hidden="true">
-            <div><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">School</p><p className="text-xs font-semibold">{label}</p></div>
-            <div className="flex items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1.5 text-[10px] font-semibold"><Menu className="size-3" /> Menu</div>
+        <div className="mb-5 flex items-center justify-between border-b border-border pb-3 md:hidden" aria-hidden="true">
+            <div><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">School</p><p className="text-xs font-semibold">{label}</p></div>
+            <div className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-[10px] font-semibold"><Menu className="size-3" /> Menu</div>
         </div>
     )
 }
@@ -178,7 +178,7 @@ function CoursesDemo() {
                 {courses.map((course) => (
                     <Card className="overflow-hidden" key={course.name}>
                         <div className="h-1.5" style={{backgroundColor: course.color}} />
-                        <CardHeader><div className="flex items-start gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm" style={{backgroundColor: course.color}}><BookOpen className="size-4" /></span><CardTitle className="truncate text-sm">{course.name}</CardTitle></div></CardHeader>
+                        <CardHeader><div className="flex items-start gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-full text-white" style={{backgroundColor: course.color}}><BookOpen className="size-4" /></span><CardTitle className="truncate text-sm">{course.name}</CardTitle></div></CardHeader>
                         <CardContent className="flex-1"><p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">{course.description}</p></CardContent>
                         <CardFooter className="justify-end gap-2 border-t bg-muted/25"><Button size="sm" variant="outline"><Pencil /> Edit</Button><Button size="icon-sm" variant="destructive-outline"><Trash2 /></Button></CardFooter>
                     </Card>

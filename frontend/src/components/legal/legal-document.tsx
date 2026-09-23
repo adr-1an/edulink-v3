@@ -15,7 +15,7 @@ export default function LegalDocument({title, summary, effectiveDate, sections}:
     return (
         <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[15rem_minmax(0,1fr)] lg:px-8">
             <aside className="hidden lg:block">
-                <nav className="sticky top-8 rounded-2xl border bg-card p-3 shadow-xs" aria-label={`${title} contents`}>
+                <nav className="sticky top-8 rounded-2xl bg-muted/55 p-3" aria-label={`${title} contents`}>
                     <p className="px-3 pb-2 pt-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">On this page</p>
                     <ul className="space-y-0.5">
                         {sections.map((section) => (

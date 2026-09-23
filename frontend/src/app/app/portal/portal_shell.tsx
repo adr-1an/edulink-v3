@@ -57,11 +57,11 @@ export default function PortalShell({accountType, children}: {
     }
 
     return (
-        <div className="min-h-screen bg-muted/25 text-foreground">
+        <div className="min-h-screen bg-background text-foreground">
             <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-xl">
                 <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
                     <Link className="flex min-w-0 items-center gap-2.5" href={home}>
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><GraduationCap className="size-4.5" /></span>
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><GraduationCap className="size-4.5" /></span>
                         <span className="truncate font-semibold">{t("portal.brand")}</span>
                     </Link>
                     <Badge className="capitalize" variant="secondary">{accountType}</Badge>

@@ -38,8 +38,8 @@ function NavigationLinks({items, label, onNavigate}: {items: NavigationItem[]; l
             {items.map(({label, href, icon: Icon, active}) => (
                 <Button
                     className={active
-                        ? "w-full justify-start bg-primary/10 font-semibold text-primary hover:bg-primary/15 hover:text-primary"
-                        : "w-full justify-start text-muted-foreground hover:text-foreground"}
+                        ? "relative w-full justify-start bg-transparent font-semibold text-primary before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-primary hover:bg-sidebar-accent hover:text-primary"
+                        : "w-full justify-start text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"}
                     size="sm"
                     variant="ghost"
                     render={<Link href={href} aria-current={active ? "page" : undefined} onClick={onNavigate} />}
@@ -142,7 +142,7 @@ export default function Layout({children}: {children: React.ReactNode}) {
     ]
     return (
         <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:gap-7">
-            <aside className="sticky top-8 hidden h-[calc(100dvh-4rem)] self-start overflow-y-auto rounded-2xl border bg-card p-3 shadow-xs lg:flex lg:flex-col">
+            <aside className="sticky top-8 hidden h-[calc(100dvh-4rem)] self-start overflow-y-auto rounded-2xl border border-sidebar-border bg-sidebar p-3 lg:flex lg:flex-col">
                 <NavigationLinks items={navigation} label={t("navigation.school")} />
 
                 <div className="mt-auto pt-4">
@@ -153,7 +153,7 @@ export default function Layout({children}: {children: React.ReactNode}) {
                 </div>
             </aside>
 
-            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border bg-card px-3 py-2.5 shadow-xs lg:hidden">
+            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-sidebar-border bg-sidebar px-3 py-2.5 lg:hidden">
                 <p className="px-1 text-sm font-semibold">{t("navigation.navigation")}</p>
 
                 <Sheet open={mobileNavigationOpen} onOpenChange={setMobileNavigationOpen}>

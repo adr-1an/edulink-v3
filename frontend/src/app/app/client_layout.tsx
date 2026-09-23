@@ -38,13 +38,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
         >
-            <div className="min-h-screen w-full flex flex-col bg-gradient-to-br from-background via-background to-muted/40 text-foreground">
+            <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
                 <div className="flex-1 p-2 md:p-8">
                     {children}
                 </div>
 
-                <Card className="w-full text-center">
-                    <CardContent>
+                <Card className="w-full rounded-none border-x-0 border-b-0 bg-transparent text-center">
+                    <CardContent className="pt-4">
                         <CardDescription>
                             <Button variant="link">
                                 <Link href="https://adr-ian.dev" target="_blank">
@@ -53,7 +53,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                             </Button>
                         </CardDescription>
                     </CardContent>
-                    <CardFooter className="flex gap-4 justify-center">
+                    <CardFooter className="flex flex-wrap justify-center gap-1 pb-6">
                         <Button variant="link">
                             <Link href={"/"} target="_blank">{t("common.homepage")}</Link>
                         </Button>
