@@ -8,7 +8,7 @@ export default function PageTitle({
     centered?: boolean
 }) {
     return (
-        <h1 className={`text-3xl font-semibold tracking-wide ${centered && "text-center"}`}>
+        <h1 className={`text-3xl font-semibold tracking-[-0.035em] sm:text-4xl ${centered ? "text-center" : ""}`}>
             {children}
         </h1>
     )
@@ -22,8 +22,8 @@ export function Subtitle({
     centered?: boolean
 }) {
     return (
-        <h1 className={`text-xl font-semibold tracking-wide text-center ${centered && "text-center"}`}>
+        <h2 className={`text-xl font-semibold tracking-[-0.025em] sm:text-2xl ${centered ? "text-center" : ""}`}>
             {children}
-        </h1>
+        </h2>
     )
 }
