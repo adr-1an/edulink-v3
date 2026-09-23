@@ -309,7 +309,7 @@ export default function PostAttachments({
 
                     return (
                         <div
-                            className="group relative min-w-0 overflow-hidden rounded-xl border bg-muted/20 transition-colors hover:border-primary/30 hover:bg-muted/40"
+                            className="group relative min-w-0 overflow-hidden rounded-2xl border bg-card transition-colors hover:bg-muted/35"
                             key={attachment.id}
                         >
                             {isPdf(attachment) ? (
@@ -332,7 +332,7 @@ export default function PostAttachments({
                             )}
                             <div className="absolute right-2 top-2 flex items-center gap-1">
                                 <Button
-                                    className="bg-background/90 shadow-sm backdrop-blur-sm hover:bg-background"
+                                    className="bg-background hover:bg-muted"
                                     size="icon-xs"
                                     variant="outline"
                                     disabled={downloadAllProgress !== null || downloadingAttachmentIDs.includes(attachment.id)}
@@ -345,7 +345,7 @@ export default function PostAttachments({
                                 </Button>
                                 {onRemove && (
                                     <Button
-                                        className="bg-background/90 shadow-sm backdrop-blur-sm hover:bg-background"
+                                        className="bg-background hover:bg-muted"
                                         size="icon-xs"
                                         variant="outline"
                                         disabled={removeDisabled || downloadAllProgress !== null || downloadingAttachmentIDs.includes(attachment.id)}
