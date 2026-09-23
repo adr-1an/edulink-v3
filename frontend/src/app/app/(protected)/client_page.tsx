@@ -510,7 +510,7 @@ function SchoolGroup({title, schools, regionNames, owned = false, onLeave}: {
                 {schools.map((school) => {
                     const region = regionNames[school.regionCode]
                     return (
-                        <Card key={school.id} className="group/school overflow-hidden transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md/10">
+                        <Card key={school.id} className="group/school overflow-hidden transition-colors hover:border-primary/25 hover:bg-muted/25">
                             <Link
                                 href={`/app/staff/schools/${school.id}`}
                                 aria-label={t("staff.schools.open", {name: school.name})}

@@ -469,7 +469,7 @@ export default function CourseDashboardClientPage({
                     ) : (
                         <div className="space-y-3">
                             {sortedPosts.map((post) => (
-                                <Card className="group overflow-hidden transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md" key={post.id}>
+                                <Card className="group overflow-hidden transition-colors duration-200 hover:bg-muted/25" key={post.id}>
                                     <div className="absolute inset-y-0 left-0 w-1.5" style={{backgroundColor: `#${normalizeColor(post.accentColor)}`}} />
                                     <CardHeader className="gap-3 pl-7">
                                         <div className="flex flex-wrap items-start justify-between gap-3">

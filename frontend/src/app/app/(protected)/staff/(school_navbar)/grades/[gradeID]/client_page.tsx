@@ -190,7 +190,7 @@ export default function CoursesClientPage({gradeID, courses, access}: {
                     {visibleCourses.map((course) => (
                         <ContextMenu key={course.id}>
                             <ContextMenuTrigger className="flex">
-                                <Card className="w-full overflow-hidden transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:shadow-md/10">
+                                <Card className="w-full overflow-hidden transition-colors hover:border-primary/25 hover:bg-muted/25">
                                     <Link
                                         className="flex flex-1 flex-col rounded-t-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                                         href={`/app/staff/courses/${course.id}`}

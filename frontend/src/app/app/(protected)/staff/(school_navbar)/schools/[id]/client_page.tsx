@@ -364,7 +364,7 @@ export default function ClientPage({school, regionName, academicYears, access, c
                 {grades.length > 0 ? (
                     <div className={gradeView === "grid" ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-3" : "space-y-2"}>
                         {grades.map((grade) => (
-                            <Card key={grade.id} className="group/grade overflow-hidden transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md/10">
+                            <Card key={grade.id} className="group/grade overflow-hidden transition-colors hover:border-primary/25 hover:bg-muted/25">
                                 {canListCourses && <Link
                                     href={`/app/staff/grades/${grade.id}`}
                                     aria-label={t("staff.dashboard.openCourses", {name: grade.name})}
