@@ -278,15 +278,16 @@ The student list includes:
 - search by student data;
 - frontend pagination to keep large school lists manageable;
 - profile links;
+- profile pictures with initials as a fallback and a five-minute browser cache;
 - creation and editing actions;
 - account-enabled status;
 - permission-aware controls;
 - loading skeletons, empty states, no-match states, and API error handling;
 - permanent deletion with an explicit warning about course assignments, submissions, files, and login access.
 
-The student profile page provides a more complete record view. Depending on the viewer's permissions, it exposes edit and delete actions, contact details, school information, login status, and the student's assignment-submission history.
+The student profile page provides a more complete record view. Depending on the viewer's permissions, it exposes edit and delete actions, contact details, school information, login status, the student's assignment-submission history, and school-managed profile-picture controls. Staff members with `student.update` can upload or remove a student's JPEG, PNG, GIF, or WebP picture. Pictures are uploaded directly to S3-compatible storage, limited to 5 MB, and displayed on the student list, staff-facing student profile, and student portal profile.
 
-Students do not currently upload their own profile pictures. Staff profile pictures are supported separately.
+Students cannot upload or remove their own pictures. Like the rest of their official profile information, the picture is managed by authorized school staff.
 
 ### Bulk student import
 
@@ -504,7 +505,7 @@ The portal distinguishes ungraded submitted work from graded work and gives each
 
 ### Student profile
 
-The student profile displays the authenticated student's school-managed information. It is read-only and explains that changes must be requested from a school administrator. This avoids creating a second profile-editing path that could conflict with official school records.
+The student profile displays the authenticated student's school-managed information and profile picture, with initials used when no picture is available. It is read-only and explains that changes must be requested from a school administrator. This avoids creating a second profile-editing path that could conflict with official school records.
 
 ## Guardian portal status
 
@@ -663,6 +664,7 @@ School
 
 Portal user
 ├── portal sessions
+├── school-managed profile picture storage
 ├── assigned courses
 └── assignment submissions
 ```
@@ -712,7 +714,6 @@ The following areas are not complete product features yet:
 
 - The guardian portal is a routed placeholder without guardian-specific data or workflows.
 - Students cannot directly edit school-managed profile information.
-- Student profile pictures are not implemented.
 - Audit-log pagination is frontend-side; the API still returns the full accessible log collection.
 - Audit-log content itself is not localized because it is stored as backend-generated English text.
 - The database email queue needs an operational worker outside the startup code currently present in this repository.

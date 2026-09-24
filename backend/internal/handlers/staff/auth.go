@@ -346,7 +346,7 @@ func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 	// Get reset token
 	token := chi.URLParam(r, "token")
 	if token == "" {
-		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code": staff_helpers.ErrorCodeNoToken,
 		})
@@ -385,7 +385,7 @@ func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 	`, tokenHash, staff_helpers.TokenPurposePasswordReset).Scan(&userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code": staff_helpers.ErrorCodeInvalidToken,
 			})

@@ -31,13 +31,8 @@ interface AssignmentListResponse {
     access?: SchoolAccess
 }
 
-function nullableTime(value: unknown): string | null {
-    if (typeof value === "string") return Number.isNaN(Date.parse(value)) ? null : value
-    if (!value || typeof value !== "object") return null
-
-    const time = "Time" in value ? value.Time : "time" in value ? value.time : null
-    const valid = "Valid" in value ? value.Valid : "valid" in value ? value.valid : false
-    return valid === true && typeof time === "string" && !Number.isNaN(Date.parse(time)) ? time : null
+function nullableTimestamp(value: unknown): string | null {
+    return typeof value === "string" && !Number.isNaN(Date.parse(value)) ? value : null
 }
 
 async function loadEndpoint(path: string, token?: string) {
@@ -74,8 +69,8 @@ export default async function Page({params}: {
     if (assignmentsRes?.ok) assignmentData = await assignmentsRes.json() as AssignmentListResponse
 
     const posts: CoursePost[] = (postData.posts ?? []).map((post) => {
-        const showUntil = nullableTime(post.showUntil)
-        const editedAt = nullableTime(post.editedAt)
+        const showUntil = nullableTimestamp(post.showUntil)
+        const editedAt = nullableTimestamp(post.editedAt)
         return {
             ...post,
             attachments: normalizePostAttachments(post.attachments),

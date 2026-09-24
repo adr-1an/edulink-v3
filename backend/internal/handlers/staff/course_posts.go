@@ -17,10 +17,10 @@ import (
 )
 
 type CoursePostPayload struct {
-	Title       string       `json:"title"`
-	Body        string       `json:"body"`
-	AccentColor string       `json:"accentColor"`
-	ShowUntil   sql.NullTime `json:"showUntil"`
+	Title       string     `json:"title"`
+	Body        string     `json:"body"`
+	AccentColor string     `json:"accentColor"`
+	ShowUntil   *time.Time `json:"showUntil"`
 }
 
 func parseAndValidate(p CoursePostPayload) (CoursePostPayload, error) {
@@ -299,13 +299,13 @@ func (h *Handler) ListPostsHandler(w http.ResponseWriter, r *http.Request) {
 		AuthorName   string       `json:"authorName"`
 		AuthorPfpURL *string      `json:"authorProfilePictureURL"`
 
-		Title       string       `json:"title"`
-		Body        string       `json:"body"`
-		ShowUntil   sql.NullTime `json:"showUntil"`
-		AccentColor string       `json:"accentColor"`
+		Title       string     `json:"title"`
+		Body        string     `json:"body"`
+		ShowUntil   *time.Time `json:"showUntil"`
+		AccentColor string     `json:"accentColor"`
 
-		EditedAt  sql.NullTime `json:"editedAt"`
-		CreatedAt time.Time    `json:"createdAt"`
+		EditedAt  *time.Time `json:"editedAt"`
+		CreatedAt time.Time  `json:"createdAt"`
 	}
 	var posts []post
 

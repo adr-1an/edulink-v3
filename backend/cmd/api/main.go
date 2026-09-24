@@ -18,7 +18,6 @@ import (
 
 // Latest updates
 // Minor: added student profile pictures, removed rate limiting (it should be done externally)
-// This change will be done in batches as it requires major rewrites
 const version = "3.13.6"
 
 func main() {

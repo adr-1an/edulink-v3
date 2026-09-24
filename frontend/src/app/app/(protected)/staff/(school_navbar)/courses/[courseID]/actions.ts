@@ -63,9 +63,7 @@ async function postRequest(path: string, method: "POST" | "PATCH" | "DELETE", in
                 title: input.title,
                 body: input.body,
                 accentColor: input.accentColor,
-                showUntil: input.showUntil
-                    ? {Time: input.showUntil, Valid: true}
-                    : {Time: "0001-01-01T00:00:00Z", Valid: false},
+                showUntil: input.showUntil,
             }) : undefined,
         })
     } catch {

@@ -1,67 +1,54 @@
-# EduLink API and setup guide
+# EduLink backend API and setup guide
 
-This document describes the Go API currently used by the EduLink staff frontend, along with the configuration required to run the application locally or deploy it.
+This document covers the current Go backend: setup, runtime services, configuration, authentication, permissions, uploads, and every mounted HTTP endpoint.
 
-> Last checked against the repository on July 22, 2026.
-
-## Contents
-
-- [Architecture](#architecture)
-- [Requirements](#requirements)
-- [Environment configuration](#environment-configuration)
-- [Database setup](#database-setup)
-- [Running the application](#running-the-application)
-- [API conventions](#api-conventions)
-- [Authentication](#authentication)
-- [Permissions and role hierarchy](#permissions-and-role-hierarchy)
-- [Shared response models](#shared-response-models)
-- [Endpoint reference](#endpoint-reference)
-- [Error codes](#error-codes)
-- [Operational and deployment notes](#operational-and-deployment-notes)
+> Verified against the backend source on September 3, 2026. API version: `3.13.6`.
 
 ## Architecture
 
-The active application consists of:
+The backend is a Go 1.25 service using Chi and PostgreSQL. It also uses:
 
-- `backend/`: Go 1.25 HTTP API using Chi and PostgreSQL.
-- `frontend/`: Next.js 16 application using React 19.
-- `backend/db/migrations/`: ordered PostgreSQL migrations.
-- `rs-backend/`: a separate, unfinished Rust implementation. It is not used by the current frontend and is not covered by this API reference.
+- S3-compatible object storage through the MinIO Go SDK;
+- SMTP for account and invitation email;
+- a separate email queue worker for bulk student activation email;
+- Sonyflake IDs with database-backed machine-ID leases;
+- ordered SQL migrations under `internal/db/migrations/`.
 
-The Go API exposes the staff application below `/v1/staff`. `/v1/student` and `/v1/guardian` are reserved but currently have no routes.
-
-The default local URLs used throughout this guide are:
+The API has two independently authenticated route families:
 
 ```text
-Frontend: http://localhost:3000
-API:      http://localhost:8080
+/v1/staff   Staff accounts and school administration
+/v1/portal  Student and guardian accounts
 ```
+
+Student workflows are implemented. Guardian authentication is recognized, but guardian-specific school workflows are not currently implemented. The public heartbeat is:
+
+| Method | Path    | Auth   | Success            |
+|--------|---------|--------|--------------------|
+| `GET`  | `/ping` | Public | Heartbeat response |
 
 ## Requirements
 
 - Go 1.25 or a compatible newer release
 - PostgreSQL
-- Node.js supported by Next.js 16
-- npm
-- SMTP credentials for registration, password reset, email-change, and staff-invitation emails
-- Cloudflare Turnstile site and secret keys for the frontend authentication forms
+- An S3-compatible object store and private bucket
+- An SMTP server accepting authenticated submission on port 587
+- The bundled `dbox` executable or another tracked migration runner
+
+The bundled `dbox` binary is macOS ARM64. Another platform requires a compatible build or migration runner.
 
 ## Environment configuration
 
-### Backend
-
-The backend always loads `backend/.env` at startup. Start with the following template:
+Both binaries call `godotenv.Load()`. Running from `backend/` loads `backend/.env`.
 
 ```dotenv
-# HTTP server
+# Application
 APP_PORT=8080
 APP_HOST_OVERRIDE=
 APP_NAME=EduLink
+APP_ENCRYPTION_KEY=
 FRONTEND_URL=http://localhost:3000
-
-# Sonyflake ID generation. Use a different integer for every concurrently
-# running API instance.
-MACHINE_ID=1
+TRUST_X_FORWARDED_FOR=false
 
 # PostgreSQL
 DB_HOST=localhost
@@ -70,945 +57,662 @@ DB_NAME=edulink
 DB_USER=postgres
 DB_PASS=postgres
 SSL_MODE=disable
-
-# Optional: replaces the DB_* connection assembled by the API.
 DB_DSN_OVERRIDE=
 
-# Used by the bundled dbox migration executable.
+# dbox
 DB_TYPE=postgres
 DB_DSN=postgres://postgres:postgres@localhost:5432/edulink?sslmode=disable
-MIGRATION_DIR=db/migrations
+MIGRATION_DIR=internal/db/migrations
 
-# SMTP. The mail client currently connects to port 587.
+# SMTP and queue worker
 SMTP_HOST=smtp.example.com
+SMTP_FROM=EduLink <no-reply@example.com>
 SMTP_USER=your-smtp-user
 SMTP_PASS=your-smtp-password
-SMTP_FROM=EduLink <no-reply@example.com>
+EMAIL_QUEUE_RATE=5
+
+# S3-compatible object storage
+S3_ENDPOINT=localhost:9000
+S3_ACCESS_KEY_ID=your-access-key
+S3_SECRET_ACCESS_KEY=your-secret-key
+S3_BUCKET=edulink
+S3_SSL=false
 ```
 
-Notes:
+Important behavior:
 
-- `APP_HOST_OVERRIDE` replaces `:APP_PORT` completely when set. For example, `127.0.0.1:8080` binds only to localhost.
-- `DB_DSN_OVERRIDE` is useful in production when a provider supplies one PostgreSQL connection URL.
-- `SSL_MODE` defaults to `disable`. Production should normally use the mode required by the database provider, such as `require` or `verify-full`.
-- `MACHINE_ID` is required. Sonyflake IDs can collide if multiple API instances use the same machine ID.
-- `FRONTEND_URL` must be the externally reachable frontend origin because it is embedded in emailed links.
-- SMTP delivery errors are generally logged by the API. Several endpoints still return success after scheduling an email, so logs and SMTP monitoring matter.
+- `APP_PORT` is required unless `APP_HOST_OVERRIDE` supplies the complete listener address.
+- `APP_ENCRYPTION_KEY` must be hexadecimal and decode to exactly 32 bytes. Generate one with `openssl rand -hex 32`. It encrypts TOTP secrets and must remain stable.
+- `FRONTEND_URL` is the backend's public application-origin setting used to construct emailed links.
+- `TRUST_X_FORWARDED_FOR=true` actually configures Chi to trust `CF-Connecting-IP`. Enable it only behind a proxy that removes and replaces that header.
+- `DB_DSN_OVERRIDE`, when set, replaces the DSN assembled from the individual database values.
+- `SSL_MODE` defaults to `disable`.
+- `EMAIL_QUEUE_RATE` is the worker polling interval in seconds and defaults to `5`.
+- SMTP port 587 is hardcoded. `SMTP_PORT` is not read.
+- `S3_ENDPOINT` is passed directly to `minio.New` and normally contains a host and optional port without a scheme.
+- `S3_SSL` enables TLS only when exactly `true`.
+- `S3_REGION` is not currently read.
+- Sonyflake machine IDs require no environment variable. Processes lease IDs through PostgreSQL for 60 seconds and renew every 20 seconds.
 
-Do not commit `.env` files or real credentials.
+Never commit `.env`, database credentials, storage credentials, SMTP credentials, or `APP_ENCRYPTION_KEY`.
 
-### Frontend
+## Database migrations
 
-Create `frontend/.env.local`:
-
-```dotenv
-# Server-side only. Do not add NEXT_PUBLIC_ to this value.
-API_URL=http://localhost:8080
-
-NEXT_PUBLIC_APP_NAME=EduLink
-
-# Required by registration and login forms.
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=your-turnstile-site-key
-TURNSTILE_SECRET_KEY=your-turnstile-secret-key
-```
-
-The frontend calls the API from server components and server actions. `API_URL` may therefore be an internal service URL in production, while `FRONTEND_URL` must remain public.
-
-Turnstile is required by the current login and registration server actions. Missing keys cause those actions to fail rather than bypass verification.
-
-## Database setup
-
-### 1. Create the database
-
-For a local PostgreSQL installation:
+From `backend/`:
 
 ```bash
-createdb edulink
-```
-
-Alternatively, create it with your PostgreSQL provider and set `DB_DSN`, `DB_DSN_OVERRIDE`, or the individual `DB_*` values accordingly.
-
-### 2. Run migrations
-
-The repository includes an ARM64 macOS `backend/dbox` executable. From `backend/`, initialize its migration table and apply every pending migration:
-
-```bash
-cd backend
 chmod +x dbox
 ./dbox init
 ./dbox up
 ./dbox stat
 ```
 
-Useful dbox commands:
+Useful commands:
 
 ```text
-dbox make <name>       Create a migration
-dbox up [-c N] [-v]   Apply pending migrations
-dbox down [-c N]      Roll back migrations
-dbox stat             Show migration status
-dbox cleanup [-v]     Remove records whose migration directories are gone
+./dbox make <name>       Create a migration
+./dbox up [-c N] [-v]   Apply pending migrations
+./dbox down [-c N]      Roll back migrations
+./dbox stat             Show migration status
+./dbox cleanup [-v]     Clean records for removed migration directories
 ```
 
-The bundled binary is platform-specific and its source is not in this repository. On another platform, use a compatible dbox build or apply each `backend/db/migrations/*/up.sql` file in directory-name order with a migration runner that records completed migrations. Do not repeatedly run the raw files as a substitute for migration tracking: not every data migration is safely repeatable.
+The runner reads `DB_TYPE`, `DB_DSN`, and `MIGRATION_DIR`. With another runner, apply `internal/db/migrations/*/up.sql` in directory-name order and track completed migrations. Do not repeatedly execute all files because data migrations may not be idempotent.
 
-The migrations create users, sessions, schools, staff invitations, roles and permissions, academic years, grades, courses, posts, audit logs, students, course assignments, and supporting indexes. They also insert the reserved user with ID `0`, used when a post or audit-log author is deleted.
+## Running the backend
 
-## Running the application
-
-### Backend
+Run the API from `backend/`:
 
 ```bash
-cd backend
 go mod download
-go run .
+go run ./cmd/api
 ```
 
-Confirm it is reachable:
+Run the email queue worker separately:
+
+```bash
+go run ./cmd/email-queue-worker
+```
+
+Verify the heartbeat:
 
 ```bash
 curl http://localhost:8080/ping
 ```
 
-### Frontend
+The included Compose configuration builds and runs both binaries:
 
 ```bash
-cd frontend
-npm ci
-npm run dev
+docker compose up --build
 ```
 
-Then open `http://localhost:3000`.
+The API is bound to `127.0.0.1:${APP_PORT:-8080}` by Compose.
 
-Production checks:
+Build and test commands:
 
 ```bash
-cd frontend
-npm run lint
-npx tsc --noEmit
-npm run build
+go build ./cmd/api
+go build ./cmd/email-queue-worker
+go test ./...
 ```
 
 ## API conventions
 
-### Base URL and content type
-
-All documented routes are relative to:
+### Base URLs
 
 ```text
-http://localhost:8080/v1/staff
+Staff:  http://localhost:8080/v1/staff
+Portal: http://localhost:8080/v1/portal
 ```
 
-JSON request bodies require:
+All endpoint tables below use absolute API paths. JSON bodies should use `Content-Type: application/json`.
+
+### Authorization
+
+Authenticated routes expect:
 
 ```http
-Content-Type: application/json
+Authorization: Bearer <raw-session-token>
 ```
 
-The router sets `Content-Type: application/json` globally, including for responses with no body.
+Only the SHA-256 token hash is stored. Staff and portal tokens use different tables and are not interchangeable.
 
-### Authentication header
+### IDs and dates
 
-Unless an endpoint is marked public, provide the session token returned by login:
-
-```http
-Authorization: Bearer <session-token>
-```
-
-The raw token is returned only once. The API stores its SHA-256 hash. The frontend stores the raw token in an HTTP-only, `SameSite=Lax` cookie named `token` and forwards it from server-side requests.
-
-### IDs
-
-Database IDs are signed 64-bit Sonyflake integers. Treat them as decimal strings in JavaScript to avoid precision loss. Most response structs intentionally encode IDs as JSON strings.
-
-Path parameters such as `{schoolID}` and `{courseID}` are decimal integers. The `activeAcademicYearId` update field is currently decoded by Go as a JSON number, while course assignment uses a JSON string in `studentId`.
-
-### Dates and nullable times
-
-Normal timestamps are RFC 3339 strings, for example:
+Resource IDs are signed 64-bit Sonyflake integers. Most responses encode IDs as decimal strings to avoid numeric precision loss:
 
 ```json
-"2026-07-22T14:30:00Z"
+{"id":"123456789012345678"}
 ```
 
-Course post `showUntil` and `editedAt` use Go's `sql.NullTime` representation:
+Path IDs are decimal integers. `studentId` and `referencedPostId` are JSON strings, while `activeAcademicYearId` is a JSON number or `null`.
 
-```json
-{"Time":"2026-07-30T18:00:00Z","Valid":true}
-```
+Timestamps are RFC 3339. Nullable timestamps, including post `showUntil` and `editedAt`, are an RFC 3339 string or `null`. Student dates of birth are submitted as `YYYY-MM-DD`.
 
-An absent value is represented as:
+### Collections and decoding
 
-```json
-{"Time":"0001-01-01T00:00:00Z","Valid":false}
-```
+Some lazily initialized slices encode an empty result as `null`; consumers should accept both `null` and `[]`. Most handlers reject unknown JSON fields with `400`. Bulk import, grading, and challenge completion currently use non-strict decoders.
 
-The same shape is required when creating or updating a post. This is a current API quirk; plain `null` is not the contract used by the frontend.
+### Middleware
 
-Student dates of birth use `YYYY-MM-DD`.
-
-### Empty collections
-
-Some handlers build slices lazily. An empty collection may therefore be returned as `null` instead of `[]`. Clients should normalize both to an empty array.
+The router enables request IDs, client-IP extraction, logging, panic recovery, a 15-second timeout, heartbeat handling, and a global JSON content-type header. It has no CORS or rate-limiting middleware.
 
 ### Common statuses
 
-| Status | Meaning |
-| --- | --- |
-| `200 OK` | Successful read, login, or role update |
-| `201 Created` | Resource created or assignment accepted |
-| `204 No Content` | Successful mutation with no response body |
-| `400 Bad Request` | Malformed JSON, unknown JSON field, or malformed numeric path ID |
-| `401 Unauthorized` | Missing, invalid, expired, or revoked session; sometimes incorrect credentials |
-| `403 Forbidden` | Missing permission, inaccessible resource, hierarchy violation, or privacy restriction |
-| `404 Not Found` | Invalid token or selected resource in endpoints that expose this distinction |
-| `409 Conflict` | Duplicate resource or invalid state transition |
-| `410 Gone` | Expired invitation link |
-| `422 Unprocessable Entity` | Well-formed request that fails validation |
-| `500 Internal Server Error` | Database, ID generator, transaction, or internal failure |
+| Status | Meaning                                                                                       |
+|--------|-----------------------------------------------------------------------------------------------|
+| `200`  | Successful read/login/challenge or data-returning mutation                                    |
+| `201`  | Resource, submission, or grade created                                                        |
+| `204`  | Successful mutation with no body                                                              |
+| `400`  | Malformed JSON, unknown field, or malformed numeric path ID                                   |
+| `401`  | Missing/invalid session, incorrect credentials, disabled portal account, or expired challenge |
+| `403`  | Missing permission, hierarchy failure, ownership failure, or inaccessible resource            |
+| `404`  | Missing token/resource where the handler exposes that distinction                             |
+| `409`  | Duplicate data or invalid state transition                                                    |
+| `410`  | Expired invitation link                                                                       |
+| `422`  | Valid JSON that fails validation                                                              |
+| `500`  | Database, storage, configuration, or other internal failure                                   |
+| `501`  | Unsupported 2FA challenge purpose                                                             |
 
-Most errors have an empty body. Endpoints that need a more specific client message may return:
+Most errors have no body. Selected errors return `{"code":"ERROR_CODE"}`.
 
-```json
-{"code":"ERROR_CODE"}
-```
+## Sessions and account types
 
-All JSON decoders reject unknown request fields.
+Staff registration links expire after one hour. Staff password-reset and email-change tokens are accepted within 24 hours. Staff sessions last one day when `stayLoggedIn` is false and three calendar months when true. Password reset and password change revoke all staff sessions.
 
-### Request limits and middleware
+When staff 2FA is enabled, login returns a 15-minute challenge instead of a session. The same challenge endpoint completes 2FA-protected school deletion.
 
-- Request timeout: 15 seconds
-- Request ID, client IP, request logging, panic recovery, and heartbeat middleware are enabled.
-- No CORS middleware is configured. The current frontend avoids cross-origin browser calls by using Next.js server components/actions. Add an explicit restricted CORS policy if a browser client will call the API directly.
-- No API rate limiter is currently configured. Add rate limiting at the reverse proxy or application layer before exposing authentication and email endpoints publicly.
+Portal login requires `account_enabled = true` and `account_active = true`. Portal authentication uses a rolling seven-day activity window based on `last_used_at`. Successful authenticated requests refresh it. Portal password changes do not revoke other sessions.
 
-## Authentication
+Portal account types are `student` and `guardian`. Token check and profile accept either. Course, assignment, and submission routes require a student unless explicitly stated otherwise.
 
-Registration is email-link based:
+## Permissions and hierarchy
 
-1. `POST /auth/register` stores a one-hour registration token and emails the frontend link.
-2. `GET /auth/register/{token}` validates the token and reveals its email.
-3. `POST /auth/register/{token}` consumes the token and creates the account.
-4. `POST /auth/login` creates a session and returns the raw bearer token.
-
-Session duration is one day by default or three calendar months when `stayLoggedIn` is true.
-
-Registration and password-reset requests intentionally hide whether an email is registered in most cases.
-
-## Permissions and role hierarchy
-
-School owners pass every permission check for their school. Staff members receive permissions through roles. Frontend permission checks are only for presentation; the API remains authoritative.
-
-The shared access object returned by many list endpoints is:
+School owners pass all school permission checks. Other staff receive permissions through roles. An access-bearing response looks like:
 
 ```json
 {
-  "owner": false,
-  "roles": [
-    {
-      "position": 2,
-      "permissions": ["course.list", "course.post.list"]
-    }
-  ]
-}
-```
-
-Higher role positions outrank lower positions. A non-owner may only create, update, delete, grant permissions to, or assign roles below their own highest role position. Position `0` is the lowest role.
-
-Current permission strings:
-
-```text
-school.view
-school.update
-school.promote
-school.invite.list
-school.invite.cancel
-
-staff_helpers.view
-staff_helpers.create
-staff_helpers.delete
-staff_helpers.role.add
-staff_helpers.role.remove
-staff_helpers.role.list
-
-academicYear.create
-academicYear.list
-academicYear.toggleActive
-academicYear.delete
-
-grade.create
-grade.list
-grade.update
-grade.delete
-
-role.create
-role.list
-role.update
-role.delete
-role.permission.update
-
-course.create
-course.list
-course.update
-course.delete
-course.post.create
-course.post.list
-course.post.update
-course.post.delete
-course.student.assign
-course.student.remove
-course.student.list
-
-student.create
-student.list
-student.update
-student.delete
-
-log.list
-```
-
-`owner` is an internal permission sentinel and cannot be granted to a role.
-
-## Shared response models
-
-### User profile
-
-```json
-{
-  "id": "123",
-  "name": "Taylor Morgan",
-  "email": "taylor@example.com",
-  "phone": "+48 123 456 789",
-  "publicProfile": false,
-  "staffInvitationsDisabled": false,
-  "updatedAt": "2026-07-22T14:30:00Z",
-  "createdAt": "2026-07-20T10:00:00Z"
-}
-```
-
-### Course
-
-```json
-{
-  "id": "123",
-  "name": "Mathematics",
-  "description": "Core mathematics course",
-  "color": "6366F1"
-}
-```
-
-Colors follow a six-character hexadecimal convention without a leading `#`. The current API validates the length but does not validate that every character is hexadecimal, so clients should enforce the full format.
-
-### Course post
-
-```json
-{
-  "id": "123",
-  "authorName": "Taylor Morgan",
-  "title": "Room changed",
-  "body": "Today's class is in room 204.",
-  "showUntil": {"Time":"2026-07-23T16:00:00Z","Valid":true},
-  "accentColor": "6366F1",
-  "editedAt": {"Time":"0001-01-01T00:00:00Z","Valid":false},
-  "createdAt": "2026-07-22T14:30:00Z"
-}
-```
-
-### Access-bearing list response
-
-Most school-scoped list endpoints follow this pattern:
-
-```json
-{
-  "access": {"owner":true,"roles":[]},
-  "courses": []
-}
-```
-
-The collection property changes by endpoint: `academicYears`, `grades`, `courses`, `posts`, `students`, `staff`, `roles`, `logs`, or `invitations`.
-
-## Endpoint reference
-
-### Health
-
-| Method | Path | Auth | Success |
-| --- | --- | --- | --- |
-| `GET` | `/ping` | Public | Heartbeat response |
-
-### Auth
-
-#### `POST /auth/register`
-
-Public. Sends a one-hour registration link.
-
-```json
-{"email":"person@example.com"}
-```
-
-Email is trimmed, lowercased, and must be 5–254 characters. Returns `204`. Existing users and active registration tokens normally receive the same response to limit account enumeration.
-
-#### `GET /auth/register/{token}`
-
-Public. Returns `200` with:
-
-```json
-{"email":"person@example.com"}
-```
-
-Returns `404` when the token is missing, invalid, or expired.
-
-#### `POST /auth/register/{token}`
-
-Public. Consumes a registration token and creates the account.
-
-```json
-{
-  "name": "Taylor Morgan",
-  "phone": "+48 123 456 789",
-  "password": "at-least-8-characters"
-}
-```
-
-Name is 1–128 characters. Phone is optional, otherwise 3–32 characters. Password is at least 8 characters. Returns `201`, `404` for an invalid/expired token, or `422` for invalid fields.
-
-#### `POST /auth/login`
-
-Public.
-
-```json
-{
-  "email": "person@example.com",
-  "password": "at-least-8-characters",
-  "stayLoggedIn": false
-}
-```
-
-Returns `200`:
-
-```json
-{"token":"raw-session-token"}
-```
-
-Returns `401` for an unknown account or incorrect password.
-
-#### `GET /auth`
-
-Authenticated session check. Returns `204` when valid. Invalid tokens return `401`, possibly with `{"code":"INVALID_TOKEN"}`. A missing header returns `401` with `NO_TOKEN`.
-
-#### `DELETE /auth/logout`
-
-Revokes the current session. Returns `204`, or `401 INVALID_TOKEN` if it was already invalid/revoked.
-
-#### `POST /auth/reset`
-
-Public. Sends a password-reset email.
-
-```json
-{"email":"person@example.com"}
-```
-
-Returns `204` whether or not a valid account exists. Invalid email length returns `422 INVALID_EMAIL`.
-
-#### `PUT /auth/reset/{token}`
-
-Public. Consumes a password-reset token created within the last 24 hours, revokes all user sessions, and changes the password.
-
-```json
-{"newPassword":"at-least-8-characters"}
-```
-
-Returns `204`, `404 INVALID_TOKEN`, or `422`.
-
-### Profile
-
-| Method | Path | Permission | Body | Success |
-| --- | --- | --- | --- | --- |
-| `GET` | `/profile` | Authenticated user | — | `200 {"user": UserProfile}` |
-| `PATCH` | `/profile` | Authenticated user | Profile update | `204` |
-| `POST` | `/profile/email` | Authenticated user | Email-change request | `204` |
-| `PUT` | `/profile/email/{token}` | Public token | — | `204` |
-| `PUT` | `/profile/password` | Authenticated user | Password change | `204` |
-
-Profile update:
-
-```json
-{
-  "name": "Taylor Morgan",
-  "phone": "+48 123 456 789",
-  "publicProfile": true,
-  "staffInvitationsDisabled": false
-}
-```
-
-Name is at most 64 characters. Phone is empty or 3–64 characters.
-
-Email-change request:
-
-```json
-{
-  "newEmail": "new@example.com",
-  "password": "current-password"
-}
-```
-
-The email must be 5–254 characters. An incorrect password returns `401 INCORRECT_PASSWORD`. The verification token lasts 24 hours. Applying the token returns `409` if the address became occupied and `404` if the token is invalid or expired.
-
-Password change:
-
-```json
-{
-  "password": "current-password",
-  "newPassword": "at-least-8-characters"
-}
-```
-
-A successful password change revokes every session, including the current one.
-
-### Schools
-
-| Method | Path | Permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/schools` | Authenticated user | `200 {"schools": SchoolSummary[]}` |
-| `POST` | `/schools` | Authenticated user | `201` |
-| `GET` | `/schools/{schoolID}` | `school.view` | `200 {"school": SchoolDashboard}` |
-| `PATCH` | `/schools/{schoolID}` | `school.update` | `204` |
-| `DELETE` | `/schools/{schoolID}` | Owner only | `204` |
-| `DELETE` | `/schools/{schoolID}/leave` | Non-owner staff member | `204` |
-
-School summary:
-
-```json
-{"id":"123","ownerId":"456","name":"Example School","regionCode":"PL"}
-```
-
-Create:
-
-```json
-{"name":"Example School","regionCode":"PL"}
-```
-
-Name is 1–64 characters. Region is optional; otherwise it must parse as a two-letter country region. Validation may return `INVALID_NAME` or `INVALID_REGION_CODE`.
-
-Update:
-
-```json
-{
-  "name": "Example School",
-  "regionCode": "PL",
-  "activeAcademicYearId": 123456789
-}
-```
-
-`activeAcademicYearId` is optional. Supplying it additionally requires `academicYear.toggleActive`, and the year must belong to the school. To clear the active year instead, use `PUT /schools/{schoolID}/academic-years`.
-
-The dashboard response contains school metadata and only grades belonging to the active academic year:
-
-```json
-{
-  "school": {
-    "id": "123",
-    "name": "Example School",
-    "regionCode": "PL",
-    "grades": [
-      {
-        "id": "456",
-        "academicYearId": "789",
-        "level": 2,
-        "name": "2nd grade",
-        "createdAt": "2026-07-22T14:30:00Z"
-      }
-    ],
-    "createdAt": "2026-07-20T10:00:00Z",
-    "updatedAt": "2026-07-22T14:30:00Z"
+  "access": {
+    "owner": false,
+    "roles": [
+      {"position":4,"permissions":["course.list","course.post.list"]}
+    ]
   }
 }
 ```
 
-Deleting a school is a soft delete. Leaving is unavailable to the owner and permanently removes the caller's staff membership; rejoining requires another invitation.
+Higher numeric role positions outrank lower positions. Role creation/update/deletion, permission editing, role assignment/removal, and non-owner staff deletion also apply hierarchy checks. `owner` is reserved and cannot be assigned through a role.
 
-### Academic years and promotion
+| Area             | Assignable permissions                                                                                                       |
+|------------------|------------------------------------------------------------------------------------------------------------------------------|
+| School           | `school.view`, `school.update`, `school.promote`                                                                             |
+| Invitations      | `school.invite.list`, `school.invite.cancel`                                                                                 |
+| Staff            | `staff.view`, `staff.create`, `staff.delete`, `staff.role.add`, `staff.role.remove`, `staff.role.list`                       |
+| Academic years   | `academicYear.create`, `academicYear.list`, `academicYear.toggleActive`, `academicYear.delete`                               |
+| Grades           | `grade.list`, `grade.create`, `grade.update`, `grade.delete`                                                                 |
+| Roles            | `role.create`, `role.list`, `role.update`, `role.delete`, `role.permission.update`                                           |
+| Courses          | `course.create`, `course.list`, `course.update`, `course.delete`                                                             |
+| Course posts     | `course.post.create`, `course.post.list`, `course.post.view`, `course.post.update`, `course.post.delete`                     |
+| Post attachments | `post.attachment.create`, `post.attachment.delete`                                                                           |
+| Logs             | `log.list`                                                                                                                   |
+| Students         | `student.create`, `student.list`, `student.view`, `student.update`, `student.delete`                                         |
+| Course students  | `course.student.assign`, `course.student.remove`, `course.student.list`                                                      |
+| Assignments      | `course.assignment.create`, `course.assignment.list`, `course.assignment.update`, `course.assignment.delete`                 |
+| Submissions      | `submission.list`, `submission.view`, `submission.return`, `submission.delete`, `submission.grade`, `submission.removeGrade` |
 
-| Method | Path | Permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/schools/{schoolID}/academic-years` | `academicYear.list` | `200 {access, academicYears}` |
-| `POST` | `/schools/{schoolID}/academic-years` | `academicYear.create` | `201` |
-| `PUT` | `/schools/{schoolID}/academic-years` | `academicYear.toggleActive` | `204` |
-| `DELETE` | `/academic-years/{yearID}` | `academicYear.delete` | `204` |
-| `POST` | `/schools/{schoolID}/promote` | `school.promote` | `204` |
+## Upload protocol
 
-Academic year model:
+Uploads are direct-to-object-storage:
+
+1. Initialize with the original name, exact byte count, and declared content type.
+2. `PUT` the bytes to the returned presigned URL with matching `Content-Type` metadata.
+3. Complete using the returned object ID and `{"completionToken":"..."}`.
+
+Initialization returns:
 
 ```json
-{"id":"123","startYear":2026,"endYear":2027,"isActive":true}
+{
+  "id": "storage-object-id",
+  "completionToken": "one-time-token",
+  "url": "https://storage.example.com/presigned-put-url"
+}
 ```
 
-Create:
+Submission uploads also return `attachmentId`.
+
+Staff objects complete at `POST /v1/staff/uploads/{objectID}`. Portal submission objects complete at `POST /v1/portal/submissions/attachments/{objectID}`.
+
+Completion checks owner, pending status, completion token, exact size, and content-type metadata. After a failed verification, the backend attempts cleanup and marks the row failed. It does not inspect file signatures or malware-scan content.
+
+Presigned PUT URLs last five minutes. Presigned GET URLs generally last 15 minutes; staff submission view and portal profile-picture URLs currently last five minutes.
+
+## Staff API
+
+### Authentication and 2FA
+
+| Method   | Path                                  | Auth            | Body                                              | Success                                     |
+|----------|---------------------------------------|-----------------|---------------------------------------------------|---------------------------------------------|
+| `POST`   | `/v1/staff/auth/register`             | Public          | `{"email":"person@example.com"}`                  | `204`                                       |
+| `GET`    | `/v1/staff/auth/register/{token}`     | Public token    | None                                              | `200 {email}`                               |
+| `POST`   | `/v1/staff/auth/register/{token}`     | Public token    | `StaffRegistration`                               | `201`                                       |
+| `POST`   | `/v1/staff/auth/login`                | Public          | `StaffLogin`                                      | `200 {token}` or `200 {twoFactorChallenge}` |
+| `GET`    | `/v1/staff/auth`                      | Staff           | None                                              | `204`                                       |
+| `DELETE` | `/v1/staff/auth/logout`               | Staff           | None                                              | `204`                                       |
+| `POST`   | `/v1/staff/auth/reset`                | Public          | `{"email":"person@example.com"}`                  | `204`                                       |
+| `PUT`    | `/v1/staff/auth/reset/{token}`        | Public token    | `{"newPassword":"new-password"}`                  | `204`                                       |
+| `POST`   | `/v1/staff/auth/two-factor`           | Staff           | None                                              | `200 {url}`                                 |
+| `PUT`    | `/v1/staff/auth/two-factor`           | Staff           | `{"code":"123456"}`                               | `200 {codes}`                               |
+| `DELETE` | `/v1/staff/auth/two-factor`           | Staff           | `{"code":"123456","password":"current-password"}` | `204`                                       |
+| `DELETE` | `/v1/staff/auth/two-factor/recovery`  | Recovery code   | `{"recoveryCode":"..."}`                          | `204`                                       |
+| `POST`   | `/v1/staff/auth/two-factor/challenge` | Challenge token | `TwoFactorCompletion`                             | `200 {token}` or `204`                      |
+
+`StaffRegistration`:
+
+```json
+{"name":"Taylor Morgan","phone":"+48 123 456 789","password":"at-least-8-characters"}
+```
+
+Name is 1–128 characters, optional phone is 3–32, and password is at least eight. Registration start intentionally does not reveal existing accounts or active registration tokens.
+
+`StaffLogin`:
+
+```json
+{"email":"person@example.com","password":"at-least-8-characters","stayLoggedIn":false}
+```
+
+2FA login response:
+
+```json
+{
+  "twoFactorChallenge": {
+    "token": "challenge-token",
+    "purpose": "login",
+    "expiresAt": "2026-09-03T14:00:00Z"
+  }
+}
+```
+
+Challenge completion is `{"code":"123456","challengeToken":"challenge-token"}`.
+
+2FA setup returns an `otpauth://` URL. Verifying the six-digit TOTP enables 2FA and returns eight recovery codes as an object keyed by numeric strings. Recovery disables 2FA and deletes all recovery codes without requiring a session. Normal disable requires the password and TOTP.
+
+### Staff profile
+
+| Method   | Path                                | Auth         | Body                                                           | Success          |
+|----------|-------------------------------------|--------------|----------------------------------------------------------------|------------------|
+| `GET`    | `/v1/staff/profile`                 | Staff        | None                                                           | `200 {user}`     |
+| `PATCH`  | `/v1/staff/profile`                 | Staff        | `StaffProfileUpdate`                                           | `204`            |
+| `POST`   | `/v1/staff/profile/email`           | Staff        | `{"newEmail":"new@example.com","password":"current-password"}` | `204`            |
+| `PUT`    | `/v1/staff/profile/email/{token}`   | Public token | None                                                           | `204`            |
+| `PUT`    | `/v1/staff/profile/password`        | Staff        | `{"password":"current-password","newPassword":"new-password"}` | `204`            |
+| `POST`   | `/v1/staff/profile/profile-picture` | Staff        | `UploadMetadata`                                               | `200 UploadInit` |
+| `DELETE` | `/v1/staff/profile/profile-picture` | Staff        | None                                                           | `204`            |
+
+`StaffProfileUpdate`:
+
+```json
+{"name":"Taylor Morgan","phone":"+48 123 456 789","publicProfile":true,"staffInvitationsDisabled":false}
+```
+
+Name is at most 64 characters. Phone is empty or 3–64. Profile output includes `profilePicture`, `id`, `name`, `email`, `phone`, `twoFactorStatus`, both privacy flags, and timestamps. `profilePicture` is `null` or `{presignedUrl,fileName,contentType}`. Status is `disabled`, `pending`, or `enabled`.
+
+Email conflict intentionally receives a fake `204`; incorrect password returns `401 INCORRECT_PASSWORD`. Completing an email change can return `409` if the address became occupied. Password change revokes all staff sessions.
+
+`UploadMetadata` is `{"name":"avatar.webp","declaredSize":245760,"declaredContentType":"image/webp"}`. Staff pictures allow JPEG, PNG, WebP, and GIF up to 5 MiB. Initialization replaces the database reference to an existing picture. Deleting a missing picture returns `404`.
+
+### Schools, academic years, grades, and courses
+
+| Method | Path | Permission | Body | Success |
+| --- | --- | --- | --- | --- |
+| `GET` | `/v1/staff/schools` | Staff | None | `200 {schools}` |
+| `POST` | `/v1/staff/schools` | Staff | `SchoolMutation` | `201` |
+| `GET` | `/v1/staff/schools/{schoolID}` | `school.view` | None | `200 {school}` |
+| `PATCH` | `/v1/staff/schools/{schoolID}` | `school.update` | `SchoolUpdate` | `204` |
+| `DELETE` | `/v1/staff/schools/{schoolID}` | Owner | None | `204` or `200 {twoFactorChallenge}` |
+| `DELETE` | `/v1/staff/schools/{schoolID}/leave` | Non-owner member | None | `204` |
+| `GET` | `/v1/staff/schools/{schoolID}/academic-years` | `academicYear.list` | None | `200 {access, academicYears}` |
+| `POST` | `/v1/staff/schools/{schoolID}/academic-years` | `academicYear.create` | `AcademicYearCreate` | `201` |
+| `PUT` | `/v1/staff/schools/{schoolID}/academic-years` | `academicYear.toggleActive` | None | `204` |
+| `DELETE` | `/v1/staff/academic-years/{yearID}` | `academicYear.delete` | None | `204` |
+| `POST` | `/v1/staff/schools/{schoolID}/promote` | `school.promote` | `SchoolPromotion` | `204` |
+| `GET` | `/v1/staff/schools/{schoolID}/grades` | `grade.list` | None | `200 {access, grades}` |
+| `POST` | `/v1/staff/academic-years/{yearID}/grades` | `grade.create` | `GradeMutation` | `201` |
+| `PATCH` | `/v1/staff/grades/{gradeID}` | `grade.update` | `GradeMutation` | `204` |
+| `DELETE` | `/v1/staff/grades/{gradeID}` | `grade.delete` | None | `204` |
+| `GET` | `/v1/staff/grades/{gradeID}/courses` | `course.list` | None | `200 {access, courses}` |
+| `POST` | `/v1/staff/grades/{gradeID}/courses` | `course.create` | `CourseMutation` | `201` |
+| `PATCH` | `/v1/staff/courses/{courseID}` | `course.update` | `CourseMutation` | `204` |
+| `DELETE` | `/v1/staff/courses/{courseID}` | `course.delete` | None | `204` |
+
+Payloads:
+
+```json
+{"name":"North High School","regionCode":"PL"}
+```
+
+School name is 1–64. Region is normalized to uppercase and must be a country region; empty is allowed. Update additionally accepts `"activeAcademicYearId":123` or `null`. Changing it also requires `academicYear.toggleActive` and the year must belong to the school. The dedicated `PUT .../academic-years` route clears the active year.
 
 ```json
 {"academicYear":{"from":2026,"to":2027}}
 ```
 
-`from` must be 1900–9999 and `to` cannot be earlier than `from`. Duplicate ranges return `409 ACADEMIC_YEAR_CONFLICT`.
-
-`PUT /schools/{schoolID}/academic-years` has no body and clears the active year. It returns `500` when no row was changed, so callers should avoid invoking it when no active year exists.
-
-An active academic year cannot be deleted (`409`). Existing grades also prevent deletion because the grade foreign key uses `ON DELETE RESTRICT`.
-
-Promotion body:
+Start must be 1900–9999 and end cannot precede it. A duplicate range returns `409 ACADEMIC_YEAR_CONFLICT`. Active years cannot be deleted.
 
 ```json
 {
-  "newAcademicYear": {"from":2027,"to":2028},
-  "options": {
-    "activateAfterPromotion": true,
-    "transferGrades": true,
-    "promoteGradeLevels": true
-  }
+  "newAcademicYear":{"from":2027,"to":2028},
+  "options":{"activateAfterPromotion":true,"transferGrades":true,"promoteGradeLevels":true}
 }
 ```
 
-Promotion requires an existing active year or returns `403 NO_ACTIVE_YEAR`. It can create and activate the new year, copy grades, and increment copied grade levels. Courses, students, teachers, and guardians are not transferred yet.
-
-### Grades
-
-| Method | Path | Permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/schools/{schoolID}/grades` | `grade.list` | `200 {access, grades}` |
-| `POST` | `/academic-years/{yearID}/grades` | `grade.create` | `201` |
-| `PATCH` | `/grades/{gradeID}` | `grade.update` | `204` |
-| `DELETE` | `/grades/{gradeID}` | `grade.delete` | `204` |
-
-Grade model:
+Promotion requires an active year. It can copy grades, increment their levels, and activate the new year. It does not transfer courses, students, staff, or guardians.
 
 ```json
-{"id":"123","name":"2nd grade","level":2}
+{"name":"Grade {level}","level":7}
 ```
 
-Create and update use the same body:
+Grade create/update requires `{level}` in the template; only the first occurrence is replaced. Template length is 7–32 and level is 0–20.
 
 ```json
-{"name":"{level}nd grade","level":2}
+{"name":"Mathematics","description":"Algebra and geometry","color":"6366F1"}
 ```
 
-The name must contain `{level}`, must be 7–32 characters before substitution, and the level must be 0–20. The first `{level}` is replaced with the decimal level before storage. Validation codes are `MISSING_LEVEL_VAR`, `INVALID_NAME`, and `LEVEL_OUT_OF_RANGE`. A duplicate name/level in the same academic year returns `409`.
+Course name is required and at most 32, description at most 128, and color exactly six characters after optional `#` removal. Hex characters are not validated. Names are case-insensitively unique within a grade.
 
-Deleting a grade cascades to its courses.
+School deletion is soft deletion. If owner 2FA is enabled, deletion returns a `schoolDeletion` challenge; complete it at the shared challenge route. Grade and course deletion follow database cascades and permanently remove dependent data.
 
-### Courses
+### Course roster
 
-| Method | Path | Permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/grades/{gradeID}/courses` | `course.list` | `200 {access, courses}` |
-| `POST` | `/grades/{gradeID}/courses` | `course.create` | `201` |
-| `PATCH` | `/courses/{courseID}` | `course.update` | `204` |
-| `DELETE` | `/courses/{courseID}` | `course.delete` | `204` |
+| Method   | Path                                    | Permission              | Body                  | Success                  |
+|----------|-----------------------------------------|-------------------------|-----------------------|--------------------------|
+| `GET`    | `/v1/staff/courses/{courseID}/students` | `course.student.list`   | None                  | `200 {access, students}` |
+| `POST`   | `/v1/staff/courses/{courseID}/students` | `course.student.assign` | `{"studentId":"123"}` | `201`                    |
+| `DELETE` | `/v1/staff/courses/{courseID}/students` | `course.student.remove` | `{"studentId":"123"}` | `204`                    |
 
-Create and update body:
+The list contains every same-school student with `id`, `name`, `lastName`, `email`, and `assigned`. The selected student must belong to the course's school. Repeated assignment/removal is idempotent at the database layer.
+
+### Course posts and attachments
+
+| Method   | Path                                                | Permission               | Body                 | Success               |
+|----------|-----------------------------------------------------|--------------------------|----------------------|-----------------------|
+| `GET`    | `/v1/staff/courses/{courseID}/posts`                | `course.post.list`       | None                 | `200 {access, posts}` |
+| `POST`   | `/v1/staff/courses/{courseID}/posts`                | `course.post.create`     | `CoursePostMutation` | `201 {id}`            |
+| `GET`    | `/v1/staff/course-posts/{postID}`                   | `course.post.view`       | None                 | `200 {access, posts}` |
+| `PATCH`  | `/v1/staff/course-posts/{postID}`                   | `course.post.update`     | `CoursePostMutation` | `204`                 |
+| `DELETE` | `/v1/staff/course-posts/{postID}`                   | `course.post.delete`     | None                 | `204`                 |
+| `POST`   | `/v1/staff/course-posts/{postID}/upload`            | `post.attachment.create` | `UploadMetadata`     | `200 UploadInit`      |
+| `DELETE` | `/v1/staff/course-posts/attachments/{attachmentID}` | `post.attachment.delete` | None                 | `204`                 |
 
 ```json
 {
-  "name": "Mathematics",
-  "description": "Core mathematics course",
-  "color": "6366F1"
+  "title":"Room changed",
+  "body":"Today's class is in room 204.",
+  "accentColor":"6366F1",
+  "showUntil":"2026-09-10T18:00:00Z"
 }
 ```
 
-Name is 1–32 characters, description is at most 128 characters, and color must contain exactly six characters after trimming an optional leading `#`. Course names are case-insensitively unique within a grade. Conflicts return `409`.
+Title and body are required. Title is at most 32, body at most 2,048, and color exactly six characters. `showUntil` may be `null`. Update sets `editedAt`.
 
-Deleting a course cascades to its posts and student assignments.
+List posts include `attachments`, `id`, `authorName`, nullable `authorProfilePictureURL`, title/body/color, `showUntil`, `editedAt`, and `createdAt`. Single-post output uses a one-element `posts` array and an `author` object with `id`, `name`, and `email`. All nullable post timestamps use the same `null` or RFC 3339 representation.
 
-### Course posts
+Post attachment metadata uses `name`, `declaredSize`, and `declaredContentType`. Limit is 5 MiB. Allowed: JPEG, PNG, GIF, WebP, ZIP, PDF. Complete through `/v1/staff/uploads/{objectID}`.
 
-| Method | Path | Permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/courses/{courseID}/posts` | `course.post.list` | `200 {access, posts}` |
-| `POST` | `/courses/{courseID}/posts` | `course.post.create` | `201` |
-| `PATCH` | `/course-posts/{postID}` | `course.post.update` | `204` |
-| `DELETE` | `/course-posts/{postID}` | `course.post.delete` | `204` |
+### Assignments and staff submission management
 
-Create and update body:
+| Method | Path | Permission | Body | Success |
+| --- | --- | --- | --- | --- |
+| `GET` | `/v1/staff/courses/{courseID}/assignments` | `course.assignment.list` | None | `200 {access, assignments}` |
+| `POST` | `/v1/staff/courses/{courseID}/assignments` | `course.assignment.create` | `AssignmentMutation` | `201` |
+| `PATCH` | `/v1/staff/assignments/{assignmentID}` | `course.assignment.update` | `AssignmentMutation` | `204` |
+| `DELETE` | `/v1/staff/assignments/{assignmentID}` | `course.assignment.delete` | None | Empty `200` currently |
+| `GET` | `/v1/staff/assignments/{assignmentID}/submissions` | `submission.list` | None | `200 {access, submissions}` |
+| `GET` | `/v1/staff/submissions/{submissionID}` | `submission.view` | None | `200 {access, submission}` |
+| `DELETE` | `/v1/staff/submissions/{submissionID}/return` | `submission.return` | None | `204` |
+| `DELETE` | `/v1/staff/submissions/{submissionID}` | `submission.delete` | None | `204` |
+| `POST` | `/v1/staff/submissions/{submissionID}/grade` | `submission.grade` | `SubmissionGrade` | `201` |
+| `DELETE` | `/v1/staff/submissions/{submissionID}/grade` | `submission.removeGrade` | None | `204` |
+
+`AssignmentMutation`:
 
 ```json
 {
-  "title": "Room changed",
-  "body": "Today's class is in room 204.",
-  "accentColor": "6366F1",
-  "showUntil": {"Time":"2026-07-23T16:00:00Z","Valid":true}
+  "referencedPostId":"123",
+  "title":"Chapter review",
+  "description":"Complete the exercises.",
+  "dueDate":"2026-09-10T18:00:00Z",
+  "submissionsEnabled":true,
+  "submissionsCloseAt":"2026-09-12T18:00:00Z"
 }
 ```
 
-Title is 1–32 characters, body is 1–2048 characters, and accent color must contain six characters after trimming an optional `#`. Use `{"Time":"0001-01-01T00:00:00Z","Valid":false}` for no expiry.
+Reference and dates may be `null`. Title is 3–64; description is at most 4,096. On creation, dates cannot be past and close time cannot precede due time. Update intentionally skips those date-order checks. Reference must be in the same school on create and same course on update.
 
-The list response includes the author's display name rather than author ID. Expired posts are not currently filtered by the API; clients decide how to present them.
+Assignment output includes nullable `referencedPost`, all mutation fields, and `createdAt`. Assignment deletion cascades to submissions, attachments, and grades. The current successful delete handler emits implicit empty `200`, not `204`.
 
-### Students
+Submission list includes `submitted` and `returned` rows with submitter identity and nullable notes. View includes completed attachments and nullable grade. Staff attachment fields are `id`, `presignedUrl`, `originalFilename`, and `declaredContentType`.
 
-| Method | Path | Permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/schools/{schoolID}/students` | `student.list` | `200 {access, students}` |
-| `POST` | `/schools/{schoolID}/students` | `student.create` | `201` |
-| `PATCH` | `/students/{studentID}` | `student.update` | `204` |
-| `DELETE` | `/students/{studentID}` | `student.delete` | `204` |
+Returning only accepts `submitted`, removes an existing score, and sets `returned`; otherwise `409`. Deletion only accepts `returned`, removes database storage records, then attempts object deletion.
 
-Create and update body:
+Grading body is `{"score":87,"notes":"Good work."}`. Score is 0–100 and notes at most 2,048. Pending/returned submissions return `409`. Regrading upserts the grader, score, notes, and timestamp. Grade removal is idempotent.
+
+### Students and bulk import
+
+| Method | Path | Permission | Body | Success |
+| --- | --- | --- | --- | --- |
+| `GET` | `/v1/staff/schools/{schoolID}/students` | `student.list` | None | `200 {access, students}` |
+| `POST` | `/v1/staff/schools/{schoolID}/students` | `student.create` | `StudentMutation` | `201` |
+| `POST` | `/v1/staff/schools/{schoolID}/students/import` | `student.create` | `StudentImport` | `201`; empty list is `204` |
+| `GET` | `/v1/staff/students/{studentID}` | `student.view` | None | `200 {access, student, assignmentSubmissions}` |
+| `PATCH` | `/v1/staff/students/{studentID}` | `student.update` | `StudentMutation` | `204` |
+| `DELETE` | `/v1/staff/students/{studentID}` | `student.delete` | None | `204` |
+| `POST` | `/v1/staff/students/{studentID}/profile-picture` | `student.update` | `UploadMetadata` | `200 UploadInit` |
+| `DELETE` | `/v1/staff/students/{studentID}/profile-picture` | `student.update` | None | `204` |
+
+`StudentMutation`:
 
 ```json
 {
-  "name": "Jamie",
-  "lastName": "Rivera",
-  "dob": "2012-05-18",
-  "email": "jamie@example.com",
-  "phone": "+48 123 456 789",
-  "notes": "Optional staff notes",
-  "accountEnabled": true,
-  "password": "at-least-8-characters"
+  "name":"Jamie",
+  "lastName":"Rivera",
+  "dob":"2012-05-18",
+  "email":"jamie@example.com",
+  "phone":"+48 123 456 789",
+  "notes":"Optional internal note",
+  "accountEnabled":true,
+  "password":"at-least-8-characters"
 }
 ```
 
-Rules:
+First/last name are 3–32, email 5–254, phone empty or 3–32, notes at most 2,048, and DOB must parse. Create requires a password when enabled. Update with empty password preserves it; a supplied password must be at least eight characters and deletes the student's portal sessions.
 
-- First and last name: 3–32 characters each.
-- Email: required, lowercased, 5–254 characters, and unique within the school.
-- Date of birth: `YYYY-MM-DD` or `null`.
-- Phone: empty or 3–32 characters.
-- Notes: at most 2048 characters.
-- Enabling an account during creation requires a password.
-- A supplied password must be at least 8 characters.
-- During update, an empty password preserves the existing password hash.
+List entries use `lastName` and include nullable `profilePictureURL`, student data, account state, and creation time. View returns `profilePicture` as `null` or `{presignedUrl}` and submitted assignment history with course, grade, nullable score, time, and notes.
 
-The current list response uses `last_name`, not `lastName`:
+`StudentImport`:
 
 ```json
 {
-  "id": "123",
-  "name": "Jamie",
-  "last_name": "Rivera",
-  "dateOfBirth": "2012-05-18T00:00:00Z",
-  "email": "jamie@example.com",
-  "phone": "+48 123 456 789",
-  "notes": "Optional staff notes",
-  "accountEnabled": true,
-  "createdAt": "2026-07-22T14:30:00Z",
-  "archivedAt": null
+  "students":[
+    {"name":"Jamie","lastName":"Rivera","dateOfBirth":"2012-05-18","email":"jamie@example.com","phone":null,"notes":null}
+  ],
+  "enableAccounts":true
 }
 ```
 
-Delete is permanent and cascades to course assignments.
+Maximum 5,000 rows. Invalid rows return `422` and may include zero-based `invalidRow`. Oversize returns `422 PAYLOAD_TOO_LONG`. Conflicts return `409 {"conflictingEmails":[...]}` with every matching email.
 
-### Course student assignments
+Enabled imports generate 24-hour activation tokens and queue email in `email_queue`; the worker must run to deliver it. Login remains blocked until activation. Student pictures allow JPEG, PNG, WebP, GIF up to 5 MiB. Existing picture returns `409`; removal is idempotent. Complete through the staff upload endpoint.
 
-| Method | Path | Permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/courses/{courseID}/students` | `course.student.list` | `200 {access, students}` |
-| `POST` | `/courses/{courseID}/students` | `course.student.assign` | `201` |
-| `DELETE` | `/courses/{courseID}/students` | `course.student.remove` | `204` |
+Student deletion is permanent and cascades through related sessions and schoolwork.
 
-The list returns every student in the course's school, not only assigned students:
+### Staff members, roles, and invitations
 
-```json
-{
-  "access": {"owner":true,"roles":[]},
-  "students": [
-    {
-      "id": "123",
-      "name": "Jamie",
-      "lastName": "Rivera",
-      "email": "jamie@example.com",
-      "assigned": true
-    }
-  ]
-}
+| Method   | Path                                                      | Permission                              | Body                                               | Success                        |
+|----------|-----------------------------------------------------------|-----------------------------------------|----------------------------------------------------|--------------------------------|
+| `GET`    | `/v1/staff/schools/{schoolID}/staff`                      | `staff.view`                            | None                                               | `200 {access, staff}`          |
+| `DELETE` | `/v1/staff/staff-members/{staffID}`                       | Owner or `staff.delete` plus hierarchy  | None                                               | `204`                          |
+| `GET`    | `/v1/staff/staff-members/{staffID}/roles`                 | `staff.role.list`                       | None                                               | `200 {access, roles}`          |
+| `POST`   | `/v1/staff/staff-members/{staffID}/roles/{roleID}`        | `staff.role.add` plus hierarchy         | None                                               | `204`                          |
+| `DELETE` | `/v1/staff/staff-members/{staffID}/roles/{roleID}`        | `staff.role.remove` plus hierarchy      | None                                               | `204`                          |
+| `GET`    | `/v1/staff/roles/permissions`                             | Staff                                   | None                                               | `200 {permissions}`            |
+| `GET`    | `/v1/staff/schools/{schoolID}/roles`                      | `role.list`                             | None                                               | `200 {roles}`                  |
+| `POST`   | `/v1/staff/schools/{schoolID}/roles`                      | `role.create` plus hierarchy            | `RoleMutation`                                     | `201`                          |
+| `PATCH`  | `/v1/staff/roles/{roleID}`                                | `role.update` plus hierarchy            | `RoleMutation`                                     | `200`                          |
+| `DELETE` | `/v1/staff/roles/{roleID}`                                | `role.delete` plus hierarchy            | None                                               | `204`                          |
+| `PUT`    | `/v1/staff/roles/{roleID}/permissions`                    | `role.permission.update` plus hierarchy | `{"permission":"course.post.create","allow":true}` | `204`                          |
+| `GET`    | `/v1/staff/staff-invitations`                             | Staff                                   | None                                               | `200 {invitations}`            |
+| `GET`    | `/v1/staff/schools/{schoolID}/staff-invitations`          | `school.invite.list`                    | None                                               | `200 {access, invitations}`    |
+| `POST`   | `/v1/staff/schools/{schoolID}/staff/invitations`          | `staff.create`                          | `StaffInvitationCreate`                            | `204`; owner self-add is `201` |
+| `GET`    | `/v1/staff/staff-invitations/{token}`                     | Public token                            | None                                               | `200 {invitation}`             |
+| `POST`   | `/v1/staff/staff-invitations/{token}/accept`              | Intended staff account                  | None                                               | `204`                          |
+| `POST`   | `/v1/staff/staff-invitations/{token}/reject`              | Intended staff account                  | None                                               | `204`                          |
+| `POST`   | `/v1/staff/staff-invitations/by-id/{invitationID}/accept` | Intended staff account                  | None                                               | `204`                          |
+| `POST`   | `/v1/staff/staff-invitations/by-id/{invitationID}/reject` | Intended staff account                  | None                                               | `204`                          |
+| `POST`   | `/v1/staff/staff-invitations/{invitationID}/cancel`       | `school.invite.cancel`                  | None                                               | `204`                          |
+
+Staff list includes membership ID, user ID/summary, inviter summary, creation time, roles, and nullable staff profile-picture URLs. A non-owner cannot delete themselves and must outrank the target's highest role.
+
+`RoleMutation` is `{"name":"Teacher","position":2,"color":"6366F1"}`. Name is required and at most 32; color length is exactly six. Creation position is 0 through role count; update is 0 through count minus one. Reordering shifts surrounding roles. Names are school-unique.
+
+Permission mutation accepts only values returned by `/roles/permissions`; allow/revoke is idempotent.
+
+`StaffInvitationCreate` is `{"email":"teacher@example.com","importance":"high"}`. Accepted importance values are `""` (normal), `"non-urgent"`, `"low"`, `"high"`, and `"urgent"`. Literal `"normal"` is currently rejected because the mail library represents normal importance as an empty string.
+
+Existing staff returns `409 STAFF_MEMBER_EMAIL_CONFLICT`; an invitation within the prior 24 hours returns `409 INVITATION_EMAIL_CONFLICT`; disabled invitations return `403 TARGET_PRIVACY_RESTRICTED`. Inviting the owner's own email creates membership immediately. Normal invitations expire after seven days.
+
+User invitation list returns pending, unexpired invitations addressed to the current email. School list returns pending rows, including expired ones. Public token view returns `410` when expired.
+
+### Audit logs and upload completion
+
+| Method | Path | Permission | Body | Success |
+| --- | --- | --- | --- | --- |
+| `GET` | `/v1/staff/schools/{schoolID}/logs` | `log.list` | None | `200 {access, logs}` |
+| `POST` | `/v1/staff/uploads/{objectID}` | Upload owner | `{"completionToken":"..."}` | `204` |
+
+Logs are restricted to the previous 30 days, with no pagination and no explicit ordering. Each log includes `id`, acting `user`, `action`, `type`, `title`, `message`, `details`, and `createdAt`. Types are `create`, `edit`, `delete`, and `other`. The backend replaces `{user}` with the acting name when storing a log.
+
+The upload endpoint completes staff profile pictures, staff-managed student pictures, and post attachments.
+
+## Portal API
+
+### Authentication and profile
+
+| Method | Path | Account | Body | Success |
+| --- | --- | --- | --- | --- |
+| `POST` | `/v1/portal/auth/login` | Public | `{"email":"student@example.com","password":"password"}` | `200 {token}` |
+| `GET` | `/v1/portal/auth` | Student or guardian | None | `200 {user}` |
+| `DELETE` | `/v1/portal/auth` | Student or guardian | None | `204` |
+| `POST` | `/v1/portal/auth/activate/{token}` | Public token | `{"newPassword":"new-password"}` | `200 {token}` |
+| `PUT` | `/v1/portal/auth/password` | Student or guardian | `{"currentPassword":"old","newPassword":"new-password"}` | `204` |
+| `GET` | `/v1/portal/profile` | Student or guardian | None | `200 {profile}` |
+
+Login email is lowercased and must be 5–254. Unknown, inactive, disabled, or incorrect accounts return `401`.
+
+Token check returns `{"user":{"id":123,"accountType":"student"}}`; this ID is currently a JSON number. Activation tokens are single-use and expire after 24 hours. New passwords require at least eight characters.
+
+Profile contains nullable `pfpUrl`, `name`, `lastName`, `email`, `phone`, `dateOfBirth`, and school `{owner:{name,email},name,region}`. Its picture URL lasts five minutes. The portal profile API is currently read-only.
+
+### Courses, posts, and assignments
+
+| Method | Path | Account | Body | Success |
+| --- | --- | --- | --- | --- |
+| `GET` | `/v1/portal/courses` | Student | None | `200 {courses}` |
+| `GET` | `/v1/portal/courses/{courseID}` | Assigned student | None | `200 {course, posts, assignments}` |
+| `GET` | `/v1/portal/posts/{postID}` | Portal account with course access | None | `200 {post}` |
+| `GET` | `/v1/portal/assignments` | Student | None | `200 {assignments}` |
+| `POST` | `/v1/portal/assignments/{assignmentID}/submissions` | Assigned student | `{"notes":"Optional notes"}` | `201 {submissionId, status}` |
+
+Course list includes assigned courses in the active academic year with grade, name, description, and accent color. Dashboard includes course/grade data, visible posts with authors and completed attachments, assignments, and joined submission attachments.
+
+Dashboard posts exclude expired `show_until` rows. Direct post view does not apply that filter but still requires course access. Direct output includes attachments, author `{id,name,email}`, title/body/color, nullable dates, and creation time.
+
+The global assignment list returns active-year assignments from assigned courses, referenced post content, the student's latest relevant submission, completed attachments, and grade/grader data when present.
+
+Submission creation requires submissions to be enabled and before `submissionsCloseAt`. Notes are at most 2,048. It creates or resumes a `pending` draft. An incompatible existing active submission returns `409`.
+
+Submission statuses:
+
+```text
+pending    Draft; attachments may be added or removed
+submitted  Finalized
+returned   Returned by staff and awaiting replacement/resubmission
 ```
 
-Assign and remove use the same body:
+### Submission uploads and finalization
+
+| Method | Path | Account | Body | Success |
+| --- | --- | --- | --- | --- |
+| `POST` | `/v1/portal/submissions/{submissionID}/attachments` | Draft owner | `PortalUploadMetadata` | `200 UploadInitWithAttachmentId` |
+| `POST` | `/v1/portal/submissions/attachments/{objectID}` | Upload owner | `{"completionToken":"..."}` | `204` |
+| `DELETE` | `/v1/portal/submissions/{submissionID}/attachments/{attachmentID}` | Draft owner | None | `204` |
+| `POST` | `/v1/portal/submissions/{submissionID}/submit` | Draft owner | None | `204` |
+
+`PortalUploadMetadata`:
 
 ```json
-{"studentId":"123"}
+{"fileName":"answer.pdf","declaredSize":1048576,"declaredContentType":"application/pdf"}
 ```
 
-The student must belong to the same school as the course. Both operations are idempotent at the database level: assigning an existing assignment or removing a missing assignment still returns success and does not create a duplicate audit log.
+Maximum size is 50 MiB. Allowed types:
 
-### Roles and role permissions
+- JPEG, PNG, GIF, WebP;
+- ZIP, gzip, and 7-Zip;
+- PDF;
+- DOC and DOCX;
+- MP4 audio, WAV, MPEG audio;
+- MPEG and WebM video.
 
-| Method | Path | Permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/roles/permissions` | Authenticated user | `200 {"permissions": string[]}` |
-| `GET` | `/schools/{schoolID}/roles` | `role.list` | `200 {"roles": Role[]}` |
-| `POST` | `/schools/{schoolID}/roles` | `role.create` + hierarchy | `201` |
-| `PATCH` | `/roles/{roleID}` | `role.update` + hierarchy | `200` |
-| `DELETE` | `/roles/{roleID}` | `role.delete` + hierarchy | `204` |
-| `PUT` | `/roles/{roleID}/permissions` | `role.permission.update` + hierarchy | `204` |
+Attachment changes require ownership, current course access, and `pending` status. Initialization also requires submissions to remain open. Missing attachment pair returns `404`, ownership/access mismatch `403`, and non-pending state `409`.
 
-Role model:
+Finalization rejects closed submissions and incomplete uploads. Repeating finalization after the same row is submitted returns idempotent `204`. Successful resubmission deletes the older returned row for that student and assignment.
 
-```json
-{
-  "id": "123",
-  "position": 1,
-  "name": "Teacher",
-  "color": "6366F1",
-  "createdAt": "2026-07-22T14:30:00Z",
-  "permissions": ["course.list","course.post.list"]
-}
-```
-
-Create/update body:
-
-```json
-{"name":"Teacher","position":1,"color":"6366F1"}
-```
-
-Names are 1–32 characters and unique per school. Colors are exactly six characters. Positions are contiguous. Creating at an occupied position or moving a role automatically shifts other roles. Create accepts positions from `0` through the current role count; update accepts an existing position.
-
-Set or revoke a permission:
-
-```json
-{"permission":"course.post.create","allow":true}
-```
-
-Unknown permission strings return `422`.
-
-### Staff and staff roles
-
-| Method | Path | Permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/schools/{schoolID}/staff` | `staff_helpers.view` | `200 {access, staff}` |
-| `DELETE` | `/staff-members/{staffID}` | Owner or `staff_helpers.delete` + hierarchy | `204` |
-| `GET` | `/staff-members/{staffID}/roles` | `staff_helpers.role.list` | `200 {access, roles}` |
-| `POST` | `/staff-members/{staffID}/roles/{roleID}` | `staff_helpers.role.add` + hierarchy | `204` |
-| `DELETE` | `/staff-members/{staffID}/roles/{roleID}` | `staff_helpers.role.remove` + hierarchy | `204` |
-
-Staff list entries contain the staff membership ID, user, inviter, creation time, and assigned roles:
-
-```json
-{
-  "id": "123",
-  "userId": "456",
-  "user": {"id":"456","name":"Taylor Morgan","email":"taylor@example.com"},
-  "addedBy": {"id":"789","name":"School Owner","email":"owner@example.com"},
-  "createdAt": "2026-07-22T14:30:00Z",
-  "roles": [{"id":"321","position":1,"name":"Teacher","color":"6366F1"}]
-}
-```
-
-Non-owners cannot remove themselves through the staff-delete endpoint and can remove only staff whose highest role is below their own qualifying role. Staff can leave themselves through the school leave endpoint.
-
-Role assignment/removal has no body. The staff member and role must belong to the same school.
-
-### Staff invitations
-
-| Method | Path | Auth/permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/staff-invitations` | Authenticated user | `200 {"invitations": Invitation[]}` |
-| `GET` | `/schools/{schoolID}/staff-invitations` | `school.invite.list` | `200 {access, invitations}` |
-| `POST` | `/schools/{schoolID}/staff/invitations` | `staff_helpers.create` | `204` |
-| `GET` | `/staff-invitations/{token}` | Public token | `200 {"invitation": InvitationPreview}` |
-| `POST` | `/staff-invitations/{token}/accept` | Intended authenticated user | `204` |
-| `POST` | `/staff-invitations/{token}/reject` | Intended authenticated user | `204` |
-| `POST` | `/staff-invitations/by-id/{invitationID}/accept` | Intended authenticated user | `204` |
-| `POST` | `/staff-invitations/by-id/{invitationID}/reject` | Intended authenticated user | `204` |
-| `POST` | `/staff-invitations/{invitationID}/cancel` | `school.invite.cancel` | `204` |
-
-Send invitation:
-
-```json
-{"email":"person@example.com","importance":"normal"}
-```
-
-Valid importance values are `non-urgent`, `low`, `normal`, `high`, and `urgent`. Invitations expire after seven days. A second invitation to the same school/email within 24 hours returns `409 INVITATION_EMAIL_CONFLICT`; inviting an existing member returns `409 STAFF_MEMBER_EMAIL_CONFLICT`.
-
-If the target already has an EduLink account and disabled staff invitations, the endpoint returns `403 TARGET_PRIVACY_RESTRICTED`.
-
-The authenticated user's invitation list contains only unexpired pending invitations addressed to their current email:
-
-```json
-{
-  "id": "123",
-  "school": {"id":"456","name":"Example School","regionCode":"PL"},
-  "sentBy": {"id":"789","name":"School Owner","email":"owner@example.com"},
-  "status": "pending",
-  "createdAt": "2026-07-22T14:30:00Z",
-  "expiresAt": "2026-07-29T14:30:00Z"
-}
-```
-
-The school invitation list calls the sender property `addedBy` and includes `userEmail`.
-
-The public token preview includes `sentToEmail`, `schoolName`, `sentByName`, `sentByEmail`, `status`, `createdAt`, and `expiresAt`. An expired link returns `410`; an unknown link returns `404 INVALID_TOKEN`.
-
-Accepting requires the logged-in user's email to match the invitation email. Acceptance creates a school staff membership but does not automatically assign a role.
-
-### Audit logs
-
-| Method | Path | Permission | Success |
-| --- | --- | --- | --- |
-| `GET` | `/schools/{schoolID}/logs` | `log.list` | `200 {access, logs}` |
-
-Only logs from the previous 30 days are returned. There is currently no API-side pagination or explicit ordering.
-
-```json
-{
-  "id": "123",
-  "user": {"id":"456","name":"Taylor Morgan","email":"taylor@example.com"},
-  "action": "course.student.assign",
-  "type": "create",
-  "title": "Course student assigned.",
-  "message": "A student was assigned to the course Mathematics.",
-  "details": "Taylor Morgan assigned Jamie to the course Mathematics.",
-  "createdAt": "2026-07-22T14:30:00Z"
-}
-```
-
-Current log types are `create`, `edit`, `delete`, and `other`. Treat `action`, `title`, `message`, and `details` as server-provided data. If localization is added later, prefer rendering localized strings from stable `action` values and structured details instead of translating arbitrary English text.
+Portal assignment attachment output contains `id`, `fileName`, `fileSize`, `contentType`, and `presignedUrl`.
 
 ## Error codes
 
-| Code | Typical status | Meaning |
-| --- | --- | --- |
-| `INVALID_TOKEN` | `401` or `404` | Session, registration, verification, reset, or invitation token is invalid |
-| `INVALID_EMAIL` | `422` | Email failed validation |
-| `NO_TOKEN` | `401` or `422` | Required token was omitted |
-| `INCORRECT_PASSWORD` | `401` | Current password did not match |
-| `INVALID_REGION_CODE` | `422` | School region is not a valid country region |
-| `INVALID_NAME` | `422` | School or grade name failed validation |
-| `INVALID_MAIL_IMPORTANCE` | `422` | Invitation email importance is unsupported |
-| `INVITATION_EMAIL_CONFLICT` | `409` | A recent invitation already exists |
-| `STAFF_MEMBER_EMAIL_CONFLICT` | `409` | The invited email is already school staff |
-| `ACADEMIC_YEAR_CONFLICT` | `409` | The same academic-year range already exists |
-| `MISSING_LEVEL_VAR` | `422` | Grade name template does not include `{level}` |
-| `LEVEL_OUT_OF_RANGE` | `422` | Grade level is outside 0–20 |
-| `NO_ACTIVE_YEAR` | `403` | School promotion was requested without an active year |
-| `TARGET_PRIVACY_RESTRICTED` | `403` | Invitation target disabled staff invitations |
+| Code                          | Typical status | Meaning                                      |
+|-------------------------------|----------------|----------------------------------------------|
+| `INVALID_TOKEN`               | `401`          | Session or workflow token is invalid         |
+| `INVALID_RECOVERY_CODE`       | `404`          | Staff recovery code is invalid               |
+| `EXPIRED_TOKEN`               | `401`          | Challenge or portal activation token expired |
+| `INVALID_EMAIL`               | `422`          | Email validation failed                      |
+| `NO_TOKEN`                    | `401`          | Required bearer/path token is missing        |
+| `INCORRECT_PASSWORD`          | `401`          | Current password failed on email change      |
+| `INVALID_REGION_CODE`         | `422`          | Region is not a country region               |
+| `INVALID_NAME`                | `422`          | School or grade name failed validation       |
+| `INVALID_MAIL_IMPORTANCE`     | `422`          | Invitation importance is unsupported         |
+| `INVITATION_EMAIL_CONFLICT`   | `409`          | Recent invitation already exists             |
+| `STAFF_MEMBER_EMAIL_CONFLICT` | `409`          | Email already belongs to school staff        |
+| `ACADEMIC_YEAR_CONFLICT`      | `409`          | Academic-year range already exists           |
+| `MISSING_LEVEL_VAR`           | `422`          | Grade template lacks `{level}`               |
+| `LEVEL_OUT_OF_RANGE`          | `422`          | Grade level is outside 0–20                  |
+| `NO_ACTIVE_YEAR`              | `403`          | Promotion requires an active year            |
+| `TARGET_PRIVACY_RESTRICTED`   | `403`          | Target disabled staff invitations            |
+| `PAYLOAD_TOO_LONG`            | `422`          | Bulk import exceeds 5,000 rows               |
 
-## Operational and deployment notes
+Not every response with one of these statuses includes a code.
 
-### Reverse proxy and TLS
+## Operational and security notes
 
-The Go server uses plain HTTP. Terminate HTTPS at a trusted reverse proxy or platform load balancer. Preserve the intended client IP header carefully; login records `X-Forwarded-For` when present.
+- Terminate TLS at a trusted reverse proxy; the Go server itself uses HTTP.
+- Do not trust forwarding headers from arbitrary clients. Staff login stores any non-empty `X-Forwarded-For`; portal login stores it only when it parses as one IP. Chi's optional trust setting uses `CF-Connecting-IP`.
+- Keep the object bucket private and grant least-privilege credentials.
+- Configure bucket CORS only as required for presigned operations, restricted by origin, method, and header.
+- Add file-signature validation and malware scanning before considering uploads trusted.
+- Add edge rate limits for login, registration, reset, activation, invitation, and 2FA routes.
+- Keep bearer, activation, reset, invitation, upload completion, challenge, and recovery tokens out of logs.
+- Monitor API, worker, and SMTP logs. Direct email failures are logged and frequently do not change the response.
+- Back up PostgreSQL before migrations and destructive operations.
+- School deletion is soft. Grade, course, assignment, student, and returned-submission deletion can cascade permanently.
 
-### Email
+The queue worker claims up to 100 due messages, retries with exponential backoff capped at 64 minutes, and marks a message failed after its maximum retries. The helper defaults `max_retries` to one when omitted.
 
-SMTP port `587` is currently hardcoded. Confirm that the SMTP provider supports authenticated submission on that port. Registration, password-reset, invitation, password-change, and successful email-change flows depend on mail delivery.
+## Current backend limitations
 
-### Security checklist
-
-- Use HTTPS for both frontend and API.
-- Use a restricted production PostgreSQL account and an SSL-enabled connection.
-- Keep `API_URL`, database credentials, SMTP credentials, and the Turnstile secret server-side.
-- Set a unique `MACHINE_ID` for each API replica.
-- Add edge/application rate limits for login and email-producing endpoints.
-- Restrict CORS if direct browser API access is introduced.
-- Monitor API and SMTP logs; asynchronous mail failures do not always change the HTTP response.
-- Back up PostgreSQL before migrations and destructive school/student operations.
-
-### Current API caveats
-
-- Student and guardian route groups are placeholders only.
-- The frontend contains a resend-verification action for `POST /v1/staff/auth/verifications`, but the Go API does not currently mount that endpoint. Login also does not currently return the `403` state that exposes this flow.
-- Audit-log pagination is frontend-only, and the API returns up to 30 days in one response.
-- Course post nullable times use the verbose `sql.NullTime` JSON object.
-- Empty lists may be `null`.
-- Student list responses use `last_name`, while course roster responses use `lastName`.
-- Course-post expiry is stored and returned but not filtered out by the list query.
-- The API has no built-in CORS or rate-limiting middleware.
-- The bundled migration executable is an ARM64 macOS binary and has no source code in this repository.
+- Guardian-specific course, assignment, and relationship workflows are not implemented.
+- There is no API pagination for lists.
+- Logs cover 30 days but have no explicit ordering.
+- Empty slices may encode as `null`.
+- Staff post listing does not filter expired posts; portal dashboard listing does.
+- Assignment update skips creation-time date-order validation.
+- SMTP port is fixed at 587 and `S3_REGION` is unused.

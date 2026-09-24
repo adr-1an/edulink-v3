@@ -318,7 +318,7 @@ func (h *Handler) ViewInvitationHandler(w http.ResponseWriter, r *http.Request) 
 			&inv.ExpiresAt,
 		); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code": staff_helpers.ErrorCodeInvalidToken,
 			})
@@ -406,6 +406,8 @@ func (h *Handler) SendStaffInvitationHandler(w http.ResponseWriter, r *http.Requ
 		importance = mail.ImportanceNonUrgent
 	case mail.ImportanceUrgent.String():
 		importance = mail.ImportanceUrgent
+	case "normal":
+		importance = mail.ImportanceNormal
 	default:
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -641,7 +643,7 @@ func (h *Handler) AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Re
 		FOR UPDATE
 	`, tokenHash).Scan(&inv.SchoolID, &inv.UserEmail, &inv.SentByUser); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code": staff_helpers.ErrorCodeInvalidToken,
 			})
@@ -763,7 +765,7 @@ func (h *Handler) RejectStaffInvitationHandler(w http.ResponseWriter, r *http.Re
 		FOR UPDATE
 	`, tokenHash).Scan(&invUserID, &schoolID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code": staff_helpers.ErrorCodeInvalidToken,
 			})
@@ -858,7 +860,7 @@ func (h *Handler) AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *htt
 		FOR UPDATE
 	`, invitationID, userID).Scan(&inv.SchoolID, &inv.SentByUser); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code": staff_helpers.ErrorCodeInvalidToken,
 			})
@@ -968,7 +970,7 @@ func (h *Handler) RejectStaffInvitationByIDHandler(w http.ResponseWriter, r *htt
 		FOR UPDATE
 	`, invitationID).Scan(&invUserID, &schoolID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code": staff_helpers.ErrorCodeInvalidToken,
 			})
