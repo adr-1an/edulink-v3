@@ -55,6 +55,11 @@ const polishPermissionLabels: Record<string, string> = {
     "student.create": "Tworzenie uczniów",
     "student.update": "Edycja uczniów",
     "student.delete": "Usuwanie uczniów",
+    "guardian.list": "Wyświetlanie opiekunów",
+    "guardian.view": "Otwieranie profili opiekunów",
+    "guardian.create": "Tworzenie opiekunów",
+    "guardian.update": "Edycja opiekunów",
+    "guardian.delete": "Usuwanie opiekunów",
     "log.list": "Wyświetlanie dziennika audytu",
 }
 
@@ -72,6 +77,7 @@ const polishCategories: Record<string, string> = {
     assignmentSubmissions: "Przesłane zadania",
     courseStudents: "Uczniowie kursów",
     student: "Uczniowie",
+    guardian: "Opiekunowie",
     log: "Dziennik audytu",
 }
 

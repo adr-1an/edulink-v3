@@ -72,6 +72,12 @@ const (
 	PermissionStudentDelete Permission = "student.delete"
 	PermissionStudentView   Permission = "student.view"
 
+	PermissionGuardianCreate Permission = "guardian.create"
+	PermissionGuardianList   Permission = "guardian.list"
+	PermissionGuardianUpdate Permission = "guardian.update"
+	PermissionGuardianDelete Permission = "guardian.delete"
+	PermissionGuardianView   Permission = "guardian.view"
+
 	PermissionCourseStudentAssign Permission = "course.student.assign"
 	PermissionCourseStudentRemove Permission = "course.student.remove"
 	PermissionCourseStudentList   Permission = "course.student.list"
@@ -145,6 +151,12 @@ var ValidPermissions = map[Permission]struct{}{
 	PermissionStudentUpdate: {},
 	PermissionStudentDelete: {},
 	PermissionStudentView:   {},
+
+	PermissionGuardianCreate: {},
+	PermissionGuardianList:   {},
+	PermissionGuardianUpdate: {},
+	PermissionGuardianDelete: {},
+	PermissionGuardianView:   {},
 
 	PermissionCourseStudentAssign: {},
 	PermissionCourseStudentRemove: {},

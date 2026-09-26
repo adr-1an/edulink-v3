@@ -17,7 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type payload struct {
+type assignmentsPayload struct {
 	RefPostID          *string    `json:"referencedPostId"`
 	Title              string     `json:"title"`
 	Description        string     `json:"description"`
@@ -26,14 +26,14 @@ type payload struct {
 	SubmissionsCloseAt *time.Time `json:"submissionsCloseAt"`
 }
 
-func parseAssignmentPayload(p payload) payload {
+func parseAssignmentPayload(p assignmentsPayload) assignmentsPayload {
 	p.Title = strings.TrimSpace(p.Title)
 	p.Description = strings.TrimSpace(p.Description)
 
 	return p
 }
 
-func validateAssignmentPayload(p payload, editing bool) error {
+func validateAssignmentPayload(p assignmentsPayload, editing bool) error {
 	if len(p.Title) < 3 || len(p.Title) > 64 {
 		return errors.New("invalid title")
 	}
@@ -150,7 +150,7 @@ func (h *Handler) CreateAssignmentHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	var p payload
+	var p assignmentsPayload
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&p); err != nil {
@@ -393,7 +393,7 @@ func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	var p payload
+	var p assignmentsPayload
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&p); err != nil {

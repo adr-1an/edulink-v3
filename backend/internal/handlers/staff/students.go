@@ -172,6 +172,7 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		passHash = &hash
 	}
 
+	activateAcc := p.AccountEnabled && p.Password != ""
 	res, err := tx.ExecContext(ctx, `
 		INSERT INTO portal_users (
 			id,
@@ -183,10 +184,11 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 			phone,
 			notes,
 			account_enabled,
+		  	account_active,
 			password_hash,
 			account_type
 			)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	`,
 		id,
 		schoolID,
@@ -197,6 +199,7 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		p.Phone,
 		p.Notes,
 		p.AccountEnabled,
+		activateAcc,
 		passHash,
 		helpers2.AccTypeStudent,
 	)
@@ -296,7 +299,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		name     string
-		lastname string
+		lastName string
 		email    string
 	)
 	if err := h.DB.QueryRowContext(ctx, `
@@ -305,7 +308,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1
 		AND school_id = $2
 		AND account_type = $3
-	`, studentID, schoolID, helpers2.AccTypeStudent).Scan(&name, &lastname, &email); err != nil {
+	`, studentID, schoolID, helpers2.AccTypeStudent).Scan(&name, &lastName, &email); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -358,7 +361,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 
 	details := fmt.Sprintf(
 		"{user} updated the student %s %s <%s> to %s %s <%s>.",
-		name, lastname, email, p.Name, p.LastName, p.Email)
+		name, lastName, email, p.Name, p.LastName, p.Email)
 	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStudentEdit, schools.TypeEdit, "Student updated", "{user} updated a student.", tx, ctx, h.Sf, details); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -461,16 +464,16 @@ func (h *Handler) ListStudentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type student struct {
-		ID                string    `json:"id"`
-		Name              string    `json:"name"`
-		LastName          string    `json:"lastName"`
-		ProfilePictureURL *string   `json:"profilePictureURL"`
-		DoB               *string   `json:"dateOfBirth"`
-		Email             *string   `json:"email"`
-		Phone             *string   `json:"phone"`
-		Notes             *string   `json:"notes"`
-		AccountEnabled    bool      `json:"accountEnabled"`
-		CreatedAt         time.Time `json:"createdAt"`
+		ID                string     `json:"id"`
+		Name              string     `json:"name"`
+		LastName          string     `json:"lastName"`
+		ProfilePictureURL *string    `json:"profilePictureURL"`
+		DoB               *time.Time `json:"dateOfBirth"`
+		Email             *string    `json:"email"`
+		Phone             *string    `json:"phone"`
+		Notes             *string    `json:"notes"`
+		AccountEnabled    bool       `json:"accountEnabled"`
+		CreatedAt         time.Time  `json:"createdAt"`
 	}
 	var studentList []student
 

@@ -44,7 +44,10 @@ export default function PortalShell({accountType, children}: {
             {label: t("portal.assignments"), href: `${home}/assignments`, icon: ClipboardList},
             {label: t("common.profile"), href: `${home}/profile`, icon: UserRound},
         ]
-        : [{label: t("portal.overview"), href: home, icon: GraduationCap}]
+        : [
+            {label: t("portal.overview"), href: home, icon: GraduationCap},
+            {label: t("common.profile"), href: `${home}/profile`, icon: UserRound},
+        ]
 
     function isActive(href: string) {
         if (href === home) {

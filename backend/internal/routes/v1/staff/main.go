@@ -34,7 +34,7 @@ func MainStaffRoutes(h *staff.Handler) chi.Router {
 	r.Mount("/courses", CourseRoutes(h))
 
 	// Staff member routes
-	r.Mount("/staff-members", StaffMemberRoutes(h))
+	r.Mount("/staff-members", UserStaffMemberRoutes(h))
 
 	// Course post routes
 	r.Mount("/course-posts", PostRoutes(h))
@@ -50,6 +50,9 @@ func MainStaffRoutes(h *staff.Handler) chi.Router {
 
 	// Submissions
 	r.Mount("/submissions", SubmissionRoutes(h))
+
+	// Guardian routes
+	r.Mount("/guardians", GuardianRoutes(h))
 
 	return r
 }

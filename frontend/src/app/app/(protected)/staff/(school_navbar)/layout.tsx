@@ -4,7 +4,7 @@ import React, {useEffect, useMemo, useState, useSyncExternalStore} from "react"
 import Link from "next/link"
 import {useParams, usePathname} from "next/navigation"
 import {
-    ArrowLeft, GraduationCap, LayoutDashboard, Menu, ScrollText, Settings, ShieldCheck, Users,
+    ArrowLeft, GraduationCap, LayoutDashboard, Menu, ScrollText, Settings, ShieldCheck, Users, UsersRound,
     type LucideIcon,
 } from "lucide-react"
 import {Button} from "@/components/ui/button"
@@ -96,6 +96,7 @@ export default function Layout({children}: {children: React.ReactNode}) {
 
     const canViewStaff = hasSchoolPermission(access, "staff.view")
     const canViewStudents = hasSchoolPermission(access, "student.list")
+    const canViewGuardians = hasSchoolPermission(access, "guardian.list")
     const canViewRoles = hasSchoolPermission(access, "role.list")
     const canViewSettings = hasSchoolPermission(access, "school.view")
     const canViewLogs = pathname.includes("/logs") || hasSchoolPermission(access, "log.list")
@@ -119,6 +120,12 @@ export default function Layout({children}: {children: React.ReactNode}) {
                 icon: GraduationCap,
                 active: pathname.startsWith(`/app/staff/schools/${schoolID}/students`)
                     || pathname.startsWith("/app/staff/students/"),
+            }] : []),
+            ...(canViewGuardians ? [{
+                label: t("navigation.guardians"),
+                href: `/app/staff/schools/${schoolID}/guardians`,
+                icon: UsersRound,
+                active: pathname.startsWith(`/app/staff/schools/${schoolID}/guardians`),
             }] : []),
             ...(canViewRoles ? [{
                 label: t("navigation.roles"),

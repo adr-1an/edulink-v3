@@ -21,7 +21,7 @@ func SchoolStaffMemberRoutes(h *staffhandlers.Handler) chi.Router {
 	return r
 }
 
-func StaffMemberRoutes(h *staffhandlers.Handler) chi.Router {
+func UserStaffMemberRoutes(h *staffhandlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{staffID}", func(r chi.Router) {

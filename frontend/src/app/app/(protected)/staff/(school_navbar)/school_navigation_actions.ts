@@ -21,6 +21,7 @@ export async function getSchoolNavigationAccess(schoolID: string): Promise<Schoo
         `/v1/staff/schools/${schoolID}/academic-years`,
         `/v1/staff/schools/${schoolID}/staff`,
         `/v1/staff/schools/${schoolID}/students`,
+        `/v1/staff/schools/${schoolID}/guardians`,
         `/v1/staff/schools/${schoolID}/roles`,
     ]
 

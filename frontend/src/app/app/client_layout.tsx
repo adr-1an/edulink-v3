@@ -44,15 +44,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 </div>
 
                 <Card className="w-full rounded-none border-x-0 border-b-0 bg-transparent text-center">
-                    <CardContent className="pt-4">
-                        <CardDescription>
-                            <Button variant="link">
-                                <Link href="https://adr-ian.dev" target="_blank">
-                                    {t("footer.madeBy")}
-                                </Link>
-                            </Button>
-                        </CardDescription>
-                    </CardContent>
                     <CardFooter className="flex flex-wrap justify-center gap-1 pb-6">
                         <Button variant="link">
                             <Link href={"/"} target="_blank">{t("common.homepage")}</Link>

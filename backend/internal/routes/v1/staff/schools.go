@@ -58,6 +58,9 @@ func SchoolRoutes(h *staffhandlers.Handler) chi.Router {
 
 		// Students
 		r.Mount("/students", SchoolStudentRoutes(h))
+
+		// Guardians
+		r.Mount("/guardians", SchoolGuardianRoutes(h))
 	})
 
 	return r

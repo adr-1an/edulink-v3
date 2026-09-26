@@ -1,7 +1,6 @@
 import {HeartHandshake} from "lucide-react"
 import {Card, CardContent} from "@/components/ui/card"
 import {getTranslations} from "@/i18n/server"
-import PasswordUpdateCard from "../password_update_card"
 
 export async function generateMetadata() {
     const {t} = await getTranslations()
@@ -11,7 +10,7 @@ export async function generateMetadata() {
 export default async function Page() {
     const {t} = await getTranslations()
     return (
-        <div className="mx-auto max-w-2xl space-y-6 py-10 sm:py-16">
+        <div className="mx-auto max-w-2xl py-10 sm:py-16">
             <Card>
                 <CardContent className="flex flex-col items-center px-6 py-14 text-center">
                     <span className="mb-5 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><HeartHandshake className="size-7" /></span>
@@ -19,7 +18,6 @@ export default async function Page() {
                     <p className="mt-2 max-w-md text-muted-foreground">{t("portal.guardian.description")}</p>
                 </CardContent>
             </Card>
-            <PasswordUpdateCard />
         </div>
     )
 }

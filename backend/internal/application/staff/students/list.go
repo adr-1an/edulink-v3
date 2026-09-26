@@ -18,7 +18,7 @@ type student struct {
 	Name              string
 	LastName          string
 	ProfilePictureURL *string
-	DoB               *string
+	DoB               *time.Time
 	Email             *string
 	Phone             *string
 	Notes             *string

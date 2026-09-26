@@ -106,6 +106,11 @@ const permissionLabels: Record<string, string> = {
     "student.create": "Create students",
     "student.update": "Edit students",
     "student.delete": "Delete students",
+    "guardian.list": "View guardians",
+    "guardian.view": "View guardian profiles",
+    "guardian.create": "Create guardians",
+    "guardian.update": "Edit guardians",
+    "guardian.delete": "Delete guardians",
     "log.list": "View audit logs",
 }
 
@@ -164,6 +169,11 @@ const permissionDescriptions: Record<string, string> = {
     "student.create": "Can add new students to this school.",
     "student.update": "Can edit student details and login access.",
     "student.delete": "Can permanently delete students.",
+    "guardian.list": "Can view guardians in this school.",
+    "guardian.view": "Can open individual guardian profiles and view their full details.",
+    "guardian.create": "Can add new guardians to this school.",
+    "guardian.update": "Can edit guardian details and portal access.",
+    "guardian.delete": "Can permanently delete guardians.",
     "log.list": "Can view this school's audit logs.",
 }
 
@@ -181,6 +191,7 @@ const permissionCategoryLabels: Record<string, string> = {
     assignmentSubmissions: "Assignment submissions",
     courseStudents: "Course students",
     student: "Students",
+    guardian: "Guardians",
     log: "Logs",
 }
 

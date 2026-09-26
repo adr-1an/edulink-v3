@@ -12,7 +12,6 @@ import (
 	"log"
 	"net/http"
 	"net/netip"
-	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
@@ -23,14 +22,6 @@ import (
 type payload struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
-}
-
-func validatePayload(p payload) error {
-	if p.Email == "" || len(p.Email) < 5 || len(p.Email) > 254 {
-		return errors.New("invalid payload")
-	}
-
-	return nil
 }
 
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -44,53 +35,24 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p.Email = strings.TrimSpace(strings.ToLower(p.Email))
-
-	if err := validatePayload(p); err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	var userID int64
-	var passwordHash string
-	var loginAllowed bool
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT id, COALESCE(password_hash, ''), account_enabled
-		FROM portal_users
-		WHERE email = $1 AND account_active = true
-	`, p.Email).Scan(&userID, &passwordHash, &loginAllowed); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	res, err := h.App.Portal.Auth.Login(ctx, &auth.LoginInput{
+		Email:    p.Email,
+		Password: p.Password,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, auth.ErrUnauthorized):
 			w.WriteHeader(http.StatusUnauthorized)
-		} else {
-			log.Println(err)
+		case errors.Is(err, auth.ErrUnprocessableEntity):
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return
 	}
 
-	if !loginAllowed {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	match, err := argon2id.ComparePasswordAndHash(p.Password, passwordHash)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if !match {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	CompleteLogin(completeLoginPayload{
-		W:      w,
-		R:      r,
-		DB:     h.DB,
-		Ctx:    ctx,
-		UserID: userID,
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"token": res.Token,
 	})
 }
 
