@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 export const Select: typeof SelectPrimitive.Root = SelectPrimitive.Root;
 
 export const selectTriggerVariants = cva(
-  "relative inline-flex min-h-11 w-full min-w-36 select-none items-center justify-between gap-2 rounded-xl border border-input bg-background px-3 text-left text-base text-foreground shadow-none outline-none ring-ring/20 transition-[border-color,box-shadow,background-color] pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 focus-visible:border-ring focus-visible:ring-[3px] aria-invalid:border-destructive/50 focus-visible:aria-invalid:border-destructive focus-visible:aria-invalid:ring-destructive/15 data-disabled:pointer-events-none data-disabled:bg-muted/50 data-disabled:opacity-60 sm:min-h-9 sm:text-sm [&_svg:not([class*='opacity-'])]:opacity-70 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "relative inline-flex min-h-11 w-full min-w-36 select-none items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-base text-foreground shadow-none outline-none ring-ring/20 transition-[border-color,box-shadow,background-color] pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 focus-visible:border-ring focus-visible:ring-[3px] aria-invalid:border-destructive/50 focus-visible:aria-invalid:border-destructive focus-visible:aria-invalid:ring-destructive/15 data-disabled:pointer-events-none data-disabled:bg-muted/50 data-disabled:opacity-60 sm:min-h-9 sm:text-sm [&_svg:not([class*='opacity-'])]:opacity-70 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     defaultVariants: {
       size: "default",
@@ -147,7 +147,7 @@ export function SelectPopup({
           >
             <ChevronUpIcon className="relative size-4.5 sm:size-4" />
           </SelectPrimitive.ScrollUpArrow>
-          <div className="relative h-full min-w-(--anchor-width) rounded-xl border bg-popover shadow-lg shadow-black/8">
+          <div className="liquid-glass relative h-full min-w-(--anchor-width) rounded-lg border">
             <SelectPrimitive.List
               className={cn(
                 "max-h-(--available-height) overflow-y-auto p-1",
@@ -178,7 +178,7 @@ export function SelectItem({
   return (
     <SelectPrimitive.Item
       className={cn(
-        "grid min-h-10 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default grid-cols-[1rem_1fr] items-center gap-2 rounded-lg py-1.5 ps-2 pe-4 text-base outline-none data-disabled:pointer-events-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-50 sm:min-h-8 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "grid min-h-10 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default grid-cols-[1rem_1fr] items-center gap-2 rounded-md py-1.5 ps-2 pe-4 text-base outline-none data-disabled:pointer-events-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-50 sm:min-h-8 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
       )}
       data-slot="select-item"

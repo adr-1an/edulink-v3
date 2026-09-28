@@ -9,8 +9,8 @@ export default function LandingPage() {
     const {t} = useLocale()
 
     return (
-        <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
-            <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-xl saturate-150">
+        <div className="min-h-screen bg-card text-foreground selection:bg-primary/20">
+            <header className="sticky top-0 z-50 border-b border-border bg-card/90 backdrop-blur-xl saturate-150">
                 <nav className="mx-auto flex h-12 max-w-5xl items-center justify-between gap-2 px-4 sm:px-6" aria-label={t("landing.navigationLabel")}>
                     <Link className="shrink-0 text-sm font-semibold tracking-[-0.02em] max-[390px]:hidden" href="/">EduLink</Link>
 
@@ -33,7 +33,7 @@ export default function LandingPage() {
             </header>
 
             <main>
-                <section>
+                <section className="bg-card">
                     <div className="mx-auto flex min-h-[calc(100svh-3rem)] max-w-6xl items-center justify-center px-5 py-24 sm:px-6 sm:py-32">
                         <div className="max-w-5xl text-center">
                             <p className="text-lg font-semibold tracking-[-0.02em] sm:text-xl">{t("landing.eyebrow")}</p>
@@ -56,7 +56,7 @@ export default function LandingPage() {
                     </div>
                 </section>
 
-                <section className="bg-muted">
+                <section className="bg-background">
                     <div className="mx-auto max-w-6xl px-5 py-24 sm:px-6 sm:py-32 lg:py-40">
                         <div className="mx-auto max-w-4xl text-center">
                             <p className="text-sm font-semibold text-muted-foreground">{t("landing.overviewEyebrow")}</p>
@@ -71,7 +71,7 @@ export default function LandingPage() {
                     </div>
                 </section>
 
-                <section>
+                <section className="bg-card">
                     <div className="mx-auto max-w-6xl px-5 py-24 sm:px-6 sm:py-32 lg:py-40">
                         <div className="mx-auto max-w-4xl text-center">
                             <p className="text-sm font-semibold text-muted-foreground">{t("landing.spacesEyebrow")}</p>
@@ -95,7 +95,7 @@ export default function LandingPage() {
                     </div>
                 </section>
 
-                <section className="bg-muted px-5 py-24 sm:px-6 sm:py-32">
+                <section className="bg-background px-5 py-24 sm:px-6 sm:py-32">
                     <div className="mx-auto max-w-4xl text-center">
                         <div>
                             <h2 className="text-balance text-4xl font-semibold tracking-[-0.05em] sm:text-5xl">{t("landing.ctaTitle")}</h2>
@@ -108,7 +108,7 @@ export default function LandingPage() {
                 </section>
             </main>
 
-            <footer className="bg-muted px-5 pb-7 pt-0 sm:px-6">
+            <footer className="bg-background px-5 pb-7 pt-0 sm:px-6">
                 <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-5 border-t border-border pt-6 sm:flex-row">
                     <div className="text-center sm:text-left">
                         <Link className="text-sm font-semibold" href="/">EduLink</Link>

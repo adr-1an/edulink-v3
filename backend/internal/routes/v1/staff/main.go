@@ -54,5 +54,8 @@ func MainStaffRoutes(h *staff.Handler) chi.Router {
 	// Guardian routes
 	r.Mount("/guardians", GuardianRoutes(h))
 
+	// General portal user routes
+	r.Mount("/portal-users", PortalUserRoutes(h))
+
 	return r
 }

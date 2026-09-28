@@ -58,7 +58,7 @@ export function PopoverPopup({
       >
         <PopoverPrimitive.Popup
           className={cn(
-            "relative flex h-(--popup-height,auto) w-(--popup-width,auto) origin-(--transform-origin) rounded-xl border border-border bg-popover text-popover-foreground shadow-[0_18px_50px_rgb(0_0_0/0.14)] outline-none transition-[width,height,scale,opacity] data-starting-style:scale-98 data-starting-style:opacity-0",
+            "liquid-glass relative flex h-(--popup-height,auto) w-(--popup-width,auto) origin-(--transform-origin) rounded-lg border text-popover-foreground outline-none transition-[width,height,scale,opacity] data-starting-style:scale-98 data-starting-style:opacity-0",
             tooltipStyle &&
               "w-fit text-balance rounded-lg text-xs",
             className,

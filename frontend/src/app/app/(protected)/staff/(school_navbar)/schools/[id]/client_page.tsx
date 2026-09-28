@@ -8,7 +8,9 @@ import {useRouter} from "next/navigation"
 import ReactCountryFlag from "react-country-flag"
 import {toast} from "sonner"
 import {Badge} from "@/components/ui/badge"
-import {Card, CardDescription, CardFooter, CardHeader, CardTitle} from "@/components/ui/card"
+import {
+    Card, CardDescription, CardFooter, CardHeader, CardTitle, interactiveCardClassName,
+} from "@/components/ui/card"
 import {Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle} from "@/components/ui/empty"
 import {GraduationCap, LayoutGrid, LayoutList, MapPin, Pencil, Plus, Search, Settings, School as SchoolIcon, Trash2, TriangleAlert, X} from "lucide-react"
 import {Button} from "@/components/ui/button"
@@ -341,7 +343,7 @@ export default function ClientPage({school, regionName, academicYears, access, c
                 </div>
 
                 {canListAcademicYears && !activeYear && (
-                    <div className="mb-4 flex flex-col gap-4 rounded-2xl border border-warning/35 bg-warning/[0.07] p-4 text-warning-foreground sm:flex-row sm:items-center" role="alert">
+                    <div className="mb-4 flex flex-col gap-4 rounded-xl border border-warning/35 bg-warning/[0.07] p-4 text-warning-foreground sm:flex-row sm:items-center" role="alert">
                         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-warning/15">
                             <TriangleAlert className="size-5" />
                         </span>
@@ -364,11 +366,11 @@ export default function ClientPage({school, regionName, academicYears, access, c
                 {grades.length > 0 ? (
                     <div className={gradeView === "grid" ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-3" : "space-y-2"}>
                         {grades.map((grade) => (
-                            <Card key={grade.id} className="group/grade overflow-hidden transition-colors hover:border-primary/25 hover:bg-muted/25">
+                            <Card key={grade.id} className={`${interactiveCardClassName} group/grade overflow-hidden`}>
                                 {canListCourses && <Link
                                     href={`/app/staff/grades/${grade.id}`}
                                     aria-label={t("staff.dashboard.openCourses", {name: grade.name})}
-                                    className="absolute inset-0 z-[1] rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                                    className="absolute inset-0 z-[1] rounded-xl focus-visible:outline-none"
                                 />}
                                 <CardHeader className={`pointer-events-none relative z-10 ${gradeView === "list" ? "grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-center" : ""}`}>
                                     <div className="flex items-start justify-between gap-3">
@@ -475,7 +477,7 @@ export default function ClientPage({school, regionName, academicYears, access, c
             }}>
                 <AlertDialogPopup className="border-destructive/30 sm:max-w-xl">
                     <AlertDialogHeader>
-                        <div className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+                        <div className="mb-2 flex size-12 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
                             <TriangleAlert className="size-6" />
                         </div>
                         <AlertDialogTitle className="text-destructive">{t("staff.dashboard.deleteTitle")}</AlertDialogTitle>

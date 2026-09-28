@@ -43,7 +43,7 @@ export function CommandDialogBackdrop({
   return (
     <CommandDialogPrimitive.Backdrop
       className={cn(
-        "fixed inset-0 z-50 bg-black/32 backdrop-blur-sm transition-all duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0",
+        "fixed inset-0 z-50 bg-black/20 transition-all duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 dark:bg-black/40",
         className,
       )}
       data-slot="command-dialog-backdrop"
@@ -82,7 +82,7 @@ export function CommandDialogPopup({
       <CommandDialogViewport>
         <CommandDialogPrimitive.Popup
           className={cn(
-            "relative row-start-2 flex max-h-105 min-h-0 w-full min-w-0 max-w-xl -translate-y-[calc(1.25rem*var(--nested-dialogs))] scale-[calc(1-0.1*var(--nested-dialogs))] flex-col rounded-2xl border border-border bg-popover text-popover-foreground opacity-[calc(1-0.1*var(--nested-dialogs))] shadow-[0_18px_50px_rgb(0_0_0/0.14)] outline-none transition-[scale,opacity,translate] duration-200 ease-in-out will-change-transform data-nested:data-ending-style:translate-y-8 data-nested:data-starting-style:translate-y-8 data-nested-dialog-open:origin-top data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 **:data-[slot=scroll-area-viewport]:data-has-overflow-y:pe-1",
+            "liquid-glass-panel relative row-start-2 flex max-h-105 min-h-0 w-full min-w-0 max-w-xl -translate-y-[calc(1.25rem*var(--nested-dialogs))] scale-[calc(1-0.1*var(--nested-dialogs))] flex-col rounded-xl border text-popover-foreground opacity-[calc(1-0.1*var(--nested-dialogs))] outline-none transition-[scale,opacity,translate] duration-200 ease-in-out will-change-transform data-nested:data-ending-style:translate-y-8 data-nested:data-starting-style:translate-y-8 data-nested-dialog-open:origin-top data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 **:data-[slot=scroll-area-viewport]:data-has-overflow-y:pe-1",
             className,
           )}
           data-slot="command-dialog-popup"
@@ -166,7 +166,7 @@ export function CommandPanel({
   return (
     <div
       className={cn(
-        "relative -mx-px not-has-[+[data-slot=command-footer]]:-mb-px min-h-0 rounded-t-xl not-has-[+[data-slot=command-footer]]:rounded-b-2xl border border-b-0 bg-popover bg-clip-padding [clip-path:inset(0_1px)] not-has-[+[data-slot=command-footer]]:[clip-path:inset(0_1px_1px_1px_round_0_0_calc(var(--radius-2xl)-1px)_calc(var(--radius-2xl)-1px))] **:data-[slot=scroll-area-scrollbar]:mt-2",
+        "relative -mx-px not-has-[+[data-slot=command-footer]]:-mb-px min-h-0 rounded-t-xl not-has-[+[data-slot=command-footer]]:rounded-b-xl border border-b-0 bg-transparent bg-clip-padding [clip-path:inset(0_1px)] not-has-[+[data-slot=command-footer]]:[clip-path:inset(0_1px_1px_1px_round_0_0_calc(var(--radius-xl)-1px)_calc(var(--radius-xl)-1px))] **:data-[slot=scroll-area-scrollbar]:mt-2",
         className,
       )}
       {...props}

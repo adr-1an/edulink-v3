@@ -201,6 +201,15 @@ func (h *Handler) AccountActivationHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM portal_account_activation_tokens
+		WHERE portal_user_id = $1
+	`, userID); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	if expiresAt.Before(time.Now()) || expiresAt.Equal(time.Now()) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{

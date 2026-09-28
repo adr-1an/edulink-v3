@@ -24,12 +24,15 @@ import {useLocale} from "@/i18n/provider"
 import {type Locale} from "@/i18n/config"
 import {hasSchoolPermission, type SchoolAccess} from "@/lib/school_access"
 import {rememberSchoolAccess} from "@/lib/school_navigation"
+import {canSendPortalUserActivationLink} from "@/lib/portal_user_activation_link"
 import {
     emptyGuardianDraft, guardianDraftToInput, type Guardian, type GuardianDraft,
 } from "@/lib/guardian"
 import {handleCreateGuardian, handleDeleteGuardian, handleUpdateGuardian} from "./actions"
 import {guardianErrorKeys} from "./guardian_action_errors"
 import GuardianForm from "./guardian_form"
+import {handleSendPortalUserActivationLink} from "../../../portal_user_actions"
+import {portalUserActivationErrorKeys} from "../../../portal_user_action_errors"
 
 const pageSize = 20
 
@@ -60,10 +63,13 @@ export default function GuardiansClientPage({schoolID, initialGuardians, access}
     const [deleteConfirmation, setDeleteConfirmation] = useState("")
     const [draft, setDraft] = useState<GuardianDraft>(emptyGuardianDraft)
     const [saving, setSaving] = useState(false)
+    const [sendingActivationLink, setSendingActivationLink] = useState(false)
+    const [activationLinkSent, setActivationLinkSent] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const canCreate = hasSchoolPermission(access, "guardian.create")
     const canUpdate = hasSchoolPermission(access, "guardian.update")
     const canDelete = hasSchoolPermission(access, "guardian.delete")
+    const canActivatePortalUser = hasSchoolPermission(access, "portal.user.activate")
 
     useEffect(() => {
         rememberSchoolAccess(schoolID, access)
@@ -91,6 +97,7 @@ export default function GuardiansClientPage({schoolID, initialGuardians, access}
     }
 
     function openEdit(guardian: Guardian) {
+        setActivationLinkSent(false)
         setDraft({
             name: guardian.name,
             lastName: guardian.lastName,
@@ -99,6 +106,7 @@ export default function GuardiansClientPage({schoolID, initialGuardians, access}
             phone: guardian.phone,
             notes: guardian.notes,
             accountEnabled: guardian.accountEnabled,
+            activateAccount: guardian.accountEnabled && guardian.accountActive,
             password: "",
         })
         setEditTarget(guardian)
@@ -139,6 +147,7 @@ export default function GuardiansClientPage({schoolID, initialGuardians, access}
             phone: input.phone ?? "",
             notes: input.notes ?? "",
             accountEnabled: input.accountEnabled,
+            accountActive: input.activateAccount ?? false,
         }
         setGuardians((current) => current.map((guardian) => guardian.id === editTarget.id ? updated : guardian))
         setEditTarget(null)
@@ -156,6 +165,22 @@ export default function GuardiansClientPage({schoolID, initialGuardians, access}
         setDeleteTarget(null)
         setDeleteConfirmation("")
         toast.success(t("staff.guardians.deleted"))
+    }
+
+    async function sendActivationLink() {
+        if (!editTarget || sendingActivationLink || !canActivatePortalUser || !canSendPortalUserActivationLink({
+            accountEnabled: draft.accountEnabled,
+            accountActive: draft.activateAccount,
+            password: draft.password,
+            activationLinkSent,
+        })) return
+
+        setSendingActivationLink(true)
+        const result = await handleSendPortalUserActivationLink(editTarget.id)
+        setSendingActivationLink(false)
+        if (!result.ok) return toast.error(t(portalUserActivationErrorKeys[result.code]))
+        setActivationLinkSent(true)
+        toast.success(t("staff.portalUsers.activation.sent"))
     }
 
     return (
@@ -241,10 +266,10 @@ export default function GuardiansClientPage({schoolID, initialGuardians, access}
                 </DialogPopup>
             </Dialog>
 
-            <Dialog open={editTarget !== null} onOpenChange={(open) => { if (!open && !saving) setEditTarget(null) }}>
+            <Dialog open={editTarget !== null} onOpenChange={(open) => { if (!open && !saving && !sendingActivationLink) setEditTarget(null) }}>
                 <DialogPopup className="sm:max-w-2xl">
                     <DialogHeader><DialogTitle>{t("staff.guardians.editTitle")}</DialogTitle><DialogDescription>{t("staff.guardians.editDescription")}</DialogDescription></DialogHeader>
-                    <GuardianForm draft={draft} saving={saving} mode="edit" wasAccountEnabled={editTarget?.accountEnabled} onChange={setDraft} onSubmit={updateGuardian} />
+                    <GuardianForm draft={draft} saving={saving} sendingActivationLink={sendingActivationLink} activationLinkSent={activationLinkSent} canSendActivationLink={canActivatePortalUser} mode="edit" wasAccountEnabled={editTarget?.accountEnabled} onChange={setDraft} onSubmit={updateGuardian} onSendActivationLink={sendActivationLink} />
                 </DialogPopup>
             </Dialog>
 

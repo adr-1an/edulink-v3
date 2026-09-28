@@ -24,7 +24,9 @@ import {
     SheetTitle
 } from "@/components/ui/sheet";
 import {Menu, MenuItem, MenuPopup, MenuTrigger} from "@/components/ui/menu";
-import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from "@/components/ui/card";
+import {
+    Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, interactiveCardClassName,
+} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {Input} from "@/components/ui/input";
 import {Separator} from "@/components/ui/separator";
@@ -510,11 +512,11 @@ function SchoolGroup({title, schools, regionNames, owned = false, onLeave}: {
                 {schools.map((school) => {
                     const region = regionNames[school.regionCode]
                     return (
-                        <Card key={school.id} className="group/school overflow-hidden transition-colors hover:border-primary/25 hover:bg-muted/25">
+                        <Card key={school.id} className={`${interactiveCardClassName} group/school overflow-hidden`}>
                             <Link
                                 href={`/app/staff/schools/${school.id}`}
                                 aria-label={t("staff.schools.open", {name: school.name})}
-                                className="absolute inset-0 z-[1] rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                                className="absolute inset-0 z-[1] rounded-xl focus-visible:outline-none"
                             />
                             <CardHeader className="pointer-events-none relative z-10 grid-cols-[auto_1fr] items-center gap-3">
                                 <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted">

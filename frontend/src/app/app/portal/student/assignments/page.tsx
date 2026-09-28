@@ -101,7 +101,7 @@ export default async function Page() {
 
     return (
         <div className="space-y-6">
-            <section className="overflow-hidden rounded-2xl border bg-card">
+            <section className="overflow-hidden rounded-xl border bg-card">
                 <div className="overflow-hidden px-5 py-6 sm:px-7 sm:py-8">
                     <div className="flex items-start gap-4">
                         <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:size-12">

@@ -33,6 +33,7 @@ import {type ProfilePicture} from "@/lib/profile_picture"
 import {invalidateProfilePictureCache} from "@/lib/profile_picture_cache"
 import {hasSchoolPermission, type SchoolAccess} from "@/lib/school_access"
 import {getActiveSchoolSnapshot, rememberCurrentSchoolAccess} from "@/lib/school_navigation"
+import {canSendPortalUserActivationLink} from "@/lib/portal_user_activation_link"
 import {uploadToPresignedURL} from "@/lib/upload_to_presigned_url"
 import {
     handleDeleteStudent, handleUpdateStudent,
@@ -42,6 +43,8 @@ import StudentForm, {
     studentDraftToInput, type StudentDraft,
 } from "@/app/app/(protected)/staff/(school_navbar)/schools/[id]/students/student_form"
 import {scoreAccent} from "@/lib/score"
+import {handleSendPortalUserActivationLink} from "@/app/app/(protected)/staff/(school_navbar)/portal_user_actions"
+import {portalUserActivationErrorKeys} from "@/app/app/(protected)/staff/(school_navbar)/portal_user_action_errors"
 import {
     handleCompleteStudentProfilePictureUpload,
     handleInitStudentProfilePictureUpload,
@@ -58,6 +61,7 @@ export interface StaffStudentProfile {
     phone: string
     notes: string
     accountEnabled: boolean
+    accountActive: boolean
     createdAt: string
     profilePicture: ProfilePicture | null
 }
@@ -124,6 +128,7 @@ function studentDraft(student: StaffStudentProfile): StudentDraft {
         phone: student.phone,
         notes: student.notes,
         accountEnabled: student.accountEnabled,
+        accountActive: student.accountEnabled && student.accountActive,
         password: "",
     }
 }
@@ -145,6 +150,8 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
     const [editOpen, setEditOpen] = useState(false)
     const [draft, setDraft] = useState<StudentDraft>(() => studentDraft(initialStudent))
     const [saving, setSaving] = useState(false)
+    const [sendingActivationLink, setSendingActivationLink] = useState(false)
+    const [activationLinkSent, setActivationLinkSent] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
     const [deleteConfirmation, setDeleteConfirmation] = useState("")
     const [deleting, setDeleting] = useState(false)
@@ -153,6 +160,7 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
     const [visibleSubmissions, setVisibleSubmissions] = useState(SUBMISSIONS_PAGE_SIZE)
     const canUpdate = hasSchoolPermission(access, "student.update")
     const canDelete = hasSchoolPermission(access, "student.delete")
+    const canActivatePortalUser = hasSchoolPermission(access, "portal.user.activate")
     const canListSubmissions = hasSchoolPermission(access, "submission.list")
     const canViewSubmissions = hasSchoolPermission(access, "submission.view")
     const fullName = `${student.name} ${student.lastName}`
@@ -255,6 +263,7 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
     }
 
     function openEdit() {
+        setActivationLinkSent(false)
         setDraft(studentDraft(student))
         setEditOpen(true)
     }
@@ -278,10 +287,27 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
             phone: input.phone,
             notes: input.notes,
             accountEnabled: input.accountEnabled,
+            accountActive: input.accountActive ?? false,
         }))
         setEditOpen(false)
         toast.success(t("staff.students.updated"))
         router.refresh()
+    }
+
+    async function sendActivationLink() {
+        if (sendingActivationLink || !canActivatePortalUser || !canSendPortalUserActivationLink({
+            accountEnabled: draft.accountEnabled,
+            accountActive: draft.accountActive,
+            password: draft.password,
+            activationLinkSent,
+        })) return
+
+        setSendingActivationLink(true)
+        const result = await handleSendPortalUserActivationLink(student.id)
+        setSendingActivationLink(false)
+        if (!result.ok) return toast.error(t(portalUserActivationErrorKeys[result.code]))
+        setActivationLinkSent(true)
+        toast.success(t("staff.portalUsers.activation.sent"))
     }
 
     async function deleteStudent() {
@@ -584,7 +610,7 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
             )}
 
             <Dialog open={editOpen} onOpenChange={(open) => {
-                if (!saving) setEditOpen(open)
+                if (!saving && !sendingActivationLink) setEditOpen(open)
             }}>
                 <DialogPopup className="sm:max-w-2xl">
                     <DialogHeader>
@@ -594,10 +620,14 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
                     <StudentForm
                         draft={draft}
                         saving={saving}
+                        sendingActivationLink={sendingActivationLink}
+                        activationLinkSent={activationLinkSent}
+                        canSendActivationLink={canActivatePortalUser}
                         mode="edit"
                         wasAccountEnabled={student.accountEnabled}
                         onChange={setDraft}
                         onSubmit={updateStudent}
+                        onSendActivationLink={sendActivationLink}
                     />
                 </DialogPopup>
             </Dialog>

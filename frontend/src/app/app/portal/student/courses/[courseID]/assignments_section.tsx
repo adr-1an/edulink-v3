@@ -315,7 +315,7 @@ export default function AssignmentsSection({assignments, referenceDate, referenc
             )}
 
             {assignments.length > 0 && (
-                <div className={`grid gap-2 rounded-2xl border bg-card p-3 ${showCourseFilter ? "md:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_12rem_12rem_13rem_auto]" : "md:grid-cols-[minmax(12rem,1fr)_12rem_13rem_auto]"}`}>
+                <div className={`grid gap-2 rounded-xl border bg-card p-3 ${showCourseFilter ? "md:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_12rem_12rem_13rem_auto]" : "md:grid-cols-[minmax(12rem,1fr)_12rem_13rem_auto]"}`}>
                     <div className="relative">
                         <Search className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
                         <Input className="pl-9 pr-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("assignments.searchPlaceholder")} aria-label={t("assignments.searchLabel")} />
@@ -400,7 +400,7 @@ export default function AssignmentsSection({assignments, referenceDate, referenc
                     )}
 
                     {groupedAssignments.current.length > 0 && submissionView === "returned" && (
-                        <section className="space-y-4 rounded-2xl border border-warning/30 bg-warning/[0.055] p-4 sm:p-5" aria-labelledby="returned-assignments-title">
+                        <section className="space-y-4 rounded-xl border border-warning/30 bg-warning/[0.055] p-4 sm:p-5" aria-labelledby="returned-assignments-title">
                             <div className="flex items-start gap-3">
                                 <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-warning/12 text-warning-foreground">
                                     <RotateCcw className="size-4" />
@@ -423,7 +423,7 @@ export default function AssignmentsSection({assignments, referenceDate, referenc
                     )}
 
                     {groupedAssignments.pastDue.length > 0 && (
-                        <section className="space-y-4 rounded-2xl border border-destructive/25 bg-destructive/[0.035] p-4 sm:p-5" aria-labelledby="past-due-assignments-title">
+                        <section className="space-y-4 rounded-xl border border-destructive/25 bg-destructive/[0.035] p-4 sm:p-5" aria-labelledby="past-due-assignments-title">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div className="flex items-start gap-3">
                                     <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">

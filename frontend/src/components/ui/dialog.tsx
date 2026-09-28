@@ -36,7 +36,7 @@ export function DialogBackdrop({
   return (
     <DialogPrimitive.Backdrop
       className={cn(
-        "fixed inset-0 z-50 bg-black/32 backdrop-blur-sm transition-all duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0",
+        "fixed inset-0 z-50 bg-black/20 transition-all duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 dark:bg-black/40",
         className,
       )}
       data-slot="dialog-backdrop"
@@ -86,7 +86,7 @@ export function DialogPopup({
       >
         <DialogPrimitive.Popup
           className={cn(
-            "relative row-start-2 flex max-h-full min-h-0 w-full min-w-0 max-w-lg origin-center flex-col rounded-2xl border border-border bg-popover text-popover-foreground opacity-[calc(1-var(--nested-dialogs))] shadow-[0_18px_50px_rgb(0_0_0/0.14)] outline-none transition-[scale,opacity,translate] duration-200 ease-in-out will-change-transform data-ending-style:opacity-0 data-starting-style:opacity-0 sm:scale-[calc(1-0.1*var(--nested-dialogs))] sm:data-ending-style:scale-98 sm:data-starting-style:scale-98",
+            "liquid-glass-panel relative row-start-2 flex max-h-full min-h-0 w-full min-w-0 max-w-lg origin-center flex-col rounded-xl border text-popover-foreground opacity-[calc(1-var(--nested-dialogs))] outline-none transition-[scale,opacity,translate] duration-200 ease-in-out will-change-transform data-ending-style:opacity-0 data-starting-style:opacity-0 sm:scale-[calc(1-0.1*var(--nested-dialogs))] sm:data-ending-style:scale-98 sm:data-starting-style:scale-98",
             bottomStickOnMobile &&
               "max-sm:max-w-none max-sm:origin-bottom max-sm:rounded-none max-sm:border-x-0 max-sm:border-t max-sm:border-b-0 max-sm:data-ending-style:translate-y-4 max-sm:data-starting-style:translate-y-4 max-sm:before:hidden max-sm:before:rounded-none",
             className,
@@ -118,7 +118,7 @@ export function DialogHeader({
 }: useRender.ComponentProps<"div">): React.ReactElement {
   const defaultProps = {
     className: cn(
-      "flex flex-col gap-2 p-6 in-[[data-slot=dialog-popup]:has([data-slot=dialog-panel])]:pb-3 max-sm:pb-4",
+      "flex flex-col gap-2 p-5 in-[[data-slot=dialog-popup]:has([data-slot=dialog-panel])]:pb-3 max-sm:pb-4",
       className,
     ),
     "data-slot": "dialog-header",
@@ -141,10 +141,10 @@ export function DialogFooter({
 }): React.ReactElement {
   const defaultProps = {
     className: cn(
-      "flex flex-col-reverse gap-2 px-6 sm:flex-row sm:justify-end sm:rounded-b-[calc(var(--radius-2xl)-1px)]",
-      variant === "default" && "border-t bg-muted/72 py-4",
+      "flex flex-col-reverse gap-2 px-5 sm:flex-row sm:justify-end sm:rounded-b-[calc(var(--radius-xl)-1px)]",
+      variant === "default" && "border-t bg-background/30 py-4",
       variant === "bare" &&
-        "in-[[data-slot=dialog-popup]:has([data-slot=dialog-panel])]:pt-3 pt-4 pb-6",
+        "in-[[data-slot=dialog-popup]:has([data-slot=dialog-panel])]:pt-3 pt-4 pb-5",
       className,
     ),
     "data-slot": "dialog-footer",

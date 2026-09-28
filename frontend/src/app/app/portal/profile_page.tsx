@@ -97,7 +97,7 @@ export default async function PortalProfilePage({accountType}: {accountType: Acc
     const fullName = `${profile.name} ${profile.lastName}`.trim()
     return (
         <div className="space-y-6">
-            <header className="flex flex-col justify-between gap-5 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center sm:p-7">
+            <header className="flex flex-col justify-between gap-5 rounded-xl border bg-card p-5 sm:flex-row sm:items-center sm:p-7">
                 <div className="flex min-w-0 items-center gap-4">
                     <UserAvatar
                         className="size-14 border sm:size-16"
@@ -119,7 +119,7 @@ export default async function PortalProfilePage({accountType}: {accountType: Acc
                 </Badge>
             </header>
 
-            <div className="flex gap-3 rounded-2xl border border-info/20 bg-info/8 p-4 text-sm">
+            <div className="flex gap-3 rounded-xl border border-info/20 bg-info/8 p-4 text-sm">
                 <Info className="mt-0.5 size-5 shrink-0 text-info-foreground" />
                 <div>
                     <p className="font-medium">{copy.managedTitle}</p>
@@ -166,7 +166,7 @@ export default async function PortalProfilePage({accountType}: {accountType: Acc
                             <InfoRow icon={Building2} label={t("common.school")} value={profile.school.name} />
                             <InfoRow icon={Globe2} label={t("common.region")} value={profile.school.region || t("common.notProvided")} />
                         </div>
-                        <div className="rounded-2xl border bg-muted/30 p-4">
+                        <div className="rounded-xl border bg-muted/30 p-4">
                             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{copy.schoolAdministrator}</p>
                             <p className="mt-2 font-medium">{profile.school.owner.name}</p>
                             <p className="mt-0.5 break-all text-sm text-muted-foreground">{profile.school.owner.email}</p>

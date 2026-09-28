@@ -126,7 +126,7 @@ export default async function Page({params}: {params: Promise<{courseID: string}
 
     return (
         <div className="space-y-6">
-            <header className="relative overflow-hidden rounded-2xl border bg-card p-5 sm:p-7">
+            <header className="relative overflow-hidden rounded-xl border bg-card p-5 sm:p-7">
                 <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5" style={{backgroundColor: courseColor}} />
                 <div className="relative pl-1">
                     <Button className="-ml-2 mb-5" size="sm" variant="ghost" render={<Link href="/app/portal/student" />}><ArrowLeft /> {t("course.back")}</Button>
@@ -142,7 +142,7 @@ export default async function Page({params}: {params: Promise<{courseID: string}
                                 {course.description && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">{course.description}</p>}
                             </div>
                         </div>
-                        <div className="flex shrink-0 divide-x rounded-2xl border bg-background">
+                        <div className="flex shrink-0 divide-x rounded-lg border bg-background">
                             <div className="flex items-center gap-2 px-4 py-3">
                                 <FileText className="size-4 text-muted-foreground" />
                                 <div>

@@ -20,6 +20,7 @@ type UpdateGuardian struct {
 	Notes          *string
 	DateOfBirth    time.Time
 	AccountEnabled bool
+	AccountActive  bool
 	Password       *string
 }
 
@@ -31,11 +32,12 @@ type UpdateGuardianInput struct {
 
 func (s *Service) UpdateGuardian(ctx context.Context, i *UpdateGuardianInput) error {
 	var schoolID int64
+	var accountActive bool
 	if err := s.DB.QueryRowContext(ctx, `
-		SELECT school_id
+		SELECT school_id, account_active
 		FROM portal_users
 		WHERE id = $1
-	`, i.GuardianID).Scan(&schoolID); err != nil {
+	`, i.GuardianID).Scan(&schoolID, &accountActive); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrForbidden
 		}
@@ -44,6 +46,10 @@ func (s *Service) UpdateGuardian(ctx context.Context, i *UpdateGuardianInput) er
 	}
 
 	if !schools.Can(schools.PermissionGuardianUpdate, i.UserID, schoolID, ctx, s.DB) {
+		return ErrForbidden
+	}
+	if permission, changed := schools.PortalUserActiveStatePermission(accountActive, i.Guardian.AccountActive); changed &&
+		!schools.Can(permission, i.UserID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 
@@ -60,9 +66,9 @@ func (s *Service) UpdateGuardian(ctx context.Context, i *UpdateGuardianInput) er
 		guardianNotes = strings.TrimSpace(*i.Guardian.Notes)
 	}
 
-	if len(i.Guardian.Name) < 3 ||
+	if len(i.Guardian.Name) < 1 ||
 		len(i.Guardian.Name) > 32 ||
-		len(i.Guardian.LastName) < 3 ||
+		len(i.Guardian.LastName) < 1 ||
 		len(i.Guardian.LastName) > 32 ||
 		len(i.Guardian.Email) < 5 ||
 		len(i.Guardian.Email) > 254 ||
@@ -90,9 +96,10 @@ func (s *Service) UpdateGuardian(ctx context.Context, i *UpdateGuardianInput) er
 		    notes = $5,
 		    date_of_birth = $6,
 		    account_enabled = $7,
-		    password_hash = COALESCE($8, password_hash)
-		WHERE id = $9
-		AND school_id = $10
+		    account_active = $8,
+		    password_hash = COALESCE($9, password_hash)
+		WHERE id = $10
+		AND school_id = $11
 	`,
 		i.Guardian.Name,
 		i.Guardian.LastName,
@@ -101,6 +108,7 @@ func (s *Service) UpdateGuardian(ctx context.Context, i *UpdateGuardianInput) er
 		guardianNotes,
 		i.Guardian.DateOfBirth,
 		i.Guardian.AccountEnabled,
+		i.Guardian.AccountActive,
 		passHash,
 		i.GuardianID,
 		schoolID,

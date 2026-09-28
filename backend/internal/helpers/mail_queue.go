@@ -59,7 +59,8 @@ func SendMail(email Mail) error {
 type MailQueuePurpose string
 
 const (
-	MailPurposeStudentAccountCreation MailQueuePurpose = "student_account_creation"
+	MailPurposeStudentAccountCreation  MailQueuePurpose = "student_account_creation"
+	MailPurposePortalAccountActivation MailQueuePurpose = "account_activation"
 )
 
 type MailQueue struct {

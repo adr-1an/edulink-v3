@@ -60,28 +60,48 @@ export default function PortalShell({accountType, children}: {
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-xl">
-                <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-                    <Link className="flex min-w-0 items-center gap-2.5" href={home}>
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><GraduationCap className="size-4.5" /></span>
-                        <span className="truncate font-semibold">{t("portal.brand")}</span>
+        <div className="flex min-h-svh w-full bg-background text-foreground">
+            <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar/95 px-3 py-4 text-sidebar-foreground backdrop-blur-2xl md:flex">
+                <Link className="mb-6 flex min-w-0 items-center gap-2.5 px-2" href={home}>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><GraduationCap className="size-4" /></span>
+                    <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold tracking-[-0.02em]">{t("portal.brand")}</span>
+                        <span className="block truncate text-xs capitalize text-muted-foreground">{accountType}</span>
+                    </span>
+                </Link>
+                <nav className="space-y-1" aria-label={t("portal.navigation")}>
+                    {navigation.map(({label, href, icon: Icon}) => (
+                        <Button className="h-9 w-full justify-start rounded-lg px-2 font-normal" variant={isActive(href) ? "default" : "ghost"} size="sm" render={<Link href={href} />} key={href}>
+                            <span className={isActive(href)
+                                ? "flex size-6 shrink-0 items-center justify-center rounded-md bg-white/16 text-white"
+                                : "flex size-6 shrink-0 items-center justify-center rounded-md bg-background/75 text-sidebar-foreground shadow-sm ring-1 ring-sidebar-border"}>
+                                <Icon className="size-3.5" />
+                            </span>
+                            {label}
+                        </Button>
+                    ))}
+                </nav>
+                <div className="mt-auto space-y-1 border-t border-sidebar-border pt-3">
+                    <Button className="w-full justify-start" variant="ghost" size="sm" onClick={toggleTheme}>
+                        {theme === "dark" ? <Sun /> : <Moon />} {t(theme === "dark" ? "common.lightMode" : "common.darkMode")}
+                    </Button>
+                    <Button className="w-full justify-start text-muted-foreground" variant="ghost" size="sm" loading={loggingOut} onClick={logout}><LogOut /> {t("common.logOut")}</Button>
+                </div>
+            </aside>
+
+            <div className="min-w-0 flex-1">
+                <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-3 backdrop-blur-2xl sm:px-5">
+                    <Link className="flex min-w-0 items-center gap-2.5 md:hidden" href={home}>
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><GraduationCap className="size-4" /></span>
+                        <span className="truncate text-sm font-semibold">{t("portal.brand")}</span>
                     </Link>
+                    <p className="hidden truncate text-sm font-semibold md:block">{navigation.find(({href}) => isActive(href))?.label ?? t("portal.overview")}</p>
                     <Badge className="capitalize" variant="secondary">{accountType}</Badge>
-
-                    <nav className="ml-6 hidden items-center gap-1 md:flex" aria-label={t("portal.navigation")}>
-                        {navigation.map(({label, href, icon: Icon}) => (
-                            <Button variant={isActive(href) ? "secondary" : "ghost"} size="sm" render={<Link href={href} />} key={href}><Icon /> {label}</Button>
-                        ))}
-                    </nav>
-
                     <div className="ml-auto hidden items-center gap-1 md:flex">
-                        <Button size="icon-sm" variant="ghost" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={toggleTheme}>
+                        <Button size="icon-sm" variant="outline" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={toggleTheme}>
                             {theme === "dark" ? <Sun /> : <Moon />}
                         </Button>
-                        <Button variant="ghost" size="sm" loading={loggingOut} onClick={logout}><LogOut /> {t("common.logOut")}</Button>
                     </div>
-
                     <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
                         <SheetTrigger className="ml-auto md:hidden" render={<Button size="icon-sm" variant="outline" aria-label={t("portal.openMenu")} />}><Menu /></SheetTrigger>
                         <SheetPopup className="max-w-xs" side="right">
@@ -104,10 +124,10 @@ export default function PortalShell({accountType, children}: {
                             </SheetFooter>
                         </SheetPopup>
                     </Sheet>
-                </div>
-            </header>
+                </header>
 
-            <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">{children}</main>
+                <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">{children}</main>
+            </div>
             <Toaster richColors visibleToasts={5} position="top-right" theme={theme} />
         </div>
     )

@@ -1,6 +1,6 @@
 "use client"
 
-import {KeyRound} from "lucide-react"
+import {KeyRound, Send} from "lucide-react"
 import {Button} from "@/components/ui/button"
 import {DialogClose, DialogFooter, DialogPanel} from "@/components/ui/dialog"
 import {Field, FieldDescription, FieldLabel} from "@/components/ui/field"
@@ -9,50 +9,25 @@ import {Input} from "@/components/ui/input"
 import {Switch} from "@/components/ui/switch"
 import {Textarea} from "@/components/ui/textarea"
 import {useLocale} from "@/i18n/provider"
-import {type StudentInput} from "./actions"
+import {
+    emptyStudentDraft, studentDraftToInput, type StudentDraft,
+} from "@/lib/student"
+import {canSendPortalUserActivationLink} from "@/lib/portal_user_activation_link"
 
-export interface StudentDraft {
-    name: string
-    lastName: string
-    dateOfBirth: string
-    email: string
-    phone: string
-    notes: string
-    accountEnabled: boolean
-    password: string
-}
+export {emptyStudentDraft, studentDraftToInput}
+export type {StudentDraft}
 
-export const emptyStudentDraft: StudentDraft = {
-    name: "",
-    lastName: "",
-    dateOfBirth: "",
-    email: "",
-    phone: "",
-    notes: "",
-    accountEnabled: false,
-    password: "",
-}
-
-export function studentDraftToInput(draft: StudentDraft): StudentInput {
-    return {
-        name: draft.name.trim(),
-        lastName: draft.lastName.trim(),
-        dob: draft.dateOfBirth || null,
-        email: draft.email.trim().toLocaleLowerCase(),
-        phone: draft.phone.trim(),
-        notes: draft.notes.trim(),
-        accountEnabled: draft.accountEnabled,
-        password: draft.password,
-    }
-}
-
-export default function StudentForm({draft, saving, mode, wasAccountEnabled = false, onChange, onSubmit}: {
+export default function StudentForm({draft, saving, sendingActivationLink = false, activationLinkSent = false, canSendActivationLink = false, mode, wasAccountEnabled = false, onChange, onSubmit, onSendActivationLink}: {
     draft: StudentDraft
     saving: boolean
+    sendingActivationLink?: boolean
+    activationLinkSent?: boolean
+    canSendActivationLink?: boolean
     mode: "create" | "edit"
     wasAccountEnabled?: boolean
     onChange: (draft: StudentDraft) => void
     onSubmit: (event: React.SubmitEvent<HTMLFormElement>) => void
+    onSendActivationLink?: () => void
 }) {
     const {t} = useLocale()
     const passwordRequired = draft.accountEnabled && (mode === "create" || !wasAccountEnabled)
@@ -63,6 +38,12 @@ export default function StudentForm({draft, saving, mode, wasAccountEnabled = fa
         && draft.notes.trim().length <= 2048
         && (!draft.password || draft.password.length >= 8)
         && (!passwordRequired || draft.password.length >= 8)
+    const activationLinkEnabled = canSendPortalUserActivationLink({
+        accountEnabled: draft.accountEnabled,
+        accountActive: draft.accountActive,
+        password: draft.password,
+        activationLinkSent,
+    })
 
     return (
         <Form className="contents" onSubmit={onSubmit}>
@@ -73,15 +54,31 @@ export default function StudentForm({draft, saving, mode, wasAccountEnabled = fa
                 <Field><FieldLabel>{t("staff.students.email")}</FieldLabel><Input type="email" value={draft.email} onChange={(event) => onChange({...draft, email: event.target.value})} maxLength={254} required /></Field>
                 <Field className="sm:col-span-2"><FieldLabel>{t("staff.students.phone")}</FieldLabel><Input type="tel" value={draft.phone} onChange={(event) => onChange({...draft, phone: event.target.value})} minLength={draft.phone ? 3 : undefined} maxLength={32} /><FieldDescription>{t("staff.students.optional")}</FieldDescription></Field>
                 <Field className="sm:col-span-2">
-                    <div className="flex items-center justify-between gap-4 rounded-xl border bg-muted/25 p-4">
-                        <div><FieldLabel>{t("staff.students.studentLogin")}</FieldLabel><FieldDescription className="mt-1">{t("staff.students.studentLoginDescription")}</FieldDescription></div>
-                        <Switch checked={draft.accountEnabled} onCheckedChange={(accountEnabled) => onChange({...draft, accountEnabled, password: accountEnabled ? draft.password : ""})} disabled={saving} aria-label={t("staff.students.enableLogin")} />
+                    <div className="rounded-xl border bg-muted/25">
+                        <div className="flex items-center justify-between gap-4 p-4">
+                            <div><FieldLabel>{t("staff.students.studentLogin")}</FieldLabel><FieldDescription className="mt-1">{t("staff.students.studentLoginDescription")}</FieldDescription></div>
+                            <Switch checked={draft.accountEnabled} onCheckedChange={(accountEnabled) => onChange({...draft, accountEnabled, accountActive: accountEnabled ? draft.accountActive : false, password: accountEnabled ? draft.password : ""})} disabled={saving} aria-label={t("staff.students.enableLogin")} />
+                        </div>
+                        {draft.accountEnabled && (
+                            <div className="flex items-center justify-between gap-4 border-t p-4">
+                                <div><FieldLabel>{t("staff.students.accountActive")}</FieldLabel><FieldDescription className="mt-1">{t("staff.students.accountActiveDescription")}</FieldDescription></div>
+                                <Switch checked={draft.accountActive} onCheckedChange={(accountActive) => onChange({...draft, accountActive})} disabled={saving} aria-label={t("staff.students.accountActive")} />
+                            </div>
+                        )}
                     </div>
                 </Field>
                 <Field className="sm:col-span-2">
                     <FieldLabel>{t(mode === "edit" ? "staff.students.newPassword" : "staff.students.password")}</FieldLabel>
                     <div className="relative"><KeyRound className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" type="password" value={draft.password} onChange={(event) => onChange({...draft, password: event.target.value})} minLength={8} required={passwordRequired} disabled={!draft.accountEnabled || saving} autoComplete="new-password" /></div>
                     <FieldDescription>{t(passwordRequired ? "staff.students.passwordRequired" : mode === "edit" && draft.accountEnabled ? "staff.students.passwordKeep" : "staff.students.passwordDisabled")}</FieldDescription>
+                    {mode === "edit" && canSendActivationLink && onSendActivationLink && (
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
+                            <p className="text-xs text-muted-foreground">{t("staff.portalUsers.activation.description")}</p>
+                            <Button type="button" size="sm" variant="outline" loading={sendingActivationLink} disabled={!activationLinkEnabled || saving || sendingActivationLink} onClick={onSendActivationLink}>
+                                <Send /> {t("staff.portalUsers.activation.send")}
+                            </Button>
+                        </div>
+                    )}
                 </Field>
                 <Field className="sm:col-span-2">
                     <div className="flex items-center justify-between gap-3"><FieldLabel>{t("staff.students.notes")}</FieldLabel><span className="text-xs tabular-nums text-muted-foreground">{draft.notes.length}/2048</span></div>

@@ -33,6 +33,7 @@ type StudentPayload struct {
 	Notes    string `json:"notes"`
 
 	AccountEnabled bool   `json:"accountEnabled"`
+	AccountActive  bool   `json:"accountActive"`
 	Password       string `json:"password"`
 }
 
@@ -57,8 +58,8 @@ func validate(p StudentPayload) (StudentPayload, error) {
 		return p, err
 	}
 
-	if p.Name == "" || len(p.Name) < 3 || len(p.Name) > 32 ||
-		p.LastName == "" || len(p.LastName) < 3 || len(p.LastName) > 32 ||
+	if p.Name == "" || len(p.Name) < 1 || len(p.Name) > 32 ||
+		p.LastName == "" || len(p.LastName) < 1 || len(p.LastName) > 32 ||
 		p.Email == "" || len(p.Email) < 5 || len(p.Email) > 254 ||
 		p.Phone != "" && len(p.Phone) < 3 || len(p.Phone) > 32 ||
 		p.Notes != "" && len(p.Notes) > 2048 {
@@ -68,13 +69,13 @@ func validate(p StudentPayload) (StudentPayload, error) {
 	return p, nil
 }
 
-func checkSchoolAndEmailConflict(tx *sql.Tx, ctx context.Context, schoolID int64, email string) (bool, error) {
+func checkSchoolAndEmailConflict(tx *sql.Tx, ctx context.Context, email string) (bool, error) {
 	var conflict bool
 	if err := tx.QueryRowContext(ctx, `
 		SELECT EXISTS (
-		    SELECT 1 FROM portal_users WHERE school_id = $1 AND email = $2 AND account_type = $3
+		    SELECT 1 FROM portal_users WHERE email = $1
 		)
-	`, schoolID, email, helpers2.AccTypeStudent).Scan(&conflict); err != nil {
+	`, email).Scan(&conflict); err != nil {
 		log.Println(err)
 		return false, err
 	}
@@ -126,6 +127,10 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
+	if p.AccountActive && !schools.Can(schools.PermissionPortalUserActivate, userID, schoolID, ctx, h.DB) {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
 
 	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -135,7 +140,7 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	conflict, err := checkSchoolAndEmailConflict(tx, ctx, schoolID, p.Email)
+	conflict, err := checkSchoolAndEmailConflict(tx, ctx, p.Email)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -172,7 +177,6 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		passHash = &hash
 	}
 
-	activateAcc := p.AccountEnabled && p.Password != ""
 	res, err := tx.ExecContext(ctx, `
 		INSERT INTO portal_users (
 			id,
@@ -199,7 +203,7 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		p.Phone,
 		p.Notes,
 		p.AccountEnabled,
-		activateAcc,
+		p.AccountActive,
 		passHash,
 		helpers2.AccTypeStudent,
 	)
@@ -272,6 +276,24 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var accountActive bool
+	if err := h.DB.QueryRowContext(ctx, `
+		SELECT account_active
+		FROM portal_users
+		WHERE id = $1
+		AND school_id = $2
+		AND account_type = $3
+	`, studentID, schoolID, helpers2.AccTypeStudent).Scan(&accountActive); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if permission, changed := schools.PortalUserActiveStatePermission(accountActive, p.AccountActive); changed &&
+		!schools.Can(permission, userID, schoolID, ctx, h.DB) {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	tx, err := h.DB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println(err)
@@ -324,10 +346,11 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		    phone = $5,
 		    notes = $6,
 		    account_enabled = $7,
-		    password_hash = COALESCE($8, password_hash)
-		WHERE id = $9
-		AND school_id = $10
-		AND account_type = $11
+		    account_active = $8,
+		    password_hash = COALESCE($9, password_hash)
+		WHERE id = $10
+		AND school_id = $11
+		AND account_type = $12
 	`,
 		p.Name,
 		p.LastName,
@@ -336,6 +359,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		p.Phone,
 		p.Notes,
 		p.AccountEnabled,
+		p.AccountActive,
 		passHash,
 		studentID,
 		schoolID,
@@ -473,6 +497,7 @@ func (h *Handler) ListStudentHandler(w http.ResponseWriter, r *http.Request) {
 		Phone             *string    `json:"phone"`
 		Notes             *string    `json:"notes"`
 		AccountEnabled    bool       `json:"accountEnabled"`
+		AccountActive     bool       `json:"accountActive"`
 		CreatedAt         time.Time  `json:"createdAt"`
 	}
 	var studentList []student
@@ -508,6 +533,7 @@ func (h *Handler) ListStudentHandler(w http.ResponseWriter, r *http.Request) {
 				Phone:             s.Phone,
 				Notes:             s.Notes,
 				AccountEnabled:    s.AccountEnabled,
+				AccountActive:     s.AccountActive,
 				CreatedAt:         s.CreatedAt,
 			})
 		}
@@ -602,6 +628,7 @@ func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 		Phone          *string         `json:"phone"`
 		Notes          *string         `json:"notes"`
 		AccountEnabled bool            `json:"accountEnabled"`
+		AccountActive  bool            `json:"accountActive"`
 		CreatedAt      time.Time       `json:"createdAt"`
 	}
 	var s student
@@ -616,7 +643,7 @@ func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 			g.id, g.name, g.level,
 		
 			st.id, st.name, st.last_name, st.date_of_birth, st.email, st.phone,
-			st.notes, st.account_enabled, st.created_at
+			st.notes, st.account_enabled, st.account_active, st.created_at
 		FROM portal_users st
 		LEFT JOIN assignment_submissions s
 			ON s.submitted_by = st.id
@@ -682,6 +709,7 @@ func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 			&s.Phone,
 			&s.Notes,
 			&s.AccountEnabled,
+			&s.AccountActive,
 			&s.CreatedAt,
 		); err != nil {
 			log.Println(err)
@@ -756,7 +784,9 @@ func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		s.ProfilePicture = &profilePicture{PresignedURL: url.String()}
+		s.ProfilePicture = &profilePicture{
+			PresignedURL: url.String(),
+		}
 	}
 
 	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
@@ -871,8 +901,8 @@ func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if s.Name == "" || len(s.Name) < 3 || len(s.Name) > 32 ||
-			s.LastName == "" || len(s.LastName) < 3 || len(s.LastName) > 32 ||
+		if s.Name == "" || len(s.Name) < 1 || len(s.Name) > 32 ||
+			s.LastName == "" || len(s.LastName) < 1 || len(s.LastName) > 32 ||
 			s.Email == "" || len(s.Email) < 5 || len(s.Email) > 254 ||
 			phone != "" && len(phone) < 3 || len(phone) > 32 ||
 			notes != "" && len(notes) > 2048 {

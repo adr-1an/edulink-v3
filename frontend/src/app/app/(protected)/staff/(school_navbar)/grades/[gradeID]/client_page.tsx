@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import {Button} from "@/components/ui/button"
 import {Checkbox} from "@/components/ui/checkbox"
-import {Card, CardContent, CardFooter, CardHeader, CardTitle} from "@/components/ui/card"
+import {
+    Card, CardContent, CardFooter, CardHeader, CardTitle, interactiveCardClassName,
+} from "@/components/ui/card"
 import {
     ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuTrigger,
 } from "@/components/ui/context-menu"
@@ -190,9 +192,9 @@ export default function CoursesClientPage({gradeID, courses, access}: {
                     {visibleCourses.map((course) => (
                         <ContextMenu key={course.id}>
                             <ContextMenuTrigger className="flex">
-                                <Card className="w-full overflow-hidden transition-colors hover:border-primary/25 hover:bg-muted/25">
+                                <Card className={`${interactiveCardClassName} w-full overflow-hidden`}>
                                     <Link
-                                        className="flex flex-1 flex-col rounded-t-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                                        className="flex flex-1 flex-col rounded-t-xl outline-none"
                                         href={`/app/staff/courses/${course.id}`}
                                     >
                                         <div className="h-1.5" style={{backgroundColor: `#${normalizeColor(course.color)}`}} />
@@ -362,7 +364,7 @@ function CourseForm({draft, saving, submitLabel, onChange, onSubmit}: {
                     <FieldLabel>{t("staff.courses.color")}</FieldLabel>
                     <div className="flex items-center gap-2">
                         <Input
-                            className="h-9 w-14 cursor-pointer p-1"
+                            className="h-9 w-14"
                             type="color"
                             value={`#${color}`}
                             onChange={(event) => onChange({...draft, color: event.target.value.slice(1).toUpperCase()})}

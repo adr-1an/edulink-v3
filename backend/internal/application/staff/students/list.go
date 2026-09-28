@@ -23,6 +23,7 @@ type student struct {
 	Phone             *string
 	Notes             *string
 	AccountEnabled    bool
+	AccountActive     bool
 	CreatedAt         time.Time
 }
 
@@ -46,8 +47,8 @@ func (s *Service) ListStudents(ctx context.Context, i *ListStudentsInput) (*List
 
 	rows, err := tx.QueryContext(ctx, `
 		SELECT
-		    pu.id, pu.name, pu.last_name, pu.date_of_birth, pu.email, pu.phone, pu.notes, pu.account_enabled, pu.created_at,
-		    so.object_key, so.bucket_name
+		    pu.id, pu.name, pu.last_name, pu.date_of_birth, pu.email, pu.phone, pu.notes, pu.account_enabled, pu.account_active,
+		    pu.created_at, so.object_key, so.bucket_name
 		FROM portal_users pu
 		LEFT JOIN portal_user_profile_pictures pfp ON pu.id = pfp.portal_user_id
 		LEFT JOIN storage_objects so ON so.id = pfp.storage_object_id AND status = $3
@@ -75,6 +76,7 @@ func (s *Service) ListStudents(ctx context.Context, i *ListStudentsInput) (*List
 			&st.Phone,
 			&st.Notes,
 			&st.AccountEnabled,
+			&st.AccountActive,
 			&st.CreatedAt,
 			&objKey,
 			&bucketName,

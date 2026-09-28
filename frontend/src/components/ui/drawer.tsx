@@ -98,7 +98,7 @@ export function DrawerBackdrop({
   return (
     <DrawerPrimitive.Backdrop
       className={cn(
-        "fixed inset-0 z-50 bg-black/32 opacity-[calc(1-var(--drawer-swipe-progress))] backdrop-blur-sm transition-opacity duration-450 ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] data-swiping:duration-0 supports-[-webkit-touch-callout:none]:absolute",
+        "fixed inset-0 z-50 bg-black/20 opacity-[calc(1-var(--drawer-swipe-progress))] transition-opacity duration-450 ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] data-swiping:duration-0 dark:bg-black/40 supports-[-webkit-touch-callout:none]:absolute",
         className,
       )}
       data-slot="drawer-backdrop"
@@ -161,7 +161,7 @@ export function DrawerPopup({
       <DrawerViewport position={position} variant={variant}>
         <DrawerPrimitive.Popup
           className={cn(
-            "relative flex max-h-full min-h-0 w-full min-w-0 flex-col bg-popover text-popover-foreground shadow-[0_18px_50px_rgb(0_0_0/0.14)] outline-none transition-[transform,box-shadow,height,background-color] duration-450 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform [--peek:calc(--spacing(6)-1px)] [--scale-base:calc(max(0,1-(var(--nested-drawers)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--stack-peek-offset:max(0px,calc((var(--nested-drawers)-var(--stack-progress))*var(--peek)))] [--stack-progress:clamp(0,var(--drawer-swipe-progress),1)] [--stack-step:0.05] after:pointer-events-none after:absolute after:bg-popover data-swiping:select-none data-nested-drawer-open:overflow-hidden data-nested-drawer-open:bg-[color-mix(in_srgb,var(--popover),var(--color-black)_calc(2%*(var(--nested-drawers)-var(--stack-progress))))] data-ending-style:shadow-transparent data-starting-style:shadow-transparent data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] dark:data-nested-drawer-open:bg-[color-mix(in_srgb,var(--popover),var(--color-black)_calc(6%*(var(--nested-drawers)-var(--stack-progress))))]",
+            "liquid-glass-panel relative flex max-h-full min-h-0 w-full min-w-0 flex-col text-popover-foreground outline-none transition-[transform,box-shadow,height,background-color] duration-450 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform [--peek:calc(--spacing(6)-1px)] [--scale-base:calc(max(0,1-(var(--nested-drawers)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--stack-peek-offset:max(0px,calc((var(--nested-drawers)-var(--stack-progress))*var(--peek)))] [--stack-progress:clamp(0,var(--drawer-swipe-progress),1)] [--stack-step:0.05] after:pointer-events-none after:absolute after:bg-popover data-swiping:select-none data-nested-drawer-open:overflow-hidden data-nested-drawer-open:bg-[color-mix(in_srgb,var(--popover),var(--color-black)_calc(2%*(var(--nested-drawers)-var(--stack-progress))))] data-ending-style:shadow-transparent data-starting-style:shadow-transparent data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] dark:data-nested-drawer-open:bg-[color-mix(in_srgb,var(--popover),var(--color-black)_calc(6%*(var(--nested-drawers)-var(--stack-progress))))]",
             "touch-none",
             position === "bottom" &&
               "transform-[translateY(calc(var(--drawer-snap-point-offset)+var(--drawer-swipe-movement-y)))] data-ending-style:transform-[translateY(calc(100%+env(safe-area-inset-bottom,0px)+var(--inset)))] data-starting-style:transform-[translateY(calc(100%+env(safe-area-inset-bottom,0px)+var(--inset)))] row-start-2 -mb-[max(0px,calc(var(--drawer-snap-point-offset,0px)+clamp(0,1,var(--drawer-snap-point-offset,0px)/1px)*var(--drawer-swipe-movement-y,0px)))] border-t pb-[max(0px,calc(env(safe-area-inset-bottom,0px)+var(--drawer-snap-point-offset,0px)+clamp(0,1,var(--drawer-snap-point-offset,0px)/1px)*var(--drawer-swipe-movement-y,0px)))] not-data-starting-style:not-data-ending-style:transition-[transform,box-shadow,height,background-color,margin,padding] after:inset-x-0 after:top-full after:h-(--bleed) has-data-[slot=drawer-bar]:pt-2 data-ending-style:mb-0 data-starting-style:mb-0 data-ending-style:pb-0 data-starting-style:pb-0",
@@ -173,27 +173,27 @@ export function DrawerPopup({
               "transform-[translateX(var(--drawer-swipe-movement-x))] data-ending-style:transform-[translateX(calc(100%+var(--inset)))] data-starting-style:transform-[translateX(calc(100%+var(--inset)))] col-start-2 w-[calc(100%-(--spacing(12)))] max-w-md border-s after:inset-y-0 after:start-full after:w-(--bleed) has-data-[slot=drawer-bar]:ps-2",
             variant !== "straight" &&
               cn(
-                position === "bottom" && "rounded-t-2xl",
+                position === "bottom" && "rounded-t-xl",
                 position === "top" &&
-                  "rounded-b-2xl **:data-[slot=drawer-footer]:rounded-b-[calc(var(--radius-2xl)-1px)]",
+                  "rounded-b-xl **:data-[slot=drawer-footer]:rounded-b-[calc(var(--radius-xl)-1px)]",
                 position === "left" &&
-                  "rounded-e-2xl **:data-[slot=drawer-footer]:rounded-ee-[calc(var(--radius-2xl)-1px)]",
+                  "rounded-e-xl **:data-[slot=drawer-footer]:rounded-ee-[calc(var(--radius-xl)-1px)]",
                 position === "right" &&
-                  "rounded-s-2xl **:data-[slot=drawer-footer]:rounded-es-[calc(var(--radius-2xl)-1px)]",
+                  "rounded-s-xl **:data-[slot=drawer-footer]:rounded-es-[calc(var(--radius-xl)-1px)]",
               ),
             variant === "default" &&
               cn(
                 position === "bottom" &&
-                  "before:rounded-t-[calc(var(--radius-2xl)-1px)]",
+                  "before:rounded-t-[calc(var(--radius-xl)-1px)]",
                 position === "top" &&
-                  "before:rounded-b-[calc(var(--radius-2xl)-1px)]",
+                  "before:rounded-b-[calc(var(--radius-xl)-1px)]",
                 position === "left" &&
-                  "before:rounded-e-[calc(var(--radius-2xl)-1px)]",
+                  "before:rounded-e-[calc(var(--radius-xl)-1px)]",
                 position === "right" &&
-                  "before:rounded-s-[calc(var(--radius-2xl)-1px)]",
+                  "before:rounded-s-[calc(var(--radius-xl)-1px)]",
               ),
             variant === "inset" &&
-              "before:hidden sm:rounded-2xl sm:border sm:after:bg-transparent sm:before:rounded-[calc(var(--radius-2xl)-1px)] sm:**:data-[slot=drawer-footer]:rounded-b-[calc(var(--radius-2xl)-1px)]",
+              "before:hidden sm:rounded-xl sm:border sm:after:bg-transparent sm:before:rounded-[calc(var(--radius-xl)-1px)] sm:**:data-[slot=drawer-footer]:rounded-b-[calc(var(--radius-xl)-1px)]",
             variant === "straight" && "[--stack-step:0]",
             (position === "bottom" || position === "top") &&
               "h-(--drawer-height,auto) [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height))))] data-nested-drawer-open:h-(--height)",
@@ -266,7 +266,7 @@ export function DrawerFooter({
       "flex flex-col-reverse gap-2 px-6 pb-(--safe-area-inset-bottom,0px) sm:flex-row sm:justify-end",
       !allowSelection && "cursor-default",
       variant === "default" &&
-        "border-t bg-muted/72 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+--spacing(4))]",
+        "border-t bg-background/30 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+--spacing(4))]",
       variant === "bare" &&
         "in-[[data-slot=drawer-popup]:has([data-slot=drawer-panel])]:pt-3 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+--spacing(6))]",
       className,

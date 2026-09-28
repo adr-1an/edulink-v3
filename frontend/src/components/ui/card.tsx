@@ -5,6 +5,9 @@ import { useRender } from "@base-ui/react/use-render";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
+export const interactiveCardClassName =
+  "transition-[border-color,box-shadow] hover:border-foreground/15 hover:shadow-sm has-[a:focus-visible]:border-foreground/20 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-foreground/15";
+
 export function Card({
   className,
   render,
@@ -12,7 +15,7 @@ export function Card({
 }: useRender.ComponentProps<"div">): React.ReactElement {
   const defaultProps = {
     className: cn(
-      "relative flex flex-col rounded-2xl border bg-card text-card-foreground",
+      "relative flex flex-col rounded-xl border bg-card text-card-foreground",
       className,
     ),
     "data-slot": "card",
@@ -32,7 +35,7 @@ export function CardFrame({
 }: useRender.ComponentProps<"div">): React.ReactElement {
   const defaultProps = {
     className: cn(
-      "relative flex flex-col overflow-hidden rounded-2xl border bg-muted/40 text-card-foreground *:data-[slot=card]:-m-px *:data-[slot=table-container]:-m-px *:data-[slot=table-container]:w-[calc(100%+2px)] *:not-first:data-[slot=card]:rounded-t-xl *:not-last:data-[slot=card]:rounded-b-xl *:data-[slot=card]:shadow-none",
+      "relative flex flex-col overflow-hidden rounded-xl border bg-muted/40 text-card-foreground *:data-[slot=card]:-m-px *:data-[slot=table-container]:-m-px *:data-[slot=table-container]:w-[calc(100%+2px)] *:not-first:data-[slot=card]:rounded-t-lg *:not-last:data-[slot=card]:rounded-b-lg *:data-[slot=card]:shadow-none",
       className,
     ),
     "data-slot": "card-frame",
@@ -52,7 +55,7 @@ export function CardFrameHeader({
 }: useRender.ComponentProps<"div">): React.ReactElement {
   const defaultProps = {
     className: cn(
-      "relative flex grid auto-rows-min grid-rows-[auto_auto] flex-col items-start gap-x-4 px-6 py-4 has-data-[slot=card-frame-action]:grid-cols-[1fr_auto]",
+      "relative flex grid auto-rows-min grid-rows-[auto_auto] flex-col items-start gap-x-4 px-5 py-4 has-data-[slot=card-frame-action]:grid-cols-[1fr_auto]",
       className,
     ),
     "data-slot": "card-frame-header",
@@ -125,7 +128,7 @@ export function CardFrameFooter({
   ...props
 }: useRender.ComponentProps<"div">): React.ReactElement {
   const defaultProps = {
-    className: cn("px-6 py-4", className),
+    className: cn("px-5 py-4", className),
     "data-slot": "card-frame-footer",
   };
 
@@ -143,7 +146,7 @@ export function CardHeader({
 }: useRender.ComponentProps<"div">): React.ReactElement {
   const defaultProps = {
     className: cn(
-      "grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 p-6 in-[[data-slot=card]:has(>[data-slot=card-panel])]:pb-4 has-data-[slot=card-action]:grid-cols-[1fr_auto]",
+      "grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 p-5 in-[[data-slot=card]:has(>[data-slot=card-panel])]:pb-4 has-data-[slot=card-action]:grid-cols-[1fr_auto]",
       className,
     ),
     "data-slot": "card-header",
@@ -217,7 +220,7 @@ export function CardPanel({
 }: useRender.ComponentProps<"div">): React.ReactElement {
   const defaultProps = {
     className: cn(
-      "flex-1 p-6 in-[[data-slot=card]:has(>[data-slot=card-header]:not(.border-b))]:pt-0 in-[[data-slot=card]:has(>[data-slot=card-footer]:not(.border-t))]:pb-0",
+      "flex-1 p-5 in-[[data-slot=card]:has(>[data-slot=card-header]:not(.border-b))]:pt-0 in-[[data-slot=card]:has(>[data-slot=card-footer]:not(.border-t))]:pb-0",
       className,
     ),
     "data-slot": "card-panel",
@@ -237,7 +240,7 @@ export function CardFooter({
 }: useRender.ComponentProps<"div">): React.ReactElement {
   const defaultProps = {
     className: cn(
-      "flex items-center p-6 in-[[data-slot=card]:has(>[data-slot=card-panel])]:pt-4",
+      "flex items-center p-5 in-[[data-slot=card]:has(>[data-slot=card-panel])]:pt-4",
       className,
     ),
     "data-slot": "card-footer",

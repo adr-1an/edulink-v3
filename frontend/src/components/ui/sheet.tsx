@@ -32,7 +32,7 @@ export function SheetBackdrop({
   return (
     <SheetPrimitive.Backdrop
       className={cn(
-        "fixed inset-0 z-50 bg-black/32 backdrop-blur-sm transition-all duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0",
+        "fixed inset-0 z-50 bg-black/20 transition-all duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 dark:bg-black/40",
         className,
       )}
       data-slot="sheet-backdrop"
@@ -89,7 +89,7 @@ export function SheetPopup({
       <SheetViewport side={side} variant={variant}>
         <SheetPrimitive.Popup
           className={cn(
-            "relative flex max-h-full min-h-0 w-full min-w-0 flex-col border-border bg-popover text-popover-foreground shadow-[0_18px_50px_rgb(0_0_0/0.14)] transition-[opacity,translate] duration-200 ease-in-out will-change-transform data-ending-style:opacity-0 data-starting-style:opacity-0",
+            "liquid-glass-panel relative flex max-h-full min-h-0 w-full min-w-0 flex-col text-popover-foreground transition-[opacity,translate] duration-200 ease-in-out will-change-transform data-ending-style:opacity-0 data-starting-style:opacity-0",
             side === "bottom" &&
               "row-start-2 border-t data-ending-style:translate-y-8 data-starting-style:translate-y-8",
             side === "top" &&
@@ -99,7 +99,7 @@ export function SheetPopup({
             side === "right" &&
               "col-start-2 w-[calc(100%-(--spacing(12)))] max-w-md border-s data-ending-style:translate-x-8 data-starting-style:translate-x-8",
             variant === "inset" &&
-              "before:hidden sm:rounded-2xl sm:border sm:before:rounded-[calc(var(--radius-2xl)-1px)] sm:**:data-[slot=sheet-footer]:rounded-b-[calc(var(--radius-2xl)-1px)]",
+              "before:hidden sm:rounded-xl sm:border sm:before:rounded-[calc(var(--radius-xl)-1px)] sm:**:data-[slot=sheet-footer]:rounded-b-[calc(var(--radius-xl)-1px)]",
             className,
           )}
           data-slot="sheet-popup"
@@ -153,7 +153,7 @@ export function SheetFooter({
   const defaultProps = {
     className: cn(
       "flex flex-col-reverse gap-2 px-6 sm:flex-row sm:justify-end",
-      variant === "default" && "border-t bg-muted/72 py-4",
+      variant === "default" && "border-t bg-background/30 py-4",
       variant === "bare" &&
         "in-[[data-slot=sheet-popup]:has([data-slot=sheet-panel])]:pt-3 pt-4 pb-6",
       className,

@@ -14,14 +14,15 @@ import (
 )
 
 type guardiansPayload struct {
-	Name           string    `json:"name"`
-	LastName       string    `json:"lastName"`
-	Email          string    `json:"email"`
-	Phone          *string   `json:"phone"`
-	Notes          *string   `json:"notes"`
-	DateOfBirth    time.Time `json:"dateOfBirth"`
-	AccountEnabled bool      `json:"accountEnabled"`
-	Password       *string   `json:"password"`
+	Name            string    `json:"name"`
+	LastName        string    `json:"lastName"`
+	Email           string    `json:"email"`
+	Phone           *string   `json:"phone"`
+	Notes           *string   `json:"notes"`
+	DateOfBirth     time.Time `json:"dateOfBirth"`
+	AccountEnabled  bool      `json:"accountEnabled"`
+	ActivateAccount bool      `json:"activateAccount"`
+	Password        *string   `json:"password"`
 }
 
 func (h *Handler) CreateGuardianHandler(w http.ResponseWriter, r *http.Request) {
@@ -54,14 +55,15 @@ func (h *Handler) CreateGuardianHandler(w http.ResponseWriter, r *http.Request) 
 		UserID:   userID,
 		SchoolID: schoolID,
 		Guardian: guardians.CreateGuardian{
-			Name:           p.Name,
-			LastName:       p.LastName,
-			Email:          p.Email,
-			Phone:          p.Phone,
-			Notes:          p.Notes,
-			DateOfBirth:    p.DateOfBirth,
-			AccountEnabled: p.AccountEnabled,
-			Password:       p.Password,
+			Name:            p.Name,
+			LastName:        p.LastName,
+			Email:           p.Email,
+			Phone:           p.Phone,
+			Notes:           p.Notes,
+			DateOfBirth:     p.DateOfBirth,
+			AccountEnabled:  p.AccountEnabled,
+			ActivateAccount: p.ActivateAccount,
+			Password:        p.Password,
 		},
 	})
 	if err != nil {
@@ -181,6 +183,7 @@ func (h *Handler) UpdateGuardianHandler(w http.ResponseWriter, r *http.Request) 
 			Notes:          p.Notes,
 			DateOfBirth:    p.DateOfBirth,
 			AccountEnabled: p.AccountEnabled,
+			AccountActive:  p.ActivateAccount,
 			Password:       p.Password,
 		},
 	}); err != nil {

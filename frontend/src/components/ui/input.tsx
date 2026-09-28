@@ -30,6 +30,8 @@ export function Input({
       "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none",
     props.type === "file" &&
       "text-muted-foreground file:me-3 file:bg-transparent file:font-medium file:text-foreground file:text-sm",
+    props.type === "color" &&
+      "cursor-pointer p-1 [&::-moz-color-swatch]:rounded-md [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0",
   );
 
   return (
@@ -37,7 +39,7 @@ export function Input({
       className={
         cn(
           !unstyled &&
-            "relative inline-flex w-full rounded-xl border border-input bg-background text-base text-foreground shadow-none ring-ring/20 transition-[border-color,box-shadow,background-color] has-focus-visible:border-ring has-focus-visible:ring-[3px] has-aria-invalid:border-destructive/50 has-focus-visible:has-aria-invalid:border-destructive has-focus-visible:has-aria-invalid:ring-destructive/15 has-disabled:bg-muted/50 has-disabled:opacity-60 sm:text-sm",
+            "relative inline-flex w-full rounded-lg border border-input bg-background text-base text-foreground shadow-none ring-ring/20 transition-[border-color,box-shadow,background-color] has-focus-visible:border-ring has-focus-visible:ring-[3px] has-aria-invalid:border-destructive/50 has-focus-visible:has-aria-invalid:border-destructive has-focus-visible:has-aria-invalid:ring-destructive/15 has-disabled:bg-muted/50 has-disabled:opacity-60 sm:text-sm",
           className,
         ) || undefined
       }

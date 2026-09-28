@@ -5,6 +5,7 @@ import (
 	portalProfile "app/internal/application/portal/profile"
 	staffAuth "app/internal/application/staff/auth"
 	"app/internal/application/staff/guardians"
+	"app/internal/application/staff/portal_users"
 	"app/internal/application/staff/schools"
 	"app/internal/application/staff/students"
 	"database/sql"
@@ -37,6 +38,10 @@ func New(
 				DB: db,
 				Sf: sf,
 			},
+			PortalUsers: &portal_users.Service{
+				DB: db,
+				Sf: sf,
+			},
 		},
 		Portal: PortalServices{
 			Auth: &portalAuth.Service{
@@ -58,10 +63,11 @@ type Application struct {
 }
 
 type StaffServices struct {
-	Auth      *staffAuth.Service
-	Schools   *schools.Service
-	Students  *students.Service
-	Guardians *guardians.Service
+	Auth        *staffAuth.Service
+	Schools     *schools.Service
+	Students    *students.Service
+	Guardians   *guardians.Service
+	PortalUsers *portal_users.Service
 }
 
 type PortalServices struct {

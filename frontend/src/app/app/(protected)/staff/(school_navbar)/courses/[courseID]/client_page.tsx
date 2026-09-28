@@ -942,7 +942,7 @@ function PostForm({
                     <FieldLabel>Accent color</FieldLabel>
                     <div className="flex items-center gap-2">
                         <Input
-                            className="h-9 w-14 cursor-pointer p-1"
+                            className="h-9 w-14"
                             type="color"
                             value={`#${color}`}
                             onChange={(event) => onChange({...draft, accentColor: event.target.value.slice(1).toUpperCase()})}

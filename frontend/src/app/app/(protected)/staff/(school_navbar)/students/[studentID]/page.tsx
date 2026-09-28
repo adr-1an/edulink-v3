@@ -32,6 +32,7 @@ function normalizeStudent(value: unknown): StaffStudentProfile | null {
     if (student.phone !== null && typeof student.phone !== "string") return null
     if (student.notes !== null && typeof student.notes !== "string") return null
     if (typeof student.accountEnabled !== "boolean") return null
+    if (typeof student.accountActive !== "boolean") return null
     if (typeof student.createdAt !== "string" || Number.isNaN(Date.parse(student.createdAt))) return null
 
     return {
@@ -43,6 +44,7 @@ function normalizeStudent(value: unknown): StaffStudentProfile | null {
         phone: student.phone ?? "",
         notes: student.notes ?? "",
         accountEnabled: student.accountEnabled,
+        accountActive: student.accountActive,
         createdAt: student.createdAt,
         profilePicture: normalizeProfilePicture(student.profilePicture),
     }

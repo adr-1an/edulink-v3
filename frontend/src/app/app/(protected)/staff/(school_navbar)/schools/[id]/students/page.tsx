@@ -22,6 +22,7 @@ interface RawStudent {
     phone: string | null
     notes: string | null
     accountEnabled: boolean
+    accountActive: boolean
     createdAt: string
 }
 
@@ -76,9 +77,10 @@ export default async function Page({params}: {params: Promise<{id: string}>}) {
         phone: student.phone ?? "",
         notes: student.notes ?? "",
         accountEnabled: student.accountEnabled,
+        accountActive: student.accountActive,
         createdAt: student.createdAt,
     }))
 
-    const snapshot = students.map((student) => `${student.id}:${student.name}:${student.lastName}:${student.email}:${student.accountEnabled}:${student.profilePictureURL ? "picture" : "initials"}`).join("|")
+    const snapshot = students.map((student) => `${student.id}:${student.name}:${student.lastName}:${student.email}:${student.accountEnabled}:${student.accountActive}:${student.profilePictureURL ? "picture" : "initials"}`).join("|")
     return <StudentsClientPage key={snapshot} schoolID={id} initialStudents={students} access={data.access ?? emptySchoolAccess} />
 }

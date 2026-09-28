@@ -60,6 +60,7 @@ const polishPermissionLabels: Record<string, string> = {
     "guardian.create": "Tworzenie opiekunów",
     "guardian.update": "Edycja opiekunów",
     "guardian.delete": "Usuwanie opiekunów",
+    "portal.user.activate": "Wysyłanie linków aktywacyjnych",
     "log.list": "Wyświetlanie dziennika audytu",
 }
 
@@ -78,6 +79,7 @@ const polishCategories: Record<string, string> = {
     courseStudents: "Uczniowie kursów",
     student: "Uczniowie",
     guardian: "Opiekunowie",
+    portal: "Użytkownicy portalu",
     log: "Dziennik audytu",
 }
 

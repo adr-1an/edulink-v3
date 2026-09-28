@@ -111,6 +111,7 @@ const permissionLabels: Record<string, string> = {
     "guardian.create": "Create guardians",
     "guardian.update": "Edit guardians",
     "guardian.delete": "Delete guardians",
+    "portal.user.activate": "Send portal activation links",
     "log.list": "View audit logs",
 }
 
@@ -174,6 +175,7 @@ const permissionDescriptions: Record<string, string> = {
     "guardian.create": "Can add new guardians to this school.",
     "guardian.update": "Can edit guardian details and portal access.",
     "guardian.delete": "Can permanently delete guardians.",
+    "portal.user.activate": "Can send account activation links to portal users.",
     "log.list": "Can view this school's audit logs.",
 }
 
@@ -192,6 +194,7 @@ const permissionCategoryLabels: Record<string, string> = {
     courseStudents: "Course students",
     student: "Students",
     guardian: "Guardians",
+    portal: "Portal users",
     log: "Logs",
 }
 
@@ -661,7 +664,7 @@ export default function RolesClientPage({schoolID, roles, availablePermissions, 
                             <Field>
                                 <FieldLabel>{t("staff.roles.color")}</FieldLabel>
                                 <div className="flex items-center gap-2">
-                                    <Input className="h-9 w-14 cursor-pointer p-1" type="color" value={`#${normalizedColor}`} onChange={(event) => setColor(event.target.value.slice(1).toUpperCase())} />
+                                    <Input className="h-9 w-14" type="color" value={`#${normalizedColor}`} onChange={(event) => setColor(event.target.value.slice(1).toUpperCase())} />
                                     <div className="relative flex-1">
                                         <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">#</span>
                                         <Input className="pl-7 font-mono uppercase" value={color} onChange={(event) => setColor(event.target.value.replace(/^#/, "").slice(0, 6))} pattern="[0-9A-Fa-f]{6}" maxLength={6} required />
@@ -781,7 +784,7 @@ export default function RolesClientPage({schoolID, roles, availablePermissions, 
                             <Field>
                                 <FieldLabel>{t("staff.roles.color")}</FieldLabel>
                                 <div className="flex items-center gap-2">
-                                    <Input className="h-9 w-14 cursor-pointer p-1" type="color" value={`#${normalizedEditColor}`} onChange={(event) => setEditColor(event.target.value.slice(1).toUpperCase())} />
+                                    <Input className="h-9 w-14" type="color" value={`#${normalizedEditColor}`} onChange={(event) => setEditColor(event.target.value.slice(1).toUpperCase())} />
                                     <div className="relative flex-1">
                                         <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">#</span>
                                         <Input className="pl-7 font-mono uppercase" value={editColor} onChange={(event) => setEditColor(event.target.value.replace(/^#/, "").slice(0, 6))} pattern="[0-9A-Fa-f]{6}" maxLength={6} required />

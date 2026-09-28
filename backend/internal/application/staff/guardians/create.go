@@ -12,14 +12,15 @@ import (
 )
 
 type CreateGuardian struct {
-	Name           string
-	LastName       string
-	Email          string
-	Phone          *string
-	Notes          *string
-	DateOfBirth    time.Time
-	AccountEnabled bool
-	Password       *string
+	Name            string
+	LastName        string
+	Email           string
+	Phone           *string
+	Notes           *string
+	DateOfBirth     time.Time
+	AccountEnabled  bool
+	ActivateAccount bool
+	Password        *string
 }
 
 type CreateGuardianInput struct {
@@ -36,6 +37,9 @@ func (s *Service) CreateGuardian(ctx context.Context, i *CreateGuardianInput) (*
 	if !schools.Can(schools.PermissionGuardianCreate, i.UserID, i.SchoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
+	if i.Guardian.ActivateAccount && !schools.Can(schools.PermissionPortalUserActivate, i.UserID, i.SchoolID, ctx, s.DB) {
+		return nil, ErrForbidden
+	}
 
 	// Parse & validate
 	i.Guardian.Name = strings.TrimSpace(i.Guardian.Name)
@@ -50,9 +54,9 @@ func (s *Service) CreateGuardian(ctx context.Context, i *CreateGuardianInput) (*
 		guardianNotes = strings.TrimSpace(*i.Guardian.Notes)
 	}
 
-	if len(i.Guardian.Name) < 3 ||
+	if len(i.Guardian.Name) < 1 ||
 		len(i.Guardian.Name) > 32 ||
-		len(i.Guardian.LastName) < 3 ||
+		len(i.Guardian.LastName) < 1 ||
 		len(i.Guardian.LastName) > 32 ||
 		len(i.Guardian.Email) < 5 ||
 		len(i.Guardian.Email) > 254 ||
@@ -82,7 +86,6 @@ func (s *Service) CreateGuardian(ctx context.Context, i *CreateGuardianInput) (*
 		}
 	}
 
-	activateAcc := i.Guardian.AccountEnabled && i.Guardian.Password != nil
 	res, err := tx.ExecContext(ctx, `
 		INSERT INTO portal_users (
 		                          id,
@@ -109,7 +112,7 @@ func (s *Service) CreateGuardian(ctx context.Context, i *CreateGuardianInput) (*
 		guardianPhone,
 		guardianNotes,
 		i.Guardian.AccountEnabled,
-		activateAcc,
+		i.Guardian.ActivateAccount,
 		guardianPass,
 		helpers.AccTypeGuardian,
 	)

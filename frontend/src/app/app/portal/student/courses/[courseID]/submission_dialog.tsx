@@ -226,7 +226,7 @@ function SubmissionDialogContent({assignment, submitting, setSubmitting, onClose
                     </DialogHeader>
                     <DialogPanel className="space-y-5">
                         {grade && accent ? (
-                            <section className="space-y-4 rounded-2xl border p-4 sm:p-5" style={{
+                            <section className="space-y-4 rounded-xl border p-4 sm:p-5" style={{
                                 backgroundColor: `color-mix(in oklab, ${accent} 7%, transparent)`,
                                 borderColor: `color-mix(in oklab, ${accent} 28%, var(--border))`,
                             }} aria-labelledby="assignment-grade-heading">
@@ -262,7 +262,7 @@ function SubmissionDialogContent({assignment, submitting, setSubmitting, onClose
                                 </div>
                             </section>
                         ) : (
-                            <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
+                            <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
                                 <CheckCircle2 className="size-5 shrink-0" />
                                 <p className="text-sm font-medium">{t("assignments.submission.submitted")}</p>
                             </div>
@@ -310,7 +310,7 @@ function SubmissionDialogContent({assignment, submitting, setSubmitting, onClose
                 <DialogPanel className="space-y-5">
                     {confirming ? (
                         <>
-                            <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                            <div className="rounded-xl border border-amber-300/60 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
                                 <div className="flex gap-3">
                                     <AlertTriangle className="mt-0.5 size-5 shrink-0" />
                                     <div>
@@ -334,7 +334,7 @@ function SubmissionDialogContent({assignment, submitting, setSubmitting, onClose
                         <>
                             {returned && (
                                 <div className="space-y-3">
-                                    <div className="flex gap-3 rounded-2xl border border-warning/35 bg-warning/[0.07] p-4 text-warning-foreground">
+                                    <div className="flex gap-3 rounded-xl border border-warning/35 bg-warning/[0.07] p-4 text-warning-foreground">
                                         <RotateCcw className="mt-0.5 size-5 shrink-0" />
                                         <div>
                                             <p className="font-semibold">{t("assignments.submission.returnedTitle")}</p>
@@ -666,7 +666,7 @@ function SubmissionUploadProgress({attachments}: {attachments: PendingAttachment
     }, 0) / attachments.length)
 
     return (
-        <div className="space-y-4 rounded-2xl border bg-muted/15 p-4" aria-live="polite" aria-busy={!allUploaded}>
+        <div className="space-y-4 rounded-xl border bg-muted/15 p-4" aria-live="polite" aria-busy={!allUploaded}>
             <div className="flex items-start gap-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     {allUploaded ? <CheckCircle2 className="size-5" /> : <Upload className="size-5" />}

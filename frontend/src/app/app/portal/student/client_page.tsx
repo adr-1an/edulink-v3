@@ -63,7 +63,7 @@ export default function StudentPortalPage({initialCourses, error}: {
 
     return (
         <div className="space-y-7">
-            <header className="overflow-hidden rounded-2xl border bg-card px-5 py-6 sm:px-7 sm:py-8">
+            <header className="overflow-hidden rounded-xl border bg-card px-5 py-6 sm:px-7 sm:py-8">
                 <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
                     <div>
                         <Badge className="mb-3" variant="secondary"><Sparkles /> {t("portal.student.badge")}</Badge>
@@ -151,7 +151,7 @@ export default function StudentPortalPage({initialCourses, error}: {
 
 function Metric({icon: Icon, label, value}: {icon: typeof BookOpen; label: string; value: number}) {
     return (
-        <div className="min-w-24 rounded-2xl bg-muted/55 px-4 py-3">
+        <div className="min-w-24 rounded-lg bg-muted/55 px-4 py-3">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="size-3.5" /> {label}</div>
             <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
         </div>

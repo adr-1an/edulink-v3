@@ -78,6 +78,9 @@ const (
 	PermissionGuardianDelete Permission = "guardian.delete"
 	PermissionGuardianView   Permission = "guardian.view"
 
+	PermissionPortalUserActivate   Permission = "portal.user.activate"
+	PermissionPortalUserDeactivate Permission = "portal.user.deactivate"
+
 	PermissionCourseStudentAssign Permission = "course.student.assign"
 	PermissionCourseStudentRemove Permission = "course.student.remove"
 	PermissionCourseStudentList   Permission = "course.student.list"
@@ -97,6 +100,16 @@ const (
 
 func (p Permission) String() string {
 	return string(p)
+}
+
+func PortalUserActiveStatePermission(wasActive, isActive bool) (Permission, bool) {
+	if wasActive == isActive {
+		return "", false
+	}
+	if isActive {
+		return PermissionPortalUserActivate, true
+	}
+	return PermissionPortalUserDeactivate, true
 }
 
 var ValidPermissions = map[Permission]struct{}{
@@ -157,6 +170,9 @@ var ValidPermissions = map[Permission]struct{}{
 	PermissionGuardianUpdate: {},
 	PermissionGuardianDelete: {},
 	PermissionGuardianView:   {},
+
+	PermissionPortalUserActivate:   {},
+	PermissionPortalUserDeactivate: {},
 
 	PermissionCourseStudentAssign: {},
 	PermissionCourseStudentRemove: {},

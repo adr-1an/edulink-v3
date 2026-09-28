@@ -17,8 +17,8 @@ import (
 )
 
 // Latest updates
-// Minor: added guardian account management, fixed account activation for new students
-const version = "3.14.6"
+// Minor: added portal user activation link sending option (through edit popup)
+const version = "3.15.6"
 
 func main() {
 	fmt.Printf("Starting EduLink API v%s\n", version)

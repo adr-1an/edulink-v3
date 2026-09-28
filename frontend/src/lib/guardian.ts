@@ -18,6 +18,7 @@ export interface GuardianDraft {
     phone: string
     notes: string
     accountEnabled: boolean
+    activateAccount: boolean
     password: string
 }
 
@@ -29,6 +30,7 @@ export interface GuardianInput {
     phone: string | null
     notes: string | null
     accountEnabled: boolean
+    activateAccount?: boolean
     password: string | null
 }
 
@@ -40,6 +42,7 @@ export const emptyGuardianDraft: GuardianDraft = {
     phone: "",
     notes: "",
     accountEnabled: false,
+    activateAccount: false,
     password: "",
 }
 
@@ -114,6 +117,7 @@ export function guardianDraftToInput(draft: GuardianDraft): GuardianInput {
         phone: phone || null,
         notes: notes || null,
         accountEnabled: draft.accountEnabled,
+        ...(draft.accountEnabled ? {activateAccount: draft.activateAccount} : {}),
         password: password || null,
     }
 }

@@ -185,7 +185,7 @@ export function ComboboxPopup({
       >
         <span
           className={cn(
-            "relative flex max-h-full min-w-(--anchor-width) max-w-(--available-width) origin-(--transform-origin) rounded-xl border bg-popover shadow-lg shadow-black/8 transition-[scale,opacity]",
+            "liquid-glass relative flex max-h-full min-w-(--anchor-width) max-w-(--available-width) origin-(--transform-origin) rounded-lg border transition-[scale,opacity]",
             className,
           )}
         >
@@ -374,7 +374,7 @@ export function ComboboxChips({
   return (
     <ComboboxPrimitive.Chips
       className={cn(
-        "relative inline-flex min-h-11 w-full flex-wrap gap-1 rounded-xl border border-input bg-background p-1 text-base shadow-none outline-none ring-ring/20 transition-[border-color,box-shadow,background-color] *:min-h-8 focus-within:border-ring focus-within:ring-[3px] has-disabled:pointer-events-none has-disabled:bg-muted/50 has-disabled:opacity-60 has-aria-invalid:border-destructive/50 focus-within:has-aria-invalid:border-destructive focus-within:has-aria-invalid:ring-destructive/15 sm:min-h-9 sm:text-sm sm:*:min-h-7",
+        "relative inline-flex min-h-11 w-full flex-wrap gap-1 rounded-lg border border-input bg-background p-1 text-base shadow-none outline-none ring-ring/20 transition-[border-color,box-shadow,background-color] *:min-h-8 focus-within:border-ring focus-within:ring-[3px] has-disabled:pointer-events-none has-disabled:bg-muted/50 has-disabled:opacity-60 has-aria-invalid:border-destructive/50 focus-within:has-aria-invalid:border-destructive focus-within:has-aria-invalid:ring-destructive/15 sm:min-h-9 sm:text-sm sm:*:min-h-7",
         className,
       )}
       data-slot="combobox-chips"

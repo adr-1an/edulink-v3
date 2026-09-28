@@ -1,6 +1,7 @@
 "use server"
 
 import {cookies} from "next/headers"
+import {type StudentInput} from "@/lib/student"
 
 export type StudentActionErrorCode =
     | "invalid_school" | "invalid_student" | "network" | "invalid_data" | "unauthorized"
@@ -8,17 +9,6 @@ export type StudentActionErrorCode =
 
 function failure<const Code extends StudentActionErrorCode>(code: Code, message: string) {
     return {ok: false as const, code, message}
-}
-
-export interface StudentInput {
-    name: string
-    lastName: string
-    dob: string | null
-    email: string
-    phone: string
-    notes: string
-    accountEnabled: boolean
-    password: string
 }
 
 export interface ImportedStudentInput {

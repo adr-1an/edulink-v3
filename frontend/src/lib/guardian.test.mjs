@@ -14,6 +14,7 @@ const validDraft = {
     phone: "  +1 555 0100  ",
     notes: "  Primary contact  ",
     accountEnabled: true,
+    activateAccount: false,
     password: "long-enough",
 }
 
@@ -58,12 +59,21 @@ test("builds the guardian API payload with trimmed nullable values and an RFC 33
         phone: "+1 555 0100",
         notes: "Primary contact",
         accountEnabled: true,
+        activateAccount: false,
         password: "long-enough",
     })
 
     assert.equal(guardianDraftToInput({...validDraft, phone: " ", notes: " ", password: ""}).phone, null)
     assert.equal(guardianDraftToInput({...validDraft, phone: " ", notes: " ", password: ""}).notes, null)
     assert.equal(guardianDraftToInput({...validDraft, phone: " ", notes: " ", password: ""}).password, null)
+})
+
+test("only requests guardian account activation when login is enabled", () => {
+    assert.equal(guardianDraftToInput(validDraft).activateAccount, false)
+    assert.equal(guardianDraftToInput({...validDraft, activateAccount: true}).activateAccount, true)
+
+    const disabledPayload = guardianDraftToInput({...validDraft, accountEnabled: false})
+    assert.equal(Object.hasOwn(disabledPayload, "activateAccount"), false)
 })
 
 test("requires a password only when a guardian login is newly enabled", () => {

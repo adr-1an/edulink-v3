@@ -22,6 +22,7 @@ import {Field, FieldLabel} from "@/components/ui/field"
 import {Input} from "@/components/ui/input"
 import {hasSchoolPermission, type SchoolAccess} from "@/lib/school_access"
 import {rememberSchoolAccess} from "@/lib/school_navigation"
+import {canSendPortalUserActivationLink} from "@/lib/portal_user_activation_link"
 import {handleCreateStudent, handleDeleteStudent, handleUpdateStudent} from "./actions"
 import {useLocale} from "@/i18n/provider"
 import {type Locale} from "@/i18n/config"
@@ -30,6 +31,8 @@ import StudentForm, {
 } from "./student_form"
 import {studentErrorKeys} from "./student_action_errors"
 import BulkStudentImport from "./bulk_student_import"
+import {handleSendPortalUserActivationLink} from "../../../portal_user_actions"
+import {portalUserActivationErrorKeys} from "../../../portal_user_action_errors"
 
 export interface Student {
     id: string
@@ -42,6 +45,7 @@ export interface Student {
     phone: string
     notes: string
     accountEnabled: boolean
+    accountActive: boolean
     createdAt: string
 }
 
@@ -71,11 +75,14 @@ export default function StudentsClientPage({schoolID, initialStudents, access}: 
     const [deleteConfirmation, setDeleteConfirmation] = useState("")
     const [draft, setDraft] = useState<StudentDraft>(emptyStudentDraft)
     const [saving, setSaving] = useState(false)
+    const [sendingActivationLink, setSendingActivationLink] = useState(false)
+    const [activationLinkSent, setActivationLinkSent] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const canView = hasSchoolPermission(access, "student.view")
     const canCreate = hasSchoolPermission(access, "student.create")
     const canUpdate = hasSchoolPermission(access, "student.update")
     const canDelete = hasSchoolPermission(access, "student.delete")
+    const canActivatePortalUser = hasSchoolPermission(access, "portal.user.activate")
 
     useEffect(() => {
         rememberSchoolAccess(schoolID, access)
@@ -102,6 +109,7 @@ export default function StudentsClientPage({schoolID, initialStudents, access}: 
     }
 
     function openEdit(student: Student) {
+        setActivationLinkSent(false)
         setDraft({
             name: student.name,
             lastName: student.lastName,
@@ -110,6 +118,7 @@ export default function StudentsClientPage({schoolID, initialStudents, access}: 
             phone: student.phone,
             notes: student.notes,
             accountEnabled: student.accountEnabled,
+            accountActive: student.accountEnabled && student.accountActive,
             password: "",
         })
         setEditTarget(student)
@@ -151,6 +160,7 @@ export default function StudentsClientPage({schoolID, initialStudents, access}: 
             phone: input.phone,
             notes: input.notes,
             accountEnabled: input.accountEnabled,
+            accountActive: input.accountActive ?? false,
         }
         setStudents((current) => current.map((student) => student.id === editTarget.id ? updated : student))
         setEditTarget(null)
@@ -168,6 +178,22 @@ export default function StudentsClientPage({schoolID, initialStudents, access}: 
         setDeleteTarget(null)
         setDeleteConfirmation("")
         toast.success(t("staff.students.deleted"))
+    }
+
+    async function sendActivationLink() {
+        if (!editTarget || sendingActivationLink || !canActivatePortalUser || !canSendPortalUserActivationLink({
+            accountEnabled: draft.accountEnabled,
+            accountActive: draft.accountActive,
+            password: draft.password,
+            activationLinkSent,
+        })) return
+
+        setSendingActivationLink(true)
+        const result = await handleSendPortalUserActivationLink(editTarget.id)
+        setSendingActivationLink(false)
+        if (!result.ok) return toast.error(t(portalUserActivationErrorKeys[result.code]))
+        setActivationLinkSent(true)
+        toast.success(t("staff.portalUsers.activation.sent"))
     }
 
     return (
@@ -293,10 +319,10 @@ export default function StudentsClientPage({schoolID, initialStudents, access}: 
                 />
             )}
 
-            <Dialog open={editTarget !== null} onOpenChange={(open) => { if (!open && !saving) setEditTarget(null) }}>
+            <Dialog open={editTarget !== null} onOpenChange={(open) => { if (!open && !saving && !sendingActivationLink) setEditTarget(null) }}>
                 <DialogPopup className="sm:max-w-2xl">
                     <DialogHeader><DialogTitle>{t("staff.students.editTitle")}</DialogTitle><DialogDescription>{t("staff.students.editDescription")}</DialogDescription></DialogHeader>
-                    <StudentForm draft={draft} saving={saving} mode="edit" wasAccountEnabled={editTarget?.accountEnabled} onChange={setDraft} onSubmit={updateStudent} />
+                    <StudentForm draft={draft} saving={saving} sendingActivationLink={sendingActivationLink} activationLinkSent={activationLinkSent} canSendActivationLink={canActivatePortalUser} mode="edit" wasAccountEnabled={editTarget?.accountEnabled} onChange={setDraft} onSubmit={updateStudent} onSendActivationLink={sendActivationLink} />
                 </DialogPopup>
             </Dialog>
 
