@@ -88,13 +88,15 @@ func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *htt
 		SubmittedBy portalUser `json:"submittedBy"`
 		Notes       *string    `json:"notes"`
 		SubmittedAt time.Time  `json:"submittedAt"`
+		Graded      bool       `json:"graded"`
 	}
 	var subs []submission
 
 	rows, err := h.DB.QueryContext(ctx, `
 		SELECT
 		    s.id, u.id, u.email, u.phone, u.name, u.last_name,
-		    s.notes, s.created_at, s.status
+		    s.notes, s.created_at, s.status,
+		    EXISTS (SELECT 1 FROM submission_scores WHERE submission_id = s.id)
 		FROM assignment_submissions s
 		JOIN portal_users u ON s.submitted_by = u.id
 		WHERE (s.status = $1
@@ -121,6 +123,7 @@ func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *htt
 		Notes       *string
 		SubmittedAt time.Time
 		Status      string
+		Graded      bool
 	}
 
 	for rows.Next() {
@@ -138,6 +141,8 @@ func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *htt
 			&r.Notes,
 			&r.SubmittedAt,
 			&r.Status,
+
+			&r.Graded,
 		); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -158,6 +163,7 @@ func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *htt
 			Notes:       r.Notes,
 			SubmittedAt: r.SubmittedAt,
 			Status:      r.Status,
+			Graded:      r.Graded,
 		})
 	}
 

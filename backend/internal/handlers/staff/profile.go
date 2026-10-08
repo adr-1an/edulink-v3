@@ -53,10 +53,12 @@ func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var user User
 
-	var bucketName sql.NullString
-	var objKey sql.NullString
-	var filename sql.NullString
-	var contentType sql.NullString
+	var (
+		bucketName  *string
+		objKey      *string
+		filename    *string
+		contentType *string
+	)
 
 	if err = h.DB.QueryRowContext(ctx, `
 		SELECT
@@ -89,8 +91,8 @@ func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if filename.Valid && contentType.Valid && bucketName.Valid {
-		url, err := h.S3.PresignedGetObject(ctx, bucketName.String, objKey.String, 15*time.Minute, nil)
+	if filename != nil && contentType != nil && bucketName != nil {
+		url, err := h.S3.PresignedGetObject(ctx, *bucketName, *objKey, 15*time.Minute, nil)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -99,8 +101,8 @@ func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 		user.Pfp = &pfp{
 			PresignedURL: url.String(),
-			Filename:     filename.String,
-			ContentType:  contentType.String,
+			Filename:     *filename,
+			ContentType:  *contentType,
 		}
 	}
 

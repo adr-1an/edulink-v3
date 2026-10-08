@@ -20,6 +20,7 @@ function isSubmission(value: unknown): value is AssignmentSubmission {
         && typeof submission.submittedAt === "string"
         && !Number.isNaN(Date.parse(submission.submittedAt))
         && (submission.notes === null || typeof submission.notes === "string")
+        && typeof submission.graded === "boolean"
         && Boolean(user)
         && typeof user?.id === "string"
         && typeof user.email === "string"

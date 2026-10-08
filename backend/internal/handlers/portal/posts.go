@@ -123,11 +123,11 @@ func (h *Handler) ViewPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var (
-			aID          sql.NullInt64
-			aBucketName  sql.NullString
-			aKey         sql.NullString
-			aFilename    sql.NullString
-			aContentType sql.NullString
+			aID          *int64
+			aBucketName  *string
+			aKey         *string
+			aFilename    *string
+			aContentType *string
 		)
 
 		if err := rows.Scan(
@@ -142,8 +142,8 @@ func (h *Handler) ViewPostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if aID.Valid {
-			url, err := h.S3.PresignedGetObject(ctx, aBucketName.String, aKey.String, 15*time.Minute, nil)
+		if aID != nil {
+			url, err := h.S3.PresignedGetObject(ctx, *aBucketName, *aKey, 15*time.Minute, nil)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -151,9 +151,9 @@ func (h *Handler) ViewPostHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			p.Attachments = append(p.Attachments, attachment{
-				ID:           strconv.FormatInt(aID.Int64, 10),
-				Filename:     aFilename.String,
-				ContentType:  aContentType.String,
+				ID:           strconv.FormatInt(*aID, 10),
+				Filename:     *aFilename,
+				ContentType:  *aContentType,
 				PresignedURL: url.String(),
 			})
 		}

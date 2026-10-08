@@ -17,7 +17,7 @@ import (
 )
 
 // Latest updates
-// Minor: added portal user activation link sending option (through edit popup)
+// Minor: replaced sql.NullString and sql.NullInt64 with *string and *int64 respectively
 const version = "3.15.6"
 
 func main() {

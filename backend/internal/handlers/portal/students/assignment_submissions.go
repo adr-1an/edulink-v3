@@ -28,7 +28,7 @@ const (
 	SubmissionStatusReturned  SubmissionStatus = "returned"
 )
 
-type user struct {
+type AssignmentGradeUser struct {
 	ID    string  `json:"id"`
 	Name  string  `json:"name"`
 	Email string  `json:"email"`
@@ -36,10 +36,10 @@ type user struct {
 }
 
 type grade struct {
-	Score    int       `json:"score"`
-	Notes    *string   `json:"notes"`
-	GradedAt time.Time `json:"gradedAt"`
-	GradedBy user      `json:"gradedBy"`
+	Score    int                 `json:"score"`
+	Notes    *string             `json:"notes"`
+	GradedAt time.Time           `json:"gradedAt"`
+	GradedBy AssignmentGradeUser `json:"gradedBy"`
 }
 
 type assignmentSubmission struct {
@@ -609,8 +609,17 @@ func (h *Handler) CompleteSubmissionCreationHandler(w http.ResponseWriter, r *ht
 	}
 
 	if hasIncompleteAttachments {
-		w.WriteHeader(http.StatusConflict)
-		return
+		// Delete the unfinished attachment records
+		if _, err := tx.ExecContext(ctx, `
+			DELETE FROM submission_attachments sa
+			USING portal_storage_objects so
+			WHERE so.status = $1
+			AND sa.submission_id = $2
+		`, helpers2.StatusPending, submissionID); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if _, err := tx.ExecContext(ctx, `

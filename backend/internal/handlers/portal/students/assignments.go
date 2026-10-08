@@ -3,7 +3,6 @@ package students
 import (
 	"app/internal/helpers"
 	"app/internal/helpers/portal"
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -113,10 +112,10 @@ func (h *Handler) ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Reque
 	defer func() { _ = rows.Close() }()
 
 	type optRefPost struct {
-		ID    sql.NullInt64
-		Title sql.NullString
-		Body  sql.NullString
-		Color sql.NullString
+		ID    *int64
+		Title *string
+		Body  *string
+		Color *string
 	}
 
 	type optUser struct {
@@ -138,10 +137,10 @@ func (h *Handler) ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Reque
 		var (
 			a                   assignment
 			nullRefPost         optRefPost
-			submissionID        sql.NullInt64
-			submissionStatus    sql.NullString
-			submissionNotes     sql.NullString
-			submissionCreatedAt sql.NullTime
+			submissionID        *int64
+			submissionStatus    *string
+			submissionNotes     *string
+			submissionCreatedAt *time.Time
 			nullGrade           optGrade
 		)
 
@@ -181,22 +180,22 @@ func (h *Handler) ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		if nullRefPost.ID.Valid {
+		if nullRefPost.ID != nil {
 			a.RefPost = &refPost{
-				ID:    strconv.FormatInt(nullRefPost.ID.Int64, 10),
-				Title: nullRefPost.Title.String,
-				Body:  nullRefPost.Body.String,
-				Color: nullRefPost.Color.String,
+				ID:    strconv.FormatInt(*nullRefPost.ID, 10),
+				Title: *nullRefPost.Title,
+				Body:  *nullRefPost.Body,
+				Color: *nullRefPost.Color,
 			}
 		}
 
-		if submissionID.Valid {
+		if submissionID != nil {
 			a.Submission = &assignmentSubmission{
-				ID:          strconv.FormatInt(submissionID.Int64, 10),
-				Status:      SubmissionStatus(submissionStatus.String),
-				Notes:       submissionNotes.String,
+				ID:          strconv.FormatInt(*submissionID, 10),
+				Status:      SubmissionStatus(*submissionStatus),
+				Notes:       *submissionNotes,
 				Attachments: []assignmentSubmissionAttachment{},
-				CreatedAt:   submissionCreatedAt.Time,
+				CreatedAt:   *submissionCreatedAt,
 				Grade:       nil,
 			}
 
@@ -205,7 +204,7 @@ func (h *Handler) ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Reque
 					Score:    *nullGrade.Score,
 					Notes:    nullGrade.Notes,
 					GradedAt: *nullGrade.GradedAt,
-					GradedBy: user{
+					GradedBy: AssignmentGradeUser{
 						ID:    *nullGrade.GradedBy.ID,
 						Name:  *nullGrade.GradedBy.Name,
 						Email: *nullGrade.GradedBy.Email,
@@ -214,7 +213,7 @@ func (h *Handler) ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Reque
 				}
 			}
 
-			submissionIDs = append(submissionIDs, submissionID.Int64)
+			submissionIDs = append(submissionIDs, *submissionID)
 		}
 
 		assignments = append(assignments, a)

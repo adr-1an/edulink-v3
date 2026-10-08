@@ -314,8 +314,8 @@ func (h *Handler) ListAssignmentsHandler(w http.ResponseWriter, r *http.Request)
 	for rows.Next() {
 		var (
 			a            assignment
-			refPostID    sql.NullInt64
-			refPostTitle sql.NullString
+			refPostID    *int64
+			refPostTitle *string
 		)
 
 		if err := rows.Scan(
@@ -334,10 +334,10 @@ func (h *Handler) ListAssignmentsHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		if refPostID.Valid {
+		if refPostID != nil {
 			a.RefPost = &post{
-				ID:    strconv.FormatInt(refPostID.Int64, 10),
-				Title: refPostTitle.String,
+				ID:    strconv.FormatInt(*refPostID, 10),
+				Title: *refPostTitle,
 			}
 		}
 

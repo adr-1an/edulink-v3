@@ -4,7 +4,7 @@ import {useDeferredValue, useMemo, useState} from "react"
 import Link from "next/link"
 import {useRouter} from "next/navigation"
 import {
-    ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Eye, RotateCcw, Search, StickyNote, UserRound,
+    ArrowLeft, Award, ChevronLeft, ChevronRight, ClipboardCheck, Eye, RotateCcw, Search, StickyNote, UserRound,
 } from "lucide-react"
 import LocalDateTime from "@/components/local-date-time"
 import StudentProfilePopover, {portalStudentDisplayName, type PortalStudentSummary} from "@/components/app/student-profile-popover"
@@ -15,6 +15,7 @@ import {Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle} from "@/co
 import {InputGroup, InputGroupAddon, InputGroupInput} from "@/components/ui/input-group"
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
 import {useLocale} from "@/i18n/provider"
+import {matchesStaffSubmissionView, type StaffSubmissionView} from "@/lib/staff_assignment_submissions"
 
 export interface AssignmentSubmission {
     id: string
@@ -22,6 +23,7 @@ export interface AssignmentSubmission {
     submittedBy: PortalStudentSummary
     notes: string | null
     submittedAt: string
+    graded: boolean
 }
 
 const pageSize = 20
@@ -36,14 +38,15 @@ export default function SubmissionsClientPage({
     const router = useRouter()
     const {locale, t} = useLocale()
     const [query, setQuery] = useState("")
-    const [statusView, setStatusView] = useState<AssignmentSubmission["status"]>("submitted")
+    const [statusView, setStatusView] = useState<StaffSubmissionView>("submitted")
     const [requestedPage, setRequestedPage] = useState(1)
     const deferredQuery = useDeferredValue(query)
-    const submittedCount = submissions.filter(({status}) => status === "submitted").length
-    const returnedCount = submissions.filter(({status}) => status === "returned").length
+    const submittedCount = submissions.filter((submission) => matchesStaffSubmissionView(submission, "submitted")).length
+    const gradedCount = submissions.filter((submission) => matchesStaffSubmissionView(submission, "graded")).length
+    const returnedCount = submissions.filter((submission) => matchesStaffSubmissionView(submission, "returned")).length
     const filteredSubmissions = useMemo(() => {
         const normalizedQuery = deferredQuery.trim().toLocaleLowerCase(locale === "pl" ? "pl-PL" : "en-US")
-        const statusSubmissions = submissions.filter(({status}) => status === statusView)
+        const statusSubmissions = submissions.filter((submission) => matchesStaffSubmissionView(submission, statusView))
         if (!normalizedQuery) return statusSubmissions
 
         return statusSubmissions.filter((submission) => [
@@ -105,6 +108,19 @@ export default function SubmissionsClientPage({
                         </Button>
                         <Button
                             size="sm"
+                            variant={statusView === "graded" ? "secondary" : "ghost"}
+                            role="tab"
+                            aria-selected={statusView === "graded"}
+                            onClick={() => {
+                                setStatusView("graded")
+                                setRequestedPage(1)
+                            }}
+                        >
+                            <Award /> {t("staff.submissions.gradedTab")}
+                            <Badge variant="secondary">{gradedCount}</Badge>
+                        </Button>
+                        <Button
+                            size="sm"
                             variant={statusView === "returned" ? "secondary" : "ghost"}
                             role="tab"
                             aria-selected={statusView === "returned"}
@@ -145,8 +161,8 @@ export default function SubmissionsClientPage({
                             <Empty className="py-14 md:py-16">
                                 <EmptyHeader>
                                     <EmptyMedia variant="icon"><Search /></EmptyMedia>
-                                    <EmptyTitle>{t(query ? "staff.submissions.noMatches" : statusView === "returned" ? "staff.submissions.noReturned" : "staff.submissions.noSubmitted")}</EmptyTitle>
-                                    <EmptyDescription>{t(query ? "staff.submissions.noMatchesDescription" : statusView === "returned" ? "staff.submissions.noReturnedDescription" : "staff.submissions.noSubmittedDescription")}</EmptyDescription>
+                                    <EmptyTitle>{t(query ? "staff.submissions.noMatches" : statusView === "returned" ? "staff.submissions.noReturned" : statusView === "graded" ? "staff.submissions.noGraded" : "staff.submissions.noSubmitted")}</EmptyTitle>
+                                    <EmptyDescription>{t(query ? "staff.submissions.noMatchesDescription" : statusView === "returned" ? "staff.submissions.noReturnedDescription" : statusView === "graded" ? "staff.submissions.noGradedDescription" : "staff.submissions.noSubmittedDescription")}</EmptyDescription>
                                 </EmptyHeader>
                                 {query && <Button variant="outline" onClick={() => setQuery("")}>{t("staff.submissions.clearSearch")}</Button>}
                             </Empty>
@@ -206,8 +222,8 @@ export default function SubmissionsClientPage({
                                             <div className="flex items-start justify-between gap-3">
                                                 <StudentProfilePopover student={submission.submittedBy} showEmail />
                                                 <Badge variant={submission.status === "returned" ? "warning" : "success"}>
-                                                    {submission.status === "returned" ? <RotateCcw /> : <ClipboardCheck />}
-                                                    {t(submission.status === "returned" ? "staff.submissions.returned" : "staff.submissions.submitted")}
+                                                    {submission.status === "returned" ? <RotateCcw /> : submission.graded ? <Award /> : <ClipboardCheck />}
+                                                    {t(submission.status === "returned" ? "staff.submissions.returned" : submission.graded ? "staff.submissions.graded" : "staff.submissions.submitted")}
                                                 </Badge>
                                             </div>
                                             <div className="rounded-xl border bg-muted/20 p-3">

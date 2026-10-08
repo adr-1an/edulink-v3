@@ -1110,10 +1110,10 @@ func (h *Handler) ListStaffMembersHandler(w http.ResponseWriter, r *http.Request
 			addedBy   UserSummary
 			createdAt time.Time
 
-			roleID       sql.NullString
-			rolePosition sql.NullInt64
-			roleName     sql.NullString
-			roleColor    sql.NullString
+			roleID       *string
+			rolePosition *int64
+			roleName     *string
+			roleColor    *string
 
 			bucketName  *string
 			objectKey   *string
@@ -1174,12 +1174,12 @@ func (h *Handler) ListStaffMembersHandler(w http.ResponseWriter, r *http.Request
 			staffOrder = append(staffOrder, staffID)
 		}
 
-		if roleID.Valid {
+		if roleID != nil {
 			staff.Roles = append(staff.Roles, StaffRole{
-				ID:       roleID.String,
-				Position: int(rolePosition.Int64),
-				Name:     roleName.String,
-				Color:    roleColor.String,
+				ID:       *roleID,
+				Position: int(*rolePosition),
+				Name:     *roleName,
+				Color:    *roleColor,
 			})
 		}
 	}

@@ -174,11 +174,11 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 	for rows.Next() {
 		var (
 			p            post
-			aID          sql.NullInt64
-			aKey         sql.NullString
-			aBucketName  sql.NullString
-			aFilename    sql.NullString
-			aContentType sql.NullString
+			aID          *int64
+			aKey         *string
+			aBucketName  *string
+			aFilename    *string
+			aContentType *string
 
 			pfpKey         *string
 			pfpBucketName  *string
@@ -223,8 +223,8 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 		}
 
 		// Post attachments
-		if aID.Valid && aKey.Valid && aBucketName.Valid && aFilename.Valid {
-			url, err := h.S3.PresignedGetObject(ctx, aBucketName.String, aKey.String, 15*time.Minute, nil)
+		if aID != nil && aKey != nil && aBucketName != nil && aFilename != nil {
+			url, err := h.S3.PresignedGetObject(ctx, *aBucketName, *aKey, 15*time.Minute, nil)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -234,10 +234,10 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 			posts[index].Attachments = append(
 				posts[index].Attachments,
 				attachment{
-					ID:           strconv.FormatInt(aID.Int64, 10),
+					ID:           strconv.FormatInt(*aID, 10),
 					PresignedURL: url.String(),
-					Name:         aFilename.String,
-					ContentType:  aContentType.String,
+					Name:         *aFilename,
+					ContentType:  *aContentType,
 				},
 			)
 		}
@@ -287,18 +287,35 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 		    
 		    a.id, a.title, a.description, a.due_date, a.submissions_enabled, a.submissions_close_at, a.created_at,
 
-		    s.id, s.status, s.notes, s.created_at
+		    s.id, s.status, s.notes, s.created_at,
+		    
+		    ssc.score_percentage, ssc.notes, ssc.graded_at,
+		    
+		    gu.id,
+		    gu.name,
+		    gu.email,
+		    gu.phone
 		FROM assignments a
 		LEFT JOIN course_posts p
 		ON a.referenced_post_id = p.id
-		LEFT JOIN assignment_submissions s
-		ON s.assignment_id = a.id
-		AND s.submitted_by = $2
+		LEFT JOIN LATERAL (
+		    SELECT sub.*
+		    FROM assignment_submissions sub
+		    WHERE sub.assignment_id = a.id
+		    AND sub.submitted_by = $2
+		    ORDER BY (sub.status <> $3) DESC,
+		 	sub.created_at DESC
+		    LIMIT 1
+		) s ON TRUE
+		LEFT JOIN submission_scores ssc
+		ON s.id = ssc.submission_id
+		LEFT JOIN users gu
+		ON ssc.graded_by = gu.id
 		JOIN courses c ON a.course_id = c.id
 		JOIN grades g ON c.grade_id = g.id
 		JOIN academic_years y ON g.academic_year_id = y.id AND y.is_active = TRUE
 		WHERE a.course_id = $1
-	`, courseID, userID)
+	`, courseID, userID, SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -306,16 +323,31 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 	}
 	defer func() { _ = rows.Close() }()
 
+	type optUser struct {
+		ID    *string
+		Name  *string
+		Email *string
+		Phone *string
+	}
+
+	type optGrade struct {
+		Score    *int
+		Notes    *string
+		GradedAt *time.Time
+		GradedBy optUser
+	}
+
 	var submissionIDs []int64
 	for rows.Next() {
 		var (
 			a                   assignment
-			refPostID           sql.NullInt64
-			refPostTitle        sql.NullString
-			submissionID        sql.NullInt64
-			submissionStatus    sql.NullString
-			submissionNotes     sql.NullString
+			refPostID           *int64
+			refPostTitle        *string
+			submissionID        *int64
+			submissionStatus    *string
+			submissionNotes     *string
 			submissionCreatedAt sql.NullTime
+			nullGrade           optGrade
 		)
 
 		if err := rows.Scan(
@@ -334,28 +366,53 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 			&submissionStatus,
 			&submissionNotes,
 			&submissionCreatedAt,
+
+			&nullGrade.Score,
+			&nullGrade.Notes,
+			&nullGrade.GradedAt,
+
+			&nullGrade.GradedBy.ID,
+			&nullGrade.GradedBy.Name,
+			&nullGrade.GradedBy.Email,
+			&nullGrade.GradedBy.Phone,
 		); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if refPostID.Valid {
+		if refPostID != nil {
 			a.ReferencedPost = &referencedPost{
-				ID:    strconv.FormatInt(refPostID.Int64, 10),
-				Title: refPostTitle.String,
+				ID:    strconv.FormatInt(*refPostID, 10),
+				Title: *refPostTitle,
 			}
 		}
 
-		if submissionID.Valid {
+		if submissionID != nil {
 			a.Submission = &assignmentSubmission{
-				ID:          strconv.FormatInt(submissionID.Int64, 10),
-				Status:      SubmissionStatus(submissionStatus.String),
-				Notes:       submissionNotes.String,
+				ID:          strconv.FormatInt(*submissionID, 10),
+				Status:      SubmissionStatus(*submissionStatus),
+				Grade:       nil,
+				Notes:       *submissionNotes,
 				Attachments: []assignmentSubmissionAttachment{},
 				CreatedAt:   submissionCreatedAt.Time,
 			}
-			submissionIDs = append(submissionIDs, submissionID.Int64)
+
+			if nullGrade.Score != nil {
+				a.Submission.Grade = &grade{
+					Score:    *nullGrade.Score,
+					Notes:    nullGrade.Notes,
+					GradedAt: *nullGrade.GradedAt,
+					GradedBy: AssignmentGradeUser{
+						ID:    *nullGrade.GradedBy.ID,
+						Name:  *nullGrade.GradedBy.Name,
+						Email: *nullGrade.GradedBy.Email,
+						Phone: nullGrade.GradedBy.Phone,
+					},
+				}
+			}
+
+			submissionIDs = append(submissionIDs, *submissionID)
 		}
 
 		assignments = append(assignments, a)

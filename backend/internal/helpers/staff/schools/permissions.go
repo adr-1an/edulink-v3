@@ -365,7 +365,7 @@ func GetAllUserPermissions(ctx context.Context, db *sql.DB, userID, schoolID int
 
 	for rows.Next() {
 		var isOwner bool
-		var position sql.NullInt64
+		var position *int64
 		var permissions pq.StringArray
 
 		if err := rows.Scan(&isOwner, &position, &permissions); err != nil {
@@ -373,7 +373,7 @@ func GetAllUserPermissions(ctx context.Context, db *sql.DB, userID, schoolID int
 		}
 
 		access.Owner = isOwner
-		if !position.Valid {
+		if position == nil {
 			continue
 		}
 
@@ -381,7 +381,7 @@ func GetAllUserPermissions(ctx context.Context, db *sql.DB, userID, schoolID int
 			Position    int      `json:"position"`
 			Permissions []string `json:"permissions"`
 		}{
-			Position:    int(position.Int64),
+			Position:    int(*position),
 			Permissions: permissions,
 		})
 	}
