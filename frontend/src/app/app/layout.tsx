@@ -1,9 +1,10 @@
 import type {Metadata} from "next"
+import {formatPageTitle, SITE_TITLE} from "@/lib/page_metadata"
 
 export const metadata: Metadata = {
     title: {
-        default: "EduLink",
-        template: "%s | EduLink",
+        default: SITE_TITLE,
+        template: formatPageTitle("%s"),
     },
 }
 

@@ -5,6 +5,7 @@ import ErrorPage from "@/components/app/error"
 import {getTranslations} from "@/i18n/server"
 import {normalizeProfilePicture} from "@/lib/profile_picture"
 import {emptySchoolAccess, isSchoolAccess, type SchoolAccess} from "@/lib/school_access"
+import {deduplicateStudentRecords} from "@/lib/student_guardians"
 import StudentProfileClientPage, {type StaffStudentProfile} from "./client_page"
 import {type StudentAssignmentSubmission} from "./client_page"
 
@@ -112,8 +113,7 @@ function normalizeSubmissions(value: unknown): StudentAssignmentSubmission[] | n
     const submissions = value.map(normalizeSubmission)
     if (submissions.some((submission) => submission === null)) return null
     const normalized = submissions as StudentAssignmentSubmission[]
-    if (new Set(normalized.map((submission) => submission.id)).size !== normalized.length) return null
-    return normalized
+    return deduplicateStudentRecords(normalized)
 }
 
 export async function generateMetadata() {

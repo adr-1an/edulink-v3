@@ -13,7 +13,7 @@ func SchoolStudentRoutes(h *staffhandlers.Handler) chi.Router {
 	r.Post("/", h.CreateStudentHandler)
 
 	// List students
-	r.Get("/", h.ListStudentHandler)
+	r.Get("/", h.ListStudentsHandler)
 
 	// Import students
 	r.Post("/import", h.ImportStudentHandler)
@@ -39,6 +39,9 @@ func StudentRoutes(h *staffhandlers.Handler) chi.Router {
 
 		// Delete profile picture
 		r.Delete("/profile-picture", h.RemoveStudentPfpHandler)
+
+		// Student guardians
+		r.Mount("/guardians", StudentGuardianRoutes(h))
 	})
 
 	return r

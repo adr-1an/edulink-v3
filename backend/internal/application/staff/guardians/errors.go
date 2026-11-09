@@ -6,4 +6,5 @@ var (
 	ErrUnprocessableEntity = errors.New("unprocessable entity")
 	ErrForbidden           = errors.New("forbidden")
 	ErrNoRowsInserted      = errors.New("no rows inserted")
+	ErrEmailConflict       = errors.New("email conflict")
 )

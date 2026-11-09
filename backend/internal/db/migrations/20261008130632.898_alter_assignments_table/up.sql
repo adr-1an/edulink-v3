@@ -1,0 +1,2 @@
+ALTER TABLE assignments
+ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ

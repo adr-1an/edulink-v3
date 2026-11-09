@@ -74,6 +74,8 @@ func (h *Handler) CreateGuardianHandler(w http.ResponseWriter, r *http.Request) 
 			w.WriteHeader(http.StatusUnprocessableEntity)
 		case errors.Is(err, guardians.ErrNoRowsInserted):
 			w.WriteHeader(http.StatusInternalServerError)
+		case errors.Is(err, guardians.ErrEmailConflict):
+			w.WriteHeader(http.StatusConflict)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -192,6 +194,8 @@ func (h *Handler) UpdateGuardianHandler(w http.ResponseWriter, r *http.Request) 
 			w.WriteHeader(http.StatusForbidden)
 		case errors.Is(err, guardians.ErrUnprocessableEntity):
 			w.WriteHeader(http.StatusUnprocessableEntity)
+		case errors.Is(err, guardians.ErrEmailConflict):
+			w.WriteHeader(http.StatusConflict)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}

@@ -1,8 +1,8 @@
 package students
 
 import (
-	helpers2 "app/internal/helpers"
-	portal2 "app/internal/helpers/portal"
+	"app/internal/helpers"
+	"app/internal/helpers/portal"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -17,7 +17,7 @@ import (
 func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
+	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -87,7 +87,7 @@ func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
+	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -98,7 +98,7 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if !portal2.CanAccessCourse(h.DB, userID, courseID, ctx) {
+	if !portal.CanAccessCourse(h.DB, userID, courseID, ctx) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -161,7 +161,7 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 		LEFT JOIN storage_objects so ON pa.storage_object_id = so.id AND so.status = $2
 		WHERE p.course_id = $1
 		AND (p.show_until IS NULL OR p.show_until > NOW())
-	`, courseID, helpers2.StatusDone)
+	`, courseID, helpers.StatusDone)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -291,10 +291,10 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 		    
 		    ssc.score_percentage, ssc.notes, ssc.graded_at,
 		    
-		    gu.id,
-		    gu.name,
-		    gu.email,
-		    gu.phone
+		    u.id,
+		    u.name,
+		    u.email,
+		    u.phone
 		FROM assignments a
 		LEFT JOIN course_posts p
 		ON a.referenced_post_id = p.id
@@ -309,13 +309,14 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 		) s ON TRUE
 		LEFT JOIN submission_scores ssc
 		ON s.id = ssc.submission_id
-		LEFT JOIN users gu
-		ON ssc.graded_by = gu.id
+		LEFT JOIN users u
+		ON ssc.graded_by = u.id
 		JOIN courses c ON a.course_id = c.id
 		JOIN grades g ON c.grade_id = g.id
 		JOIN academic_years y ON g.academic_year_id = y.id AND y.is_active = TRUE
 		WHERE a.course_id = $1
-	`, courseID, userID, SubmissionStatusReturned)
+		AND a.archived_at IS NULL
+	`, courseID, userID, helpers.SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -391,7 +392,7 @@ func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request)
 		if submissionID != nil {
 			a.Submission = &assignmentSubmission{
 				ID:          strconv.FormatInt(*submissionID, 10),
-				Status:      SubmissionStatus(*submissionStatus),
+				Status:      helpers.SubmissionStatus(*submissionStatus),
 				Grade:       nil,
 				Notes:       *submissionNotes,
 				Attachments: []assignmentSubmissionAttachment{},

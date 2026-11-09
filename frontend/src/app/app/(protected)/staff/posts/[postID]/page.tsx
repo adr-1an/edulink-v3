@@ -10,9 +10,10 @@ import {Card, CardContent, CardHeader} from "@/components/ui/card"
 import {Popover, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger} from "@/components/ui/popover"
 import {Tooltip, TooltipPopup, TooltipTrigger} from "@/components/ui/tooltip"
 import {normalizePostAttachments, type PostAttachment} from "@/lib/post_attachments"
+import {PAGE_TITLES} from "@/lib/page_metadata"
 import BackButton from "./back_button"
 
-export const metadata = {title: "Post"}
+export const metadata = {title: PAGE_TITLES.coursePost}
 
 interface CoursePostView {
     attachments: PostAttachment[]

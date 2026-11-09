@@ -5,7 +5,7 @@ import {getTranslations} from "@/i18n/server"
 export async function generateMetadata(): Promise<Metadata> {
     const {t} = await getTranslations()
     return {
-        title: t("landing.metaTitle"),
+        title: {absolute: t("landing.metaTitle")},
         description: t("landing.metaDescription"),
     }
 }

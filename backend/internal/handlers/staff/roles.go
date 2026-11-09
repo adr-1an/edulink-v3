@@ -410,9 +410,17 @@ func (h *Handler) ListRolesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"roles": roles,
+		"access": access,
+		"roles":  roles,
 	})
 }
 

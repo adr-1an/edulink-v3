@@ -66,11 +66,14 @@ const (
 
 	PermissionLogsList Permission = "log.list"
 
-	PermissionStudentCreate Permission = "student.create"
-	PermissionStudentList   Permission = "student.list"
-	PermissionStudentUpdate Permission = "student.update"
-	PermissionStudentDelete Permission = "student.delete"
-	PermissionStudentView   Permission = "student.view"
+	PermissionStudentCreate           Permission = "student.create"
+	PermissionStudentList             Permission = "student.list"
+	PermissionStudentUpdate           Permission = "student.update"
+	PermissionStudentDelete           Permission = "student.delete"
+	PermissionStudentView             Permission = "student.view"
+	PermissionStudentGuardianAssign   Permission = "student.guardian.assign"
+	PermissionStudentGuardianUnassign Permission = "student.guardian.unassign"
+	PermissionStudentGuardianList     Permission = "student.guardian.list"
 
 	PermissionGuardianCreate Permission = "guardian.create"
 	PermissionGuardianList   Permission = "guardian.list"
@@ -159,11 +162,14 @@ var ValidPermissions = map[Permission]struct{}{
 
 	PermissionLogsList: {},
 
-	PermissionStudentCreate: {},
-	PermissionStudentList:   {},
-	PermissionStudentUpdate: {},
-	PermissionStudentDelete: {},
-	PermissionStudentView:   {},
+	PermissionStudentCreate:           {},
+	PermissionStudentList:             {},
+	PermissionStudentUpdate:           {},
+	PermissionStudentDelete:           {},
+	PermissionStudentView:             {},
+	PermissionStudentGuardianAssign:   {},
+	PermissionStudentGuardianUnassign: {},
+	PermissionStudentGuardianList:     {},
 
 	PermissionGuardianCreate: {},
 	PermissionGuardianList:   {},

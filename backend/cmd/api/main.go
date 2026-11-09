@@ -17,8 +17,8 @@ import (
 )
 
 // Latest updates
-// Minor: replaced sql.NullString and sql.NullInt64 with *string and *int64 respectively
-const version = "3.15.6"
+// Minor: fixed 500 server error on portal user email conflict when creating/updating guardian/student
+const version = "3.16.6"
 
 func main() {
 	fmt.Printf("Starting EduLink API v%s\n", version)

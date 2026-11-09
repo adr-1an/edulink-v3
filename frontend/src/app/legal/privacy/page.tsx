@@ -1,8 +1,9 @@
 import type {Metadata} from "next"
 import LegalDocument, {type LegalSection} from "@/components/legal/legal-document"
+import {PAGE_TITLES} from "@/lib/page_metadata"
 
 export const metadata: Metadata = {
-    title: "Privacy Policy | Edulink",
+    title: PAGE_TITLES.privacyPolicy,
     description: "How Vertex collects, uses, shares, and protects information when you use Edulink.",
 }
 

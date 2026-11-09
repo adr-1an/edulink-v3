@@ -2,8 +2,9 @@ import ErrorPage from "@/components/app/error"
 import {CalendarX2, CircleX, FileQuestionMark, GlobeX, ServerCrash} from "lucide-react"
 import ClientPage from "@/app/app/staff-invitations/[token]/client_page"
 import {cookies} from "next/headers"
+import {PAGE_TITLES} from "@/lib/page_metadata"
 
-export const metadata = {title: "Staff invitation"}
+export const metadata = {title: PAGE_TITLES.staffInvitation}
 
 export default async function Page({ params }: { params: Promise<{ token: string }>}) {
     const cookieStore = await cookies()

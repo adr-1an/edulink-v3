@@ -103,7 +103,8 @@ func (h *Handler) ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Reque
 		    ON s.id = ssc.submission_id
 		LEFT JOIN users gu
 		    ON ssc.graded_by = gu.id
-	`, userID, SubmissionStatusReturned)
+		WHERE a.archived_at IS NULL
+	`, userID, helpers.SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -192,7 +193,7 @@ func (h *Handler) ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Reque
 		if submissionID != nil {
 			a.Submission = &assignmentSubmission{
 				ID:          strconv.FormatInt(*submissionID, 10),
-				Status:      SubmissionStatus(*submissionStatus),
+				Status:      helpers.SubmissionStatus(*submissionStatus),
 				Notes:       *submissionNotes,
 				Attachments: []assignmentSubmissionAttachment{},
 				CreatedAt:   *submissionCreatedAt,

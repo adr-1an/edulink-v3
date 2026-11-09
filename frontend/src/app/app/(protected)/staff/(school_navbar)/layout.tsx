@@ -1,6 +1,6 @@
 "use client"
 
-import React, {useEffect, useMemo, useState, useSyncExternalStore} from "react"
+import React, {useEffect, useState, useSyncExternalStore} from "react"
 import Link from "next/link"
 import {useParams, usePathname} from "next/navigation"
 import {
@@ -12,17 +12,13 @@ import {Separator} from "@/components/ui/separator"
 import {
     Sheet, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle, SheetTrigger,
 } from "@/components/ui/sheet"
-import {hasSchoolPermission, type SchoolAccess} from "@/lib/school_access"
 import {
-    getActiveSchoolAccessSnapshot,
     getActiveSchoolSnapshot,
     getServerSchoolNavigationSnapshot,
-    parseStoredSchoolAccess,
     rememberActiveSchool,
-    rememberSchoolAccess,
     subscribeToSchoolNavigation,
 } from "@/lib/school_navigation"
-import {getSchoolNavigationAccess} from "./school_navigation_actions"
+import {getSchoolNavigationItems} from "@/lib/school_navigation_items"
 import {useLocale} from "@/i18n/provider"
 import {useTheme} from "@/components/app/theme_provider"
 
@@ -43,7 +39,7 @@ function NavigationLinks({items, label, onNavigate}: {items: NavigationItem[]; l
                         : "h-9 w-full justify-start rounded-lg border-transparent px-2 font-normal text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"}
                     size="sm"
                     variant="ghost"
-                    render={<Link href={href} aria-current={active ? "page" : undefined} onClick={onNavigate} />}
+                    render={<Link href={href} prefetch={false} aria-current={active ? "page" : undefined} onClick={onNavigate} />}
                     key={href}
                 >
                     <span className={active
@@ -70,90 +66,26 @@ export default function Layout({children}: {children: React.ReactNode}) {
         getActiveSchoolSnapshot,
         getServerSchoolNavigationSnapshot,
     )
-    const storedAccessRaw = useSyncExternalStore(
-        subscribeToSchoolNavigation,
-        getActiveSchoolAccessSnapshot,
-        getServerSchoolNavigationSnapshot,
-    )
-    const storedAccess = useMemo(() => parseStoredSchoolAccess(storedAccessRaw), [storedAccessRaw])
-    const [loadedAccess, setLoadedAccess] = useState<{schoolID: string; access: SchoolAccess} | null>(null)
-    const schoolID = routeSchoolID ?? rememberedSchoolID ?? storedAccess?.schoolID ?? loadedAccess?.schoolID
-    const access = loadedAccess && loadedAccess.schoolID === schoolID
-        ? loadedAccess.access
-        : storedAccess && storedAccess.schoolID === schoolID ? storedAccess.access : null
+    const schoolID = routeSchoolID ?? rememberedSchoolID
 
     useEffect(() => {
         if (routeSchoolID && routeSchoolID !== rememberedSchoolID) rememberActiveSchool(routeSchoolID)
     }, [routeSchoolID, rememberedSchoolID])
 
-    useEffect(() => {
-        if (!schoolID) return
-
-        let active = true
-        void getSchoolNavigationAccess(schoolID).then((nextAccess) => {
-            if (!active || !nextAccess) return
-            setLoadedAccess({schoolID, access: nextAccess})
-            rememberSchoolAccess(schoolID, nextAccess)
-        })
-
-        return () => {
-            active = false
-        }
-    }, [schoolID])
-
-    const canViewStaff = hasSchoolPermission(access, "staff.view")
-    const canViewStudents = hasSchoolPermission(access, "student.list")
-    const canViewGuardians = hasSchoolPermission(access, "guardian.list")
-    const canViewRoles = hasSchoolPermission(access, "role.list")
-    const canViewSettings = hasSchoolPermission(access, "school.view")
-    const canViewLogs = pathname.includes("/logs") || hasSchoolPermission(access, "log.list")
-    const navigation: NavigationItem[] = [
-        ...(schoolID ? [
-            {
-                label: t("navigation.dashboard"),
-                href: `/app/staff/schools/${schoolID}`,
-                icon: LayoutDashboard,
-                active: pathname === `/app/staff/schools/${schoolID}`,
-            },
-            ...(canViewStaff ? [{
-                label: t("navigation.staff"),
-                href: `/app/staff/schools/${schoolID}/staff`,
-                icon: Users,
-                active: pathname.startsWith(`/app/staff/schools/${schoolID}/staff`),
-            }] : []),
-            ...(canViewStudents ? [{
-                label: t("navigation.students"),
-                href: `/app/staff/schools/${schoolID}/students`,
-                icon: GraduationCap,
-                active: pathname.startsWith(`/app/staff/schools/${schoolID}/students`)
-                    || pathname.startsWith("/app/staff/students/"),
-            }] : []),
-            ...(canViewGuardians ? [{
-                label: t("navigation.guardians"),
-                href: `/app/staff/schools/${schoolID}/guardians`,
-                icon: UsersRound,
-                active: pathname.startsWith(`/app/staff/schools/${schoolID}/guardians`),
-            }] : []),
-            ...(canViewRoles ? [{
-                label: t("navigation.roles"),
-                href: `/app/staff/schools/${schoolID}/roles`,
-                icon: ShieldCheck,
-                active: pathname.startsWith(`/app/staff/schools/${schoolID}/roles`),
-            }] : []),
-            ...(canViewLogs ? [{
-                label: t("navigation.auditLogs"),
-                href: `/app/staff/schools/${schoolID}/logs`,
-                icon: ScrollText,
-                active: pathname.startsWith(`/app/staff/schools/${schoolID}/logs`),
-            }] : []),
-            ...(canViewSettings ? [{
-                label: t("navigation.settings"),
-                href: `/app/staff/schools/${schoolID}/settings`,
-                icon: Settings,
-                active: pathname.startsWith(`/app/staff/schools/${schoolID}/settings`),
-            }] : []),
-        ] : []),
-    ]
+    const icons = {
+        dashboard: LayoutDashboard,
+        staff: Users,
+        students: GraduationCap,
+        guardians: UsersRound,
+        roles: ShieldCheck,
+        auditLogs: ScrollText,
+        settings: Settings,
+    }
+    const navigation: NavigationItem[] = getSchoolNavigationItems(schoolID, pathname).map(({key, ...item}) => ({
+        ...item,
+        label: t(`navigation.${key}`),
+        icon: icons[key],
+    }))
     const activeNavigation = navigation.find((item) => item.active)
     return (
         <div className="flex min-h-svh w-full bg-background">

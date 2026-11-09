@@ -86,6 +86,22 @@ func (s *Service) CreateGuardian(ctx context.Context, i *CreateGuardianInput) (*
 		}
 	}
 
+	// Check if the guardian's email is taken
+	var exists bool
+	if err := tx.QueryRowContext(ctx, `
+		SELECT EXISTS (
+		    SELECT 1 FROM portal_users
+			WHERE email = $1
+		)
+	`, i.Guardian.Email).Scan(&exists); err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	if exists {
+		return nil, ErrEmailConflict
+	}
+
 	res, err := tx.ExecContext(ctx, `
 		INSERT INTO portal_users (
 		                          id,

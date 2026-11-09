@@ -1,7 +1,7 @@
 package students
 
 import (
-	helpers2 "app/internal/helpers"
+	"app/internal/helpers"
 	portal2 "app/internal/helpers/portal"
 	"context"
 	"database/sql"
@@ -20,14 +20,6 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-type SubmissionStatus string
-
-const (
-	SubmissionStatusPending   SubmissionStatus = "pending"
-	SubmissionStatusSubmitted SubmissionStatus = "submitted"
-	SubmissionStatusReturned  SubmissionStatus = "returned"
-)
-
 type AssignmentGradeUser struct {
 	ID    string  `json:"id"`
 	Name  string  `json:"name"`
@@ -44,7 +36,7 @@ type grade struct {
 
 type assignmentSubmission struct {
 	ID          string                           `json:"id"`
-	Status      SubmissionStatus                 `json:"status"`
+	Status      helpers.SubmissionStatus         `json:"status"`
 	Grade       *grade                           `json:"grade"`
 	Notes       string                           `json:"notes"`
 	Attachments []assignmentSubmissionAttachment `json:"attachments"`
@@ -80,7 +72,7 @@ func listAssignmentSubmissionAttachments(ctx context.Context, db *sql.DB, submis
 		WHERE sa.submission_id = ANY($1)
 		AND so.status = $2
 		ORDER BY sa.created_at, sa.id
-	`, pq.Array(submissionIDs), helpers2.StatusDone)
+	`, pq.Array(submissionIDs), helpers.StatusDone)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +118,7 @@ func listAssignmentSubmissionAttachments(ctx context.Context, db *sql.DB, submis
 func (h *Handler) DeleteSubmissionAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -152,7 +144,7 @@ func (h *Handler) DeleteSubmissionAttachmentHandler(w http.ResponseWriter, r *ht
 	defer func() { _ = tx.Rollback() }()
 
 	var submittedBy int64
-	var status SubmissionStatus
+	var status helpers.SubmissionStatus
 	var storageObjectID int64
 	var bucketName string
 	var objectKey string
@@ -202,7 +194,7 @@ func (h *Handler) DeleteSubmissionAttachmentHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
-	if status != SubmissionStatusPending {
+	if status != helpers.SubmissionStatusPending {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
@@ -233,7 +225,7 @@ func (h *Handler) DeleteSubmissionAttachmentHandler(w http.ResponseWriter, r *ht
 func (h *Handler) CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -246,14 +238,16 @@ func (h *Handler) CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *ht
 
 	var courseID int64
 	var submissionsOpen bool
+	var archived bool
 	if err := h.DB.QueryRowContext(ctx, `
 		SELECT
 		    course_id,
 		    submissions_enabled
-		        AND (submissions_close_at IS NULL OR submissions_close_at > NOW())
+		        AND (submissions_close_at IS NULL OR submissions_close_at > NOW()),
+		    archived_at IS NOT NULL
 		FROM assignments
 		WHERE id = $1
-	`, assignmentID).Scan(&courseID, &submissionsOpen); err != nil {
+	`, assignmentID).Scan(&courseID, &submissionsOpen, &archived); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNotFound)
 		} else {
@@ -270,6 +264,11 @@ func (h *Handler) CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *ht
 
 	if !submissionsOpen {
 		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
+	if archived {
+		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
@@ -308,7 +307,7 @@ func (h *Handler) CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *ht
 		SET notes = EXCLUDED.notes
 		WHERE assignment_submissions.status = $5
 		RETURNING id
-	`, newSubID, assignmentID, userID, p.Notes, SubmissionStatusPending, SubmissionStatusReturned).Scan(&submissionID); err != nil {
+	`, newSubID, assignmentID, userID, p.Notes, helpers.SubmissionStatusPending, helpers.SubmissionStatusReturned).Scan(&submissionID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusConflict)
 		} else {
@@ -321,14 +320,14 @@ func (h *Handler) CreateAssignmentSubmissionHandler(w http.ResponseWriter, r *ht
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"submissionId": strconv.FormatInt(submissionID, 10),
-		"status":       SubmissionStatusPending,
+		"status":       helpers.SubmissionStatusPending,
 	})
 }
 
 func (h *Handler) InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -404,7 +403,7 @@ func (h *Handler) InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	tokenHash := helpers2.MakeHash256(completionToken)
+	tokenHash := helpers.MakeHash256(completionToken)
 
 	bucketName := os.Getenv("S3_BUCKET")
 	if bucketName == "" {
@@ -413,7 +412,7 @@ func (h *Handler) InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.
 		return
 	}
 
-	objectKey := fmt.Sprintf("%s/%d", helpers2.UploadCategorySubmissionAttachments, storageObjID)
+	objectKey := fmt.Sprintf("%s/%d", helpers.UploadCategorySubmissionAttachments, storageObjID)
 
 	// Generate the URL before opening the transaction so no database lock is held
 	// while communicating with object storage.
@@ -433,7 +432,7 @@ func (h *Handler) InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.
 	defer func() { _ = tx.Rollback() }()
 
 	var submittedBy int64
-	var status SubmissionStatus
+	var status helpers.SubmissionStatus
 	var submissionsOpen bool
 	var canAccessCourse bool
 	if err := tx.QueryRowContext(ctx, `
@@ -468,12 +467,12 @@ func (h *Handler) InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if status != SubmissionStatusPending || !submissionsOpen {
+	if status != helpers.SubmissionStatusPending || !submissionsOpen {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
 
-	s := helpers2.UploadService{
+	s := helpers.UploadService{
 		Db:         tx,
 		S3:         h.S3,
 		Ctx:        ctx,
@@ -512,7 +511,7 @@ func (h *Handler) InitSubmissionAttachmentUpload(w http.ResponseWriter, r *http.
 func (h *Handler) CompleteSubmissionCreationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeStudent)
+	userID, err := portal2.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -533,9 +532,10 @@ func (h *Handler) CompleteSubmissionCreationHandler(w http.ResponseWriter, r *ht
 
 	var assignmentID int64
 	var submittedBy int64
-	var status SubmissionStatus
+	var status helpers.SubmissionStatus
 	var submissionsOpen bool
 	var canAccessCourse bool
+	var assignmentArchived bool
 	if err := tx.QueryRowContext(ctx, `
 		SELECT
 		    s.assignment_id,
@@ -548,13 +548,22 @@ func (h *Handler) CompleteSubmissionCreationHandler(w http.ResponseWriter, r *ht
 		        FROM assigned_course_students acs
 		        WHERE acs.portal_user_id = $2
 		        AND acs.course_id = a.course_id
-		    )
+		    ),
+		    a.archived_at IS NOT NULL
 		FROM assignment_submissions s
 		JOIN assignments a
 		ON s.assignment_id = a.id
 		WHERE s.id = $1
 		FOR UPDATE OF s
-	`, submissionID, userID).Scan(&assignmentID, &submittedBy, &status, &submissionsOpen, &canAccessCourse); err != nil {
+	`, submissionID, userID).
+		Scan(
+			&assignmentID,
+			&submittedBy,
+			&status,
+			&submissionsOpen,
+			&canAccessCourse,
+			&assignmentArchived,
+		); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNotFound)
 		} else {
@@ -570,13 +579,18 @@ func (h *Handler) CompleteSubmissionCreationHandler(w http.ResponseWriter, r *ht
 	}
 
 	// Finishing an already submitted submission is idempotent.
-	if status == SubmissionStatusSubmitted {
+	if status == helpers.SubmissionStatusSubmitted {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	if status != SubmissionStatusPending || !submissionsOpen {
+	if status != helpers.SubmissionStatusPending || !submissionsOpen {
 		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
+	if assignmentArchived {
+		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
@@ -586,7 +600,7 @@ func (h *Handler) CompleteSubmissionCreationHandler(w http.ResponseWriter, r *ht
 		WHERE assignment_id = $1
 		AND submitted_by = $2
 		AND status = $3
-	`, assignmentID, userID, SubmissionStatusReturned); err != nil {
+	`, assignmentID, userID, helpers.SubmissionStatusReturned); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -602,7 +616,7 @@ func (h *Handler) CompleteSubmissionCreationHandler(w http.ResponseWriter, r *ht
 		    WHERE sa.submission_id = $1
 		    AND so.status = $2
 		)
-	`, submissionID, helpers2.StatusPending).Scan(&hasIncompleteAttachments); err != nil {
+	`, submissionID, helpers.StatusPending).Scan(&hasIncompleteAttachments); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -615,7 +629,7 @@ func (h *Handler) CompleteSubmissionCreationHandler(w http.ResponseWriter, r *ht
 			USING portal_storage_objects so
 			WHERE so.status = $1
 			AND sa.submission_id = $2
-		`, helpers2.StatusPending, submissionID); err != nil {
+		`, helpers.StatusPending, submissionID); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -630,9 +644,9 @@ func (h *Handler) CompleteSubmissionCreationHandler(w http.ResponseWriter, r *ht
 		AND status = $3
 		AND submitted_by = $4
 	`,
-		SubmissionStatusSubmitted,
+		helpers.SubmissionStatusSubmitted,
 		submissionID,
-		SubmissionStatusPending,
+		helpers.SubmissionStatusPending,
 		userID,
 	); err != nil {
 		log.Println(err)

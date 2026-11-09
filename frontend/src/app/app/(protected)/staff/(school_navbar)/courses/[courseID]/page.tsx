@@ -4,10 +4,11 @@ import ErrorPage from "@/components/app/error"
 import {normalizePostAttachments} from "@/lib/post_attachments"
 import {normalizeProfilePictureURL} from "@/lib/profile_picture"
 import {emptySchoolAccess, type SchoolAccess} from "@/lib/school_access"
+import {PAGE_TITLES} from "@/lib/page_metadata"
 import {type CourseAssignment} from "./assignments_section"
 import CourseDashboardClientPage, {type CoursePost, type CourseStudent} from "./client_page"
 
-export const metadata = {title: "Course dashboard"}
+export const metadata = {title: PAGE_TITLES.courseDashboard}
 
 interface RawCoursePost extends Omit<CoursePost, "showUntil" | "editedAt" | "attachments" | "authorProfilePictureURL"> {
     attachments?: unknown

@@ -1,8 +1,7 @@
 package staff
 
 import (
-	"app/internal/handlers/portal/students"
-	helpers2 "app/internal/helpers"
+	"app/internal/helpers"
 	"app/internal/helpers/staff"
 	"app/internal/helpers/staff/schools"
 	"context"
@@ -103,7 +102,7 @@ func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *htt
 		  OR s.status = $4)
 		AND s.assignment_id = $2
 		AND u.account_type = $3
-	`, students.SubmissionStatusSubmitted, assignmentID, helpers2.AccTypeStudent, students.SubmissionStatusReturned)
+	`, helpers.SubmissionStatusSubmitted, assignmentID, helpers.AccTypeStudent, helpers.SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -289,7 +288,7 @@ func (h *Handler) ViewSubmissionHandler(w http.ResponseWriter, r *http.Request) 
 		LEFT JOIN users gu ON ss.graded_by = gu.id
 		WHERE s.id = $1
 		AND (s.status = $2 OR s.status = $3)
-	`, subID, students.SubmissionStatusSubmitted, students.SubmissionStatusReturned)
+	`, subID, helpers.SubmissionStatusSubmitted, helpers.SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -386,7 +385,7 @@ func (h *Handler) ViewSubmissionHandler(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if r.AttachmentID != nil {
-			objKey := fmt.Sprintf("%s/%s", helpers2.UploadCategorySubmissionAttachments, *r.AttachmentID)
+			objKey := fmt.Sprintf("%s/%s", helpers.UploadCategorySubmissionAttachments, *r.AttachmentID)
 
 			url, err := h.S3.PresignedGetObject(ctx, *r.BucketName, objKey, 5*time.Minute, nil)
 			if err != nil {
@@ -480,7 +479,7 @@ func (h *Handler) ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request
 		SET status = $1
 		WHERE id = $2
 		AND status = $3
-	`, students.SubmissionStatusReturned, subID, students.SubmissionStatusSubmitted)
+	`, helpers.SubmissionStatusReturned, subID, helpers.SubmissionStatusSubmitted)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -539,7 +538,7 @@ func (h *Handler) DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var status students.SubmissionStatus
+	var status helpers.SubmissionStatus
 	if err := tx.QueryRowContext(ctx, `
 		SELECT status
 		FROM assignment_submissions
@@ -555,7 +554,7 @@ func (h *Handler) DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	if status != students.SubmissionStatusReturned {
+	if status != helpers.SubmissionStatusReturned {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
@@ -605,7 +604,7 @@ func (h *Handler) DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http
 		DELETE FROM assignment_submissions
 		WHERE id = $1
 		AND status = $2
-	`, subID, students.SubmissionStatusReturned)
+	`, subID, helpers.SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

@@ -1,8 +1,9 @@
 import type {Metadata} from "next"
 import LegalDocument, {type LegalSection} from "@/components/legal/legal-document"
+import {PAGE_TITLES} from "@/lib/page_metadata"
 
 export const metadata: Metadata = {
-    title: "Terms of Service | Edulink",
+    title: PAGE_TITLES.termsOfService,
     description: "The terms governing access to and use of Edulink.",
 }
 

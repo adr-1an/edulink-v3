@@ -365,7 +365,15 @@ func (h *Handler) ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	_ = json.NewEncoder(w).Encode(map[string]any{
+		"access": access,
 		"school": res.School,
 	})
 }

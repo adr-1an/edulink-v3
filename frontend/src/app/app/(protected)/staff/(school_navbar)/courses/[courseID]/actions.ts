@@ -34,6 +34,10 @@ export interface CourseAssignmentInput {
     submissionsCloseAt: string | null
 }
 
+export interface CourseAssignmentUpdateInput extends CourseAssignmentInput {
+    archived: boolean
+}
+
 function validatePostInput(input: CoursePostInput) {
     const title = input.title.trim()
     const body = input.body.trim()
@@ -240,7 +244,10 @@ function validateAssignmentInput(input: CourseAssignmentInput, requireFutureDate
     return {ok: true as const, input: normalized}
 }
 
-async function assignmentRequest(path: string, method: "POST" | "PATCH" | "DELETE", input?: CourseAssignmentInput) {
+async function assignmentRequest(
+    path: string, method: "POST" | "PATCH" | "DELETE",
+    input?: CourseAssignmentInput | CourseAssignmentUpdateInput,
+) {
     const token = (await cookies()).get("token")?.value
     let res: Response
     try {
@@ -265,11 +272,14 @@ async function assignmentRequest(path: string, method: "POST" | "PATCH" | "DELET
     return {ok: false as const, message: "Unable to update the assignment."}
 }
 
-export async function handleUpdateAssignment(assignmentID: string, input: CourseAssignmentInput) {
+export async function handleUpdateAssignment(assignmentID: string, input: CourseAssignmentUpdateInput) {
     if (!/^\d+$/.test(assignmentID)) return {ok: false as const, message: "Invalid assignment."}
     const validated = validateAssignmentInput(input, false)
     if (!validated.ok) return validated
-    return assignmentRequest(`/v1/staff/assignments/${assignmentID}`, "PATCH", validated.input)
+    return assignmentRequest(`/v1/staff/assignments/${assignmentID}`, "PATCH", {
+        ...validated.input,
+        archived: input.archived,
+    })
 }
 
 export async function handleDeleteAssignment(assignmentID: string) {

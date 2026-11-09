@@ -7,9 +7,13 @@ import {cookies} from "next/headers";
 import {ThemeProvider, type Theme} from "@/components/app/theme_provider";
 import {LocaleProvider} from "@/i18n/provider";
 import {getLocale} from "@/i18n/server";
+import {formatPageTitle, SITE_TITLE} from "@/lib/page_metadata";
 
 export const metadata: Metadata = {
-    title: "EduLink",
+    title: {
+        default: SITE_TITLE,
+        template: formatPageTitle("%s"),
+    },
     description: "EduLink",
 };
 

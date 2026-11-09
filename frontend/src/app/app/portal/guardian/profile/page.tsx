@@ -3,7 +3,7 @@ import PortalProfilePage from "../../profile_page"
 
 export async function generateMetadata() {
     const {t} = await getTranslations()
-    return {title: t("profile.guardian.title")}
+    return {title: t("profile.guardian.metaTitle")}
 }
 
 export default function Page() {

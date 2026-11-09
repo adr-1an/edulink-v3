@@ -58,7 +58,7 @@ func (s *Service) Login(ctx context.Context, i *LoginInput) (*LoginResult, error
 	if !loginAllowed {
 		return nil, ErrUnauthorized
 	}
-
+        
 	match, err := argon2id.ComparePasswordAndHash(i.Password, passwordHash)
 	if err != nil {
 		log.Println(err)

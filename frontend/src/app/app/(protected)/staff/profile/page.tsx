@@ -4,8 +4,9 @@ import {CircleX, GlobeX, ServerCrash} from "lucide-react"
 import ClientPage, {type StaffProfileUser} from "@/app/app/(protected)/staff/profile/client_page"
 import {type TwoFactorStatus} from "./two_factor_setup"
 import {normalizeProfilePicture} from "@/lib/profile_picture"
+import {PAGE_TITLES} from "@/lib/page_metadata"
 
-export const metadata = {title: "Profile"}
+export const metadata = {title: PAGE_TITLES.staffProfile}
 
 export default async function Page() {
     const cookieStore = await cookies()

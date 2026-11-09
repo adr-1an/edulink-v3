@@ -86,6 +86,22 @@ func (s *Service) UpdateGuardian(ctx context.Context, i *UpdateGuardianInput) er
 		passHash = &hash
 	}
 
+	// Check for email conflict
+	var exists bool
+	if err := s.DB.QueryRowContext(ctx, `
+		SELECT EXISTS (
+		    SELECT 1 FROM portal_users
+		    WHERE email = $1
+		)
+	`, i.Guardian.Email).Scan(&exists); err != nil {
+		log.Println(err)
+		return err
+	}
+
+	if exists {
+		return ErrEmailConflict
+	}
+
 	if _, err := s.DB.ExecContext(ctx, `
 		UPDATE portal_users
 		SET

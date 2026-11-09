@@ -1,9 +1,8 @@
 package staff
 
 import (
-	students2 "app/internal/application/staff/students"
-	"app/internal/handlers/portal/students"
-	helpers2 "app/internal/helpers"
+	staffStudents "app/internal/application/staff/students"
+	"app/internal/helpers"
 	"app/internal/helpers/staff"
 	"app/internal/helpers/staff/schools"
 	"context"
@@ -81,17 +80,6 @@ func checkSchoolAndEmailConflict(tx *sql.Tx, ctx context.Context, email string) 
 	}
 
 	return conflict, nil
-}
-
-func studentToSchoolID(ctx context.Context, db *sql.DB, studentID int64) (int64, error) {
-	var sID int64
-	if err := db.QueryRowContext(ctx, `
-		SELECT school_id FROM portal_users WHERE id = $1 AND account_type = $2
-	`, studentID, helpers2.AccTypeStudent).Scan(&sID); err != nil {
-		return 0, err
-	}
-
-	return sID, nil
 }
 
 func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +193,7 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		p.AccountEnabled,
 		p.AccountActive,
 		passHash,
-		helpers2.AccTypeStudent,
+		helpers.AccTypeStudent,
 	)
 	if err != nil {
 		log.Println(err)
@@ -249,7 +237,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	schoolID, err := studentToSchoolID(ctx, h.DB, studentID)
+	schoolID, err := staff_helpers.StudentToSchoolID(ctx, h.DB, studentID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -276,14 +264,34 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tx, err := h.DB.BeginTx(ctx, nil)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	conflict, err := checkSchoolAndEmailConflict(tx, ctx, p.Email)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if conflict {
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
 	var accountActive bool
-	if err := h.DB.QueryRowContext(ctx, `
+	if err := tx.QueryRowContext(ctx, `
 		SELECT account_active
 		FROM portal_users
 		WHERE id = $1
 		AND school_id = $2
 		AND account_type = $3
-	`, studentID, schoolID, helpers2.AccTypeStudent).Scan(&accountActive); err != nil {
+	`, studentID, schoolID, helpers.AccTypeStudent).Scan(&accountActive); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -293,14 +301,6 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-
-	tx, err := h.DB.BeginTx(ctx, nil)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
 
 	if p.Password != "" && len(p.Password) < 8 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
@@ -330,7 +330,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1
 		AND school_id = $2
 		AND account_type = $3
-	`, studentID, schoolID, helpers2.AccTypeStudent).Scan(&name, &lastName, &email); err != nil {
+	`, studentID, schoolID, helpers.AccTypeStudent).Scan(&name, &lastName, &email); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -363,7 +363,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		passHash,
 		studentID,
 		schoolID,
-		helpers2.AccTypeStudent,
+		helpers.AccTypeStudent,
 	)
 	if err != nil {
 		log.Println(err)
@@ -421,7 +421,7 @@ func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	schoolID, err := studentToSchoolID(ctx, h.DB, studentID)
+	schoolID, err := staff_helpers.StudentToSchoolID(ctx, h.DB, studentID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -451,7 +451,7 @@ func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 		AND school_id = $2
 		AND account_type = $3
 		RETURNING name, email
-	`, studentID, schoolID, helpers2.AccTypeStudent).Scan(&name, &email); err != nil {
+	`, studentID, schoolID, helpers.AccTypeStudent).Scan(&name, &email); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -473,7 +473,7 @@ func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) ListStudentHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
@@ -502,13 +502,13 @@ func (h *Handler) ListStudentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var studentList []student
 
-	res, err := h.App.Staff.Students.ListStudents(ctx, &students2.ListStudentsInput{
+	res, err := h.App.Staff.Students.ListStudents(ctx, &staffStudents.ListStudentsInput{
 		UserID:   userID,
 		SchoolID: schoolID,
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, students2.ErrForbidden):
+		case errors.Is(err, staffStudents.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
 
 		default:
@@ -523,7 +523,6 @@ func (h *Handler) ListStudentHandler(w http.ResponseWriter, r *http.Request) {
 			idStr := strconv.FormatInt(s.ID, 10)
 
 			studentList = append(studentList, student{
-
 				ID:                idStr,
 				Name:              s.Name,
 				LastName:          s.LastName,
@@ -566,22 +565,35 @@ func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	schoolID, err := studentToSchoolID(ctx, h.DB, studentID)
+	res, err := h.App.Staff.Students.ViewStudent(ctx, &staffStudents.ViewStudentInput{
+		UserID:    userID,
+		StudentID: studentID,
+	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		switch {
+		case errors.Is(err, staffStudents.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
-		} else {
-			log.Println(err)
+
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+
 		return
 	}
 
-	if !schools.Can(schools.PermissionStudentView, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
+	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, res.SchoolID)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	payload := studentViewPayload(res)
+	payload["access"] = access
+	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func studentViewPayload(res *staffStudents.ViewStudentResult) map[string]any {
 	type grade struct {
 		ID    string `json:"id"`
 		Name  string `json:"name"`
@@ -613,16 +625,25 @@ func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 		SubmittedAt time.Time        `json:"submittedAt"`
 		Notes       *string          `json:"notes"`
 	}
+	var submissions []submission
 
 	type profilePicture struct {
 		PresignedURL string `json:"presignedUrl"`
+	}
+
+	type guardian struct {
+		ID       string  `json:"id"`
+		Name     string  `json:"name"`
+		LastName string  `json:"lastName"`
+		Email    string  `json:"email"`
+		Phone    *string `json:"phone"`
 	}
 
 	type student struct {
 		ProfilePicture *profilePicture `json:"profilePicture"`
 		ID             string          `json:"id"`
 		Name           string          `json:"name"`
-		Lastname       string          `json:"lastName"`
+		LastName       string          `json:"lastName"`
 		DoB            string          `json:"dateOfBirth"`
 		Email          string          `json:"email"`
 		Phone          *string         `json:"phone"`
@@ -630,177 +651,75 @@ func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 		AccountEnabled bool            `json:"accountEnabled"`
 		AccountActive  bool            `json:"accountActive"`
 		CreatedAt      time.Time       `json:"createdAt"`
+		Guardians      []guardian      `json:"guardians"`
 	}
-	var s student
 
-	// Get the student data & submissions
-	rows, err := h.DB.QueryContext(ctx, `
-		SELECT
-			s.id, s.created_at, s.notes,
-			ss.score_percentage,
-			a.id, a.title, a.description,
-			c.id, c.name, c.color,
-			g.id, g.name, g.level,
-		
-			st.id, st.name, st.last_name, st.date_of_birth, st.email, st.phone,
-			st.notes, st.account_enabled, st.account_active, st.created_at
-		FROM portal_users st
-		LEFT JOIN assignment_submissions s
-			ON s.submitted_by = st.id
-			AND s.status = $1
-		LEFT JOIN submission_scores ss ON ss.submission_id = s.id
-		LEFT JOIN assignments a ON a.id = s.assignment_id
-		LEFT JOIN courses c ON c.id = a.course_id
-		LEFT JOIN grades g ON g.id = c.grade_id
-		WHERE st.id = $2
-	`, students.SubmissionStatusSubmitted, studentID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = rows.Close() }()
-
-	var submissions []submission
-
-	for rows.Next() {
-		var sub *submission
-		var subScore *int
-
-		var (
-			subID                         *string
-			submittedAt                   *time.Time
-			subNotes                      *string
-			subAssignmentID               *string
-			subAssignmentTitle            *string
-			subAssignmentDescription      *string
-			subAssignmentCourseID         *string
-			subAssignmentCourseName       *string
-			subAssignmentCourseColor      *string
-			subAssignmentCourseGradeID    *string
-			subAssignmentCourseGradeName  *string
-			subAssignmentCourseGradeLevel *int
-		)
-
-		if err := rows.Scan(
-			&subID,
-			&submittedAt,
-			&subNotes,
-
-			&subScore,
-
-			&subAssignmentID,
-			&subAssignmentTitle,
-			&subAssignmentDescription,
-
-			&subAssignmentCourseID,
-			&subAssignmentCourseName,
-			&subAssignmentCourseColor,
-
-			&subAssignmentCourseGradeID,
-			&subAssignmentCourseGradeName,
-			&subAssignmentCourseGradeLevel,
-
-			&s.ID,
-			&s.Name,
-			&s.Lastname,
-			&s.DoB,
-			&s.Email,
-			&s.Phone,
-			&s.Notes,
-			&s.AccountEnabled,
-			&s.AccountActive,
-			&s.CreatedAt,
-		); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		if subID != nil && subAssignmentID != nil && subAssignmentCourseID != nil && subAssignmentCourseGradeID != nil {
-			sub = &submission{
-				ID: *subID,
-				Assignment: assignment{
-					ID: *subAssignmentID,
-					Course: course{
-						ID: *subAssignmentCourseID,
-						Grade: grade{
-							ID:    *subAssignmentCourseGradeID,
-							Name:  *subAssignmentCourseGradeName,
-							Level: *subAssignmentCourseGradeLevel,
-						},
-						Name:  *subAssignmentCourseName,
-						Color: *subAssignmentCourseColor,
+	for _, s := range res.Submissions {
+		sub := submission{
+			ID: strconv.FormatInt(s.ID, 10),
+			Assignment: assignment{
+				ID: strconv.FormatInt(s.Assignment.ID, 10),
+				Course: course{
+					ID: strconv.FormatInt(s.Assignment.Course.ID, 10),
+					Grade: grade{
+						ID:    strconv.FormatInt(s.Assignment.Course.Grade.ID, 10),
+						Name:  s.Assignment.Course.Grade.Name,
+						Level: s.Assignment.Course.Grade.Level,
 					},
-					Title:       *subAssignmentTitle,
-					Description: subAssignmentDescription,
+					Name:  s.Assignment.Course.Name,
+					Color: s.Assignment.Course.Color,
 				},
-				Score:       nil,
-				SubmittedAt: *submittedAt,
-				Notes:       subNotes,
+				Title:       s.Assignment.Title,
+				Description: s.Assignment.Description,
+			},
+			Score:       nil,
+			SubmittedAt: s.SubmittedAt,
+			Notes:       s.Notes,
+		}
+
+		if s.Score != nil {
+			sub.Score = &assignmentScore{
+				ScorePercentage: s.Score.ScorePercentage,
 			}
-
-			if subScore != nil {
-				sub.Score = &assignmentScore{
-					ScorePercentage: *subScore,
-				}
-			}
-			submissions = append(submissions, *sub)
 		}
-	}
-	if err := rows.Err(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if err := rows.Close(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+
+		submissions = append(submissions, sub)
 	}
 
-	if s.Notes != nil && *s.Notes == "" {
-		s.Notes = nil
+	var guardians []guardian
+	for _, g := range res.Student.Guardians {
+		guardians = append(guardians, guardian{
+			ID:       strconv.FormatInt(g.ID, 10),
+			Name:     g.Name,
+			LastName: g.LastName,
+			Email:    g.Email,
+			Phone:    g.Phone,
+		})
+	}
+	s := student{
+		ID:             strconv.FormatInt(res.Student.ID, 10),
+		Name:           res.Student.Name,
+		LastName:       res.Student.LastName,
+		DoB:            res.Student.DoB,
+		Email:          res.Student.Email,
+		Phone:          res.Student.Phone,
+		Notes:          res.Student.Notes,
+		AccountEnabled: res.Student.AccountEnabled,
+		AccountActive:  res.Student.AccountActive,
+		CreatedAt:      res.Student.CreatedAt,
+		Guardians:      guardians,
 	}
 
-	var pfpBucketName string
-	var pfpObjectKey string
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT so.bucket_name, so.object_key
-		FROM portal_user_profile_pictures p
-		JOIN storage_objects so ON so.id = p.storage_object_id
-		WHERE p.portal_user_id = $1
-		  AND so.status = $2
-	`, studentID, helpers2.StatusDone).Scan(&pfpBucketName, &pfpObjectKey); err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	} else {
-		url, err := h.S3.PresignedGetObject(ctx, pfpBucketName, pfpObjectKey, 15*time.Minute, nil)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+	if res.Student.ProfilePicture != nil {
 		s.ProfilePicture = &profilePicture{
-			PresignedURL: url.String(),
+			PresignedURL: res.Student.ProfilePicture.PresignedURL,
 		}
 	}
-
-	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"access":                access,
+	return map[string]any{
+		"schoolId":              strconv.FormatInt(res.SchoolID, 10),
 		"assignmentSubmissions": submissions,
 		"student":               s,
-	})
+	}
 }
 
 func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
@@ -940,7 +859,7 @@ func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			activationTokenHash := helpers2.MakeHash256(activationToken)
+			activationTokenHash := helpers.MakeHash256(activationToken)
 
 			sRow.ActivationToken = &activationToken
 			sRow.ActivationTokenHash = &activationTokenHash
@@ -962,7 +881,7 @@ func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 	confPlaceholders := make([]string, 0, len(studentList))
 
 	var emails []string
-	mailQ := make([]helpers2.MailQueue, 0, len(studentList))
+	mailQ := make([]helpers.MailQueue, 0, len(studentList))
 
 	for i, s := range studentList {
 		n := i*argLen + 1
@@ -991,7 +910,7 @@ func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 			s.Phone,
 			s.Notes,
 			s.AccountEnabled,
-			helpers2.AccTypeStudent,
+			helpers.AccTypeStudent,
 		)
 
 		// Build placeholders & args for the account activation token insert query
@@ -1020,21 +939,21 @@ Your %s Portal account has been created. Please activate it here:
 			)
 			appName = strings.TrimSpace(appName)
 
-			mailQ = append(mailQ, helpers2.MailQueue{
+			mailQ = append(mailQ, helpers.MailQueue{
 				To:          s.Email,
 				Subject:     "Your EduLink Portal Account",
 				ContentType: mail.TypeTextPlain,
 				Importance:  mail.ImportanceNormal,
 				Body:        msgBody,
 				SendAt:      nil,
-				Purpose:     helpers2.Ptr(helpers2.MailPurposeStudentAccountCreation),
+				Purpose:     helpers.Ptr(helpers.MailPurposeStudentAccountCreation),
 				MaxRetries:  nil,
 			})
 		}
 	}
 
 	if p.EnableAccounts {
-		if err := helpers2.AppendMailQueue(mailQ, h.Sf, tx, ctx); err != nil {
+		if err := helpers.AppendMailQueue(mailQ, h.Sf, tx, ctx); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -1149,10 +1068,10 @@ func (h *Handler) UploadStudentPfpHandler(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	res, err := h.App.Staff.Students.UploadStudentProfilePicture(ctx, &students2.UploadProfilePictureInput{
+	res, err := h.App.Staff.Students.UploadStudentProfilePicture(ctx, &staffStudents.UploadProfilePictureInput{
 		UserID:       userID,
 		PortalUserID: portalUserID,
-		File: students2.UploadProfilePictureFile{
+		File: staffStudents.UploadProfilePictureFile{
 			FileName:            p.Name,
 			DeclaredSize:        p.DeclaredSize,
 			DeclaredContentType: p.DeclaredContentType,
@@ -1160,13 +1079,13 @@ func (h *Handler) UploadStudentPfpHandler(w http.ResponseWriter, r *http.Request
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, students2.ErrForbidden):
+		case errors.Is(err, staffStudents.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
 
-		case errors.Is(err, students2.ErrInvalidData):
+		case errors.Is(err, staffStudents.ErrInvalidData):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 
-		case errors.Is(err, students2.ErrProfilePictureExists):
+		case errors.Is(err, staffStudents.ErrProfilePictureExists):
 			w.WriteHeader(http.StatusConflict)
 
 		default:
@@ -1199,12 +1118,12 @@ func (h *Handler) RemoveStudentPfpHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := h.App.Staff.Students.ClearStudentProfilePicture(ctx, &students2.ClearStudentProfilePictureInput{
+	if err := h.App.Staff.Students.ClearStudentProfilePicture(ctx, &staffStudents.ClearStudentProfilePictureInput{
 		UserID:       userID,
 		PortalUserID: portalUserID,
 	}); err != nil {
 		switch {
-		case errors.Is(err, students2.ErrForbidden):
+		case errors.Is(err, staffStudents.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
 
 		default:

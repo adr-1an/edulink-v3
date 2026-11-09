@@ -24,6 +24,7 @@ type assignmentsPayload struct {
 	DueDate            *time.Time `json:"dueDate"`
 	SubmissionsEnabled bool       `json:"submissionsEnabled"`
 	SubmissionsCloseAt *time.Time `json:"submissionsCloseAt"`
+	Archived           bool       `json:"archived"`
 }
 
 func parseAssignmentPayload(p assignmentsPayload) assignmentsPayload {
@@ -285,6 +286,7 @@ func (h *Handler) ListAssignmentsHandler(w http.ResponseWriter, r *http.Request)
 		SubmissionsEnabled bool       `json:"submissionsEnabled"`
 		SubmissionsCloseAt *time.Time `json:"submissionsCloseAt"`
 		CreatedAt          time.Time  `json:"createdAt"`
+		ArchivedAt         *time.Time `json:"archivedAt"`
 	}
 	var assignments []assignment
 
@@ -298,7 +300,8 @@ func (h *Handler) ListAssignmentsHandler(w http.ResponseWriter, r *http.Request)
 		    a.due_date,
 		    a.submissions_enabled,
 		    a.submissions_close_at,
-		    a.created_at
+		    a.created_at,
+		    a.archived_at
 		FROM assignments a
 		LEFT JOIN course_posts p
 		ON a.referenced_post_id = p.id
@@ -328,6 +331,7 @@ func (h *Handler) ListAssignmentsHandler(w http.ResponseWriter, r *http.Request)
 			&a.SubmissionsEnabled,
 			&a.SubmissionsCloseAt,
 			&a.CreatedAt,
+			&a.ArchivedAt,
 		); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -443,6 +447,12 @@ func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	var archivedAt *time.Time
+	if p.Archived {
+		now := time.Now()
+		archivedAt = &now
+	}
+
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE assignments
 		SET
@@ -451,8 +461,9 @@ func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request
 		    description = $3,
 		    due_date = $4,
 		    submissions_enabled = $5,
-		    submissions_close_at = $6
-		WHERE id = $7
+		    submissions_close_at = $6,
+		    archived_at = $7
+		WHERE id = $8
 	`,
 		p.RefPostID,
 		p.Title,
@@ -460,6 +471,7 @@ func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request
 		p.DueDate,
 		p.SubmissionsEnabled,
 		p.SubmissionsCloseAt,
+		archivedAt,
 		assignmentID,
 	); err != nil {
 		log.Println(err)

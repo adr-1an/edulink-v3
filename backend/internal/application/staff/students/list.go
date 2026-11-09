@@ -13,7 +13,15 @@ type ListStudentsInput struct {
 	SchoolID int64
 }
 
-type student struct {
+type guardian struct {
+	ID       int64
+	Name     string
+	LastName string
+	Email    string
+	Phone    *string
+}
+
+type studentType struct {
 	ID                int64
 	Name              string
 	LastName          string
@@ -25,10 +33,11 @@ type student struct {
 	AccountEnabled    bool
 	AccountActive     bool
 	CreatedAt         time.Time
+	Guardians         []guardian
 }
 
 type ListStudentsResult struct {
-	Students []student
+	Students []studentType
 }
 
 func (s *Service) ListStudents(ctx context.Context, i *ListStudentsInput) (*ListStudentsResult, error) {
@@ -43,7 +52,7 @@ func (s *Service) ListStudents(ctx context.Context, i *ListStudentsInput) (*List
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var studentList []student
+	var studentList []studentType
 
 	rows, err := tx.QueryContext(ctx, `
 		SELECT
@@ -52,9 +61,12 @@ func (s *Service) ListStudents(ctx context.Context, i *ListStudentsInput) (*List
 		FROM portal_users pu
 		LEFT JOIN portal_user_profile_pictures pfp ON pu.id = pfp.portal_user_id
 		LEFT JOIN storage_objects so ON so.id = pfp.storage_object_id AND status = $3
-		WHERE school_id = $1
-		AND account_type = $2
-	`, i.SchoolID, helpers2.AccTypeStudent, helpers2.StatusDone)
+		LEFT JOIN guardian_students gs ON gs.student_id = pu.id
+		LEFT JOIN portal_users g ON gs.guardian_id = g.id
+			AND g.account_type = $4
+		WHERE pu.school_id = $1
+		AND pu.account_type = $2
+	`, i.SchoolID, helpers2.AccTypeStudent, helpers2.StatusDone, helpers2.AccTypeGuardian)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -62,7 +74,7 @@ func (s *Service) ListStudents(ctx context.Context, i *ListStudentsInput) (*List
 	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
-		var st student
+		var st studentType
 
 		var objKey *string
 		var bucketName *string

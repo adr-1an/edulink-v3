@@ -8,6 +8,7 @@ import {
     CalendarDays, ChevronLeft, ChevronRight, FileUp, GraduationCap, Mail, Pencil, Phone, Plus, Search, Trash2, TriangleAlert, UserRoundCheck, X,
 } from "lucide-react"
 import PageTitle from "@/components/app/page_title"
+import StudentGuardiansButton from "@/components/app/student-guardians-button"
 import UserAvatar from "@/components/app/user_avatar"
 import {Badge} from "@/components/ui/badge"
 import {Button} from "@/components/ui/button"
@@ -271,6 +272,7 @@ export default function StudentsClientPage({schoolID, initialStudents, access}: 
                                     </div>
                                 </div>
                                 <div className="flex shrink-0 gap-2 self-end sm:self-auto">
+                                    <StudentGuardiansButton studentID={student.id} access={access} />
                                     {canUpdate && <Button size="icon-sm" variant="ghost" aria-label={t("staff.students.editLabel", {name: `${student.name} ${student.lastName}`})} onClick={() => openEdit(student)}><Pencil /></Button>}
                                     {canDelete && <Button size="icon-sm" variant="destructive-outline" aria-label={t("staff.students.deleteLabel", {name: `${student.name} ${student.lastName}`})} onClick={() => openDelete(student)}><Trash2 /></Button>}
                                     {canView && <Button size="icon-sm" variant="ghost" aria-label={t("staff.students.viewLabel", {name: `${student.name} ${student.lastName}`})} render={<Link href={`/app/staff/students/${student.id}`} />}><ChevronRight /></Button>}

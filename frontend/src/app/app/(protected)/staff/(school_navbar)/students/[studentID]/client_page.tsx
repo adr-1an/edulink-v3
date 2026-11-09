@@ -11,6 +11,7 @@ import {
 import {toast} from "sonner"
 import LocalDateTime from "@/components/local-date-time"
 import UserAvatar from "@/components/app/user_avatar"
+import StudentGuardiansButton from "@/components/app/student-guardians-button"
 import {Badge} from "@/components/ui/badge"
 import {Button} from "@/components/ui/button"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
@@ -417,8 +418,9 @@ export default function StudentProfileClientPage({initialStudent, assignmentSubm
                         )}
                     </div>
                 </div>
-                {(canUpdate || canDelete) && (
+                {(canUpdate || canDelete || hasSchoolPermission(access, "student.view")) && (
                     <div className="flex shrink-0 flex-wrap gap-2">
+                        <StudentGuardiansButton studentID={student.id} access={access} />
                         {canUpdate && <Button variant="outline" onClick={openEdit}><Pencil /> {t("staff.studentProfile.edit")}</Button>}
                         {canDelete && <Button variant="destructive-outline" onClick={() => {
                             setDeleteConfirmation("")

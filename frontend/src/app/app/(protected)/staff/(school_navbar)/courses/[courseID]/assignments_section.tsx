@@ -4,8 +4,8 @@ import {useMemo, useState} from "react"
 import Link from "next/link"
 import {useRouter} from "next/navigation"
 import {
-    CalendarClock, ClipboardList, Clock3, ExternalLink, FileText, Link2, LockKeyhole,
-    Pencil, Plus, RotateCcw, Send, Trash2, TriangleAlert,
+    Archive, ArchiveRestore, CalendarClock, ClipboardList, Clock3, ExternalLink, FileText,
+    Link2, LockKeyhole, Pencil, Plus, RotateCcw, Send, Trash2, TriangleAlert,
 } from "lucide-react"
 import {toast} from "sonner"
 import LocalDateTime from "@/components/local-date-time"
@@ -26,12 +26,16 @@ import {Form} from "@/components/ui/form"
 import {Input} from "@/components/ui/input"
 import {Select, SelectItem, SelectPopup, SelectTrigger, SelectValue} from "@/components/ui/select"
 import {Switch} from "@/components/ui/switch"
+import {Tabs, TabsList, TabsPanel, TabsTab} from "@/components/ui/tabs"
 import {Textarea} from "@/components/ui/textarea"
 import {hasSchoolPermission, type SchoolAccess} from "@/lib/school_access"
+import {
+    buildAssignmentUpdateInput, getAssignmentArchiveAction, splitAssignmentsByArchiveState,
+} from "@/lib/staff_assignment"
 import {useLocale} from "@/i18n/provider"
 import {
     handleCreateAssignment, handleDeleteAssignment, handleUpdateAssignment,
-    type CourseAssignmentInput,
+    type CourseAssignmentInput, type CourseAssignmentUpdateInput,
 } from "./actions"
 
 export interface CourseAssignment {
@@ -46,6 +50,7 @@ export interface CourseAssignment {
     submissionsEnabled: boolean
     submissionsCloseAt: string | null
     createdAt: string
+    archivedAt: string | null
 }
 
 interface ReferencePost {
@@ -138,9 +143,11 @@ export default function AssignmentsSection({
     const [createOpen, setCreateOpen] = useState(false)
     const [editTarget, setEditTarget] = useState<CourseAssignment | null>(null)
     const [deleteTarget, setDeleteTarget] = useState<CourseAssignment | null>(null)
+    const [archiveTarget, setArchiveTarget] = useState<CourseAssignment | null>(null)
     const [deleteConfirmation, setDeleteConfirmation] = useState("")
     const [saving, setSaving] = useState(false)
     const [deleting, setDeleting] = useState(false)
+    const [archivingID, setArchivingID] = useState<string | null>(null)
     const [draft, setDraft] = useState<AssignmentDraft>(emptyDraft)
     const canCreate = hasSchoolPermission(access, "course.assignment.create") && !denied && !error
     const canUpdate = hasSchoolPermission(access, "course.assignment.update") && !denied && !error
@@ -155,6 +162,12 @@ export default function AssignmentsSection({
         if (second.dueDate) return 1
         return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
     }), [initialAssignments])
+    const {active: activeAssignments, archived: archivedAssignments} = useMemo(
+        () => splitAssignmentsByArchiveState(sortedAssignments), [sortedAssignments],
+    )
+    const archiveAction = archiveTarget
+        ? getAssignmentArchiveAction(archiveTarget.archivedAt)
+        : null
 
     function openCreate() {
         setDraft(emptyDraft)
@@ -202,13 +215,32 @@ export default function AssignmentsSection({
         const input = assignmentInput(draft)
         if (!input) return toast.error("Enter valid assignment dates.")
 
+        const updateInput: CourseAssignmentUpdateInput = {
+            ...input, archived: editTarget.archivedAt !== null,
+        }
         setSaving(true)
-        const result = await handleUpdateAssignment(editTarget.id, input)
+        const result = await handleUpdateAssignment(editTarget.id, updateInput)
         setSaving(false)
         if (!result.ok) return toast.error(result.message)
 
         setEditTarget(null)
         toast.success("Assignment updated.")
+        router.refresh()
+    }
+
+    async function confirmAssignmentArchiveChange() {
+        if (!archiveTarget || !archiveAction) return
+
+        setArchivingID(archiveTarget.id)
+        const result = await handleUpdateAssignment(
+            archiveTarget.id,
+            buildAssignmentUpdateInput(archiveTarget, archiveAction.nextArchived),
+        )
+        setArchivingID(null)
+        if (!result.ok) return toast.error(result.message)
+
+        setArchiveTarget(null)
+        toast.success(archiveAction.nextArchived ? "Assignment archived." : "Assignment unarchived.")
         router.refresh()
     }
 
@@ -224,6 +256,40 @@ export default function AssignmentsSection({
         setDeleteConfirmation("")
         toast.success("Assignment permanently deleted.")
         router.refresh()
+    }
+
+    function renderAssignmentList(assignments: CourseAssignment[], archived: boolean) {
+        if (assignments.length === 0) {
+            return (
+                <Card>
+                    <Empty>
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon">{archived ? <Archive /> : <ClipboardList />}</EmptyMedia>
+                            <EmptyTitle>{archived ? "No archived assignments" : "No active assignments"}</EmptyTitle>
+                            <EmptyDescription>
+                                {archived ? "Archived assignments will appear here." : "Unarchived assignments will appear here."}
+                            </EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
+                </Card>
+            )
+        }
+
+        return <div className="grid gap-3 lg:grid-cols-2">{assignments.map((assignment) => (
+            <AssignmentCard
+                assignment={assignment}
+                canUpdate={canUpdate}
+                canDelete={canDelete}
+                canViewPost={canViewPosts}
+                canListSubmissions={canListSubmissions}
+                submissionsLabel={t("staff.submissions.openList")}
+                archiving={archivingID === assignment.id}
+                onEdit={() => openEdit(assignment)}
+                onToggleArchived={() => setArchiveTarget(assignment)}
+                onDelete={() => openDelete(assignment)}
+                key={assignment.id}
+            />
+        ))}</div>
     }
 
     return (
@@ -275,21 +341,18 @@ export default function AssignmentsSection({
                     </Empty>
                 </Card>
             ) : (
-                <div className="grid gap-3 lg:grid-cols-2">
-                    {sortedAssignments.map((assignment) => (
-                        <AssignmentCard
-                            assignment={assignment}
-                            canUpdate={canUpdate}
-                            canDelete={canDelete}
-                            canViewPost={canViewPosts}
-                            canListSubmissions={canListSubmissions}
-                            submissionsLabel={t("staff.submissions.openList")}
-                            onEdit={() => openEdit(assignment)}
-                            onDelete={() => openDelete(assignment)}
-                            key={assignment.id}
-                        />
-                    ))}
-                </div>
+                <Tabs defaultValue="active">
+                    <TabsList aria-label="Assignment archive status">
+                        <TabsTab value="active"><ClipboardList /> Active <Badge variant="secondary">{activeAssignments.length}</Badge></TabsTab>
+                        <TabsTab value="archived"><Archive /> Archived <Badge variant="secondary">{archivedAssignments.length}</Badge></TabsTab>
+                    </TabsList>
+                    <TabsPanel className="pt-2" value="active">
+                        {renderAssignmentList(activeAssignments, false)}
+                    </TabsPanel>
+                    <TabsPanel className="pt-2" value="archived">
+                        {renderAssignmentList(archivedAssignments, true)}
+                    </TabsPanel>
+                </Tabs>
             )}
 
             <Dialog open={createOpen} onOpenChange={(open) => {
@@ -315,6 +378,36 @@ export default function AssignmentsSection({
                     <AssignmentForm draft={draft} posts={referencePosts} saving={saving} submitLabel="Save changes" canViewPosts={canViewPosts} onChange={setDraft} onSubmit={updateAssignment} />
                 </DialogPopup>
             </Dialog>
+
+            <AlertDialog open={archiveTarget !== null} onOpenChange={(open) => {
+                if (!open && archivingID === null) setArchiveTarget(null)
+            }}>
+                <AlertDialogPopup className="sm:max-w-lg">
+                    <AlertDialogHeader>
+                        <div className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                            {archiveAction?.nextArchived ? <Archive className="size-6" /> : <ArchiveRestore className="size-6" />}
+                        </div>
+                        <AlertDialogTitle>{archiveAction?.title}</AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-3">
+                            <span className="block">
+                                {archiveAction?.nextArchived ? "Archiving" : "Unarchiving"}{" "}
+                                <strong className="font-semibold text-foreground">&ldquo;{archiveTarget?.title}&rdquo;</strong>.
+                            </span>
+                            <span className="block">{archiveAction?.description}</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogClose render={<Button variant="outline" disabled={archivingID !== null} />}>Cancel</AlertDialogClose>
+                        <Button
+                            loading={archivingID !== null}
+                            disabled={!archiveTarget || !archiveAction || archivingID !== null}
+                            onClick={confirmAssignmentArchiveChange}
+                        >
+                            {archiveAction?.actionLabel}
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogPopup>
+            </AlertDialog>
 
             <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => {
                 if (!open && !deleting) {
@@ -363,7 +456,7 @@ export default function AssignmentsSection({
     )
 }
 
-function AssignmentCard({assignment, canUpdate, canDelete, canViewPost, canListSubmissions, submissionsLabel, onEdit, onDelete}: {
+function AssignmentCard({assignment, canUpdate, canDelete, canViewPost, canListSubmissions, submissionsLabel, archiving, onEdit, onToggleArchived, onDelete}: {
     assignment: CourseAssignment
     canUpdate: boolean
     canDelete: boolean
@@ -371,7 +464,9 @@ function AssignmentCard({assignment, canUpdate, canDelete, canViewPost, canListS
     canListSubmissions: boolean
     submissionsLabel: string
     onEdit: () => void
+    archiving: boolean
     onDelete: () => void
+    onToggleArchived: () => void
 }) {
     return (
         <Card className="overflow-hidden">
@@ -379,7 +474,20 @@ function AssignmentCard({assignment, canUpdate, canDelete, canViewPost, canListS
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <CardTitle className="wrap-break-word text-lg leading-snug">{assignment.title}</CardTitle>
                     <div className="flex items-center gap-1">
-                        {canUpdate && <Button size="icon-sm" variant="ghost" aria-label={`Edit ${assignment.title}`} onClick={onEdit}><Pencil /></Button>}
+                        {canUpdate && <>
+                            <Button size="icon-sm" variant="ghost" aria-label={`Edit ${assignment.title}`} disabled={archiving} onClick={onEdit}><Pencil /></Button>
+                            <Button
+                                size="icon-sm"
+                                variant="ghost"
+                                aria-label={`${assignment.archivedAt === null ? "Archive" : "Unarchive"} ${assignment.title}`}
+                                title={assignment.archivedAt === null ? "Archive assignment" : "Unarchive assignment"}
+                                loading={archiving}
+                                disabled={archiving}
+                                onClick={onToggleArchived}
+                            >
+                                {assignment.archivedAt === null ? <Archive /> : <ArchiveRestore />}
+                            </Button>
+                        </>}
                         {canDelete && <Button size="icon-sm" variant="destructive-outline" aria-label={`Delete ${assignment.title}`} onClick={onDelete}><Trash2 /></Button>}
                     </div>
                 </div>
@@ -394,6 +502,7 @@ function AssignmentCard({assignment, canUpdate, canDelete, canViewPost, canListS
                     {assignment.submissionsCloseAt && (
                         <Badge variant="outline"><Clock3 /> Close <LocalDateTime value={assignment.submissionsCloseAt} /></Badge>
                     )}
+                    {assignment.archivedAt !== null && <Badge variant="outline"><Archive /> Archived</Badge>}
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
