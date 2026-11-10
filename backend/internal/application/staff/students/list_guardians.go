@@ -28,7 +28,7 @@ type ListGuardiansResult struct {
 }
 
 func (s *Service) ListGuardians(ctx context.Context, i *ListGuardiansInput) (*ListGuardiansResult, error) {
-	sSchoolID, err := staff_helpers.StudentToSchoolID(ctx, s.DB, i.StudentID)
+	sSchoolID, err := staffhelpers.StudentToSchoolID(ctx, s.DB, i.StudentID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

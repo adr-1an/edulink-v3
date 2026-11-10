@@ -91,7 +91,7 @@ func (h *Handler) CreateCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -190,7 +190,7 @@ func (h *Handler) CreateCourseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -217,7 +217,7 @@ func (h *Handler) UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -320,7 +320,7 @@ func (h *Handler) UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -347,7 +347,7 @@ func (h *Handler) UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -405,7 +405,7 @@ func (h *Handler) DeleteCourseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -429,7 +429,7 @@ func (h *Handler) DeleteCourseHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

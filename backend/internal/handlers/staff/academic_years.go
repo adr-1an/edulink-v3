@@ -17,7 +17,7 @@ func (h *Handler) ListAcademicYearsHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -96,7 +96,7 @@ func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -166,7 +166,7 @@ func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	if exists {
 		w.WriteHeader(http.StatusConflict)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeAcademicYearConflict,
+			"code": staffhelpers.ErrorCodeAcademicYearConflict,
 		})
 		return
 	}
@@ -206,7 +206,7 @@ func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -225,7 +225,7 @@ func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -266,14 +266,22 @@ func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Check if the current year is active
-	var active bool
+	var (
+		active    bool
+		hasGrades bool
+	)
 	if err := tx.QueryRowContext(ctx, `
-		SELECT EXISTS (
+		SELECT
+		    EXISTS (
 		    SELECT 1 FROM academic_years
 			WHERE id = $1
 			AND is_active = TRUE
-		)
-	`, acYearID).Scan(&active); err != nil {
+		),
+		    EXISTS (
+		        SELECT 1 FROM grades
+				WHERE academic_year_id = $1
+		    )
+	`, acYearID).Scan(&active, &hasGrades); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -281,6 +289,17 @@ func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 
 	if active {
 		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"code": staffhelpers.ErrorYearIsActive,
+		})
+		return
+	}
+
+	if hasGrades {
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"code": staffhelpers.ErrorYearHasGrades,
+		})
 		return
 	}
 
@@ -297,7 +316,7 @@ func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -323,7 +342,7 @@ func (h *Handler) ClearAcademicYearHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -392,7 +411,7 @@ func (h *Handler) ClearAcademicYearHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

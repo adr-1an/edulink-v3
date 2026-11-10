@@ -17,8 +17,8 @@ import (
 )
 
 // Latest updates
-// Minor: fixed 500 server error on portal user email conflict when creating/updating guardian/student
-const version = "3.16.6"
+// Minor: Implemented route for listing all students assigned to a guardian
+const version = "3.17.6"
 
 func main() {
 	fmt.Printf("Starting EduLink API v%s\n", version)

@@ -27,6 +27,9 @@ func GuardianRoutes(h *staffhandlers.Handler) chi.Router {
 
 		// Delete guardian
 		r.Delete("/", h.DeleteGuardianHandler)
+
+		// List students
+		r.Get("/", h.ListGuardianStudentsHandler)
 	})
 
 	return r

@@ -210,7 +210,7 @@ func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
 	if token == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeNoToken,
+			"code": staffhelpers.ErrorCodeNoToken,
 		})
 		return
 	}
@@ -265,7 +265,7 @@ func (h *Handler) SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.R
 	if len(p.Email) < 5 || len(p.Email) > 254 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeInvalidEmail,
+			"code": staffhelpers.ErrorCodeInvalidEmail,
 		})
 		return
 	}
@@ -290,7 +290,7 @@ func (h *Handler) SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.R
 		DELETE FROM verification_tokens
 		WHERE user_id = $1
 		AND purpose = $2
-	`, userID, staff_helpers.TokenPurposePasswordReset)
+	`, userID, staffhelpers.TokenPurposePasswordReset)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
@@ -310,7 +310,7 @@ func (h *Handler) SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.R
 	_, err = h.DB.ExecContext(ctx, `
 		INSERT INTO verification_tokens (token_hash, user_id, purpose)
 		VALUES ($1, $2, $3)
-	`, resetTokenHash, userID, staff_helpers.TokenPurposePasswordReset)
+	`, resetTokenHash, userID, staffhelpers.TokenPurposePasswordReset)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
@@ -348,7 +348,7 @@ func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 	if token == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeNoToken,
+			"code": staffhelpers.ErrorCodeNoToken,
 		})
 		return
 	}
@@ -382,12 +382,12 @@ func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 			AND created_at >= NOW() - INTERVAL '24 hours'
 	   		AND purpose = $2
 		RETURNING user_id
-	`, tokenHash, staff_helpers.TokenPurposePasswordReset).Scan(&userID)
+	`, tokenHash, staffhelpers.TokenPurposePasswordReset).Scan(&userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staff_helpers.ErrorCodeInvalidToken,
+				"code": staffhelpers.ErrorCodeInvalidToken,
 			})
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -436,7 +436,7 @@ func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tokenHash, err := staff_helpers.TokenToHash(w, r)
+	tokenHash, err := staffhelpers.TokenToHash(w, r)
 	if err != nil {
 		return
 	}
@@ -465,7 +465,7 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	if rowsAffected == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeInvalidToken,
+			"code": staffhelpers.ErrorCodeInvalidToken,
 		})
 		return
 	}
@@ -476,7 +476,7 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -556,7 +556,7 @@ func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -680,7 +680,7 @@ func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Disable2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -809,7 +809,7 @@ func (h *Handler) RecoverTwoFactorHandler(w http.ResponseWriter, r *http.Request
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNotFound)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staff_helpers.ErrorCodeInvalidRecoveryCode,
+				"code": staffhelpers.ErrorCodeInvalidRecoveryCode,
 			})
 		} else {
 			log.Println(err)

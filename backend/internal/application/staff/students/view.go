@@ -82,7 +82,7 @@ type ViewStudentResult struct {
 }
 
 func (s *Service) ViewStudent(ctx context.Context, i *ViewStudentInput) (*ViewStudentResult, error) {
-	schoolID, err := staff_helpers.StudentToSchoolID(ctx, s.DB, i.StudentID)
+	schoolID, err := staffhelpers.StudentToSchoolID(ctx, s.DB, i.StudentID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrForbidden

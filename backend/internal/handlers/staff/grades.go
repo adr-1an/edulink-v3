@@ -18,7 +18,7 @@ func (h *Handler) ListGradesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -99,7 +99,7 @@ func (h *Handler) CreateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -137,7 +137,7 @@ func (h *Handler) CreateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	if !strings.Contains(p.Name, "{level}") {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeMissingLevelVar,
+			"code": staffhelpers.ErrorCodeMissingLevelVar,
 		})
 		return
 	}
@@ -145,7 +145,7 @@ func (h *Handler) CreateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	if p.Name == "" || len(p.Name) < 7 || len(p.Name) > 32 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeInvalidName,
+			"code": staffhelpers.ErrorCodeInvalidName,
 		})
 		return
 	}
@@ -153,7 +153,7 @@ func (h *Handler) CreateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	if p.Level < 0 || p.Level > 20 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeLevelOutOfRange,
+			"code": staffhelpers.ErrorCodeLevelOutOfRange,
 		})
 		return
 	}
@@ -205,7 +205,7 @@ func (h *Handler) CreateGradeHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		return
 	}
 
@@ -230,7 +230,7 @@ func (h *Handler) UpdateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -267,7 +267,7 @@ func (h *Handler) UpdateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	if !strings.Contains(p.Name, "{level}") {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeMissingLevelVar,
+			"code": staffhelpers.ErrorCodeMissingLevelVar,
 		})
 		return
 	}
@@ -275,7 +275,7 @@ func (h *Handler) UpdateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	if p.Name == "" || len(p.Name) < 7 || len(p.Name) > 32 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeInvalidName,
+			"code": staffhelpers.ErrorCodeInvalidName,
 		})
 		return
 	}
@@ -283,7 +283,7 @@ func (h *Handler) UpdateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	if p.Level < 0 || p.Level > 20 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeLevelOutOfRange,
+			"code": staffhelpers.ErrorCodeLevelOutOfRange,
 		})
 		return
 	}
@@ -348,7 +348,7 @@ func (h *Handler) UpdateGradeHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		return
 	}
 
@@ -374,7 +374,7 @@ func (h *Handler) DeleteGradeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -418,7 +418,7 @@ func (h *Handler) DeleteGradeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		return
 	}
 

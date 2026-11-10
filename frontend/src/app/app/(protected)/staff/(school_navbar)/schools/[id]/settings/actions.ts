@@ -2,6 +2,7 @@
 
 
 import {cookies} from "next/headers"
+import type {MessageKey} from "@/i18n/messages"
 
 interface UpdateSchoolPayload {
     name: string
@@ -111,8 +112,10 @@ export async function handlePromoteSchool(schoolID: string, from: number, to: nu
     return schoolRequest(schoolID, "/promote", {newAcademicYear: {from, to}, options})
 }
 
-export async function handleDeleteAcademicYear(yearID: string) {
-    if (!/^\d+$/.test(yearID)) return {ok: false, message: "Invalid academic year."}
+export async function handleDeleteAcademicYear(yearID: string): Promise<
+    {ok: true} | {ok: false; errorKey: MessageKey}
+> {
+    if (!/^\d+$/.test(yearID)) return {ok: false, errorKey: "staff.settings.error.invalidYear"}
 
     const token = (await cookies()).get("token")?.value
     let res
@@ -122,15 +125,21 @@ export async function handleDeleteAcademicYear(yearID: string) {
             headers: {Authorization: `Bearer ${token}`},
         })
     } catch {
-        return {ok: false, message: "Network error, please try again."}
+        return {ok: false, errorKey: "staff.settings.error.network"}
     }
 
     if (res.ok) return {ok: true}
-    if (res.status === 401) return {ok: false, message: "Unauthorized."}
-    if (res.status === 403) return {ok: false, message: "You don't have permission to delete academic years."}
-    if (res.status === 409) return {ok: false, message: "The active academic year cannot be deleted. Activate another year first."}
-    if (res.status === 500) return {ok: false, message: "This academic year could not be deleted. Remove its grades first."}
-    return {ok: false, message: "Unable to delete the academic year."}
+    if (res.status === 400) return {ok: false, errorKey: "staff.settings.error.invalidYear"}
+    if (res.status === 401) return {ok: false, errorKey: "staff.settings.error.sessionExpired"}
+    if (res.status === 403) return {ok: false, errorKey: "staff.settings.error.yearDeleteForbidden"}
+    if (res.status === 409) {
+        const data: unknown = await res.json().catch(() => null)
+        const code = data && typeof data === "object" && "code" in data ? data.code : null
+        if (code === "YEAR_HAS_GRADES") return {ok: false, errorKey: "staff.settings.error.yearHasGrades"}
+        if (code === "YEAR_IS_ACTIVE") return {ok: false, errorKey: "staff.settings.error.yearIsActive"}
+        return {ok: false, errorKey: "staff.settings.error.yearDeleteConflict"}
+    }
+    return {ok: false, errorKey: "staff.settings.error.yearDeleteFailed"}
 }
 
 export async function handleClearActiveAcademicYear(schoolID: string) {

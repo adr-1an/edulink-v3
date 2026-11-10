@@ -2,9 +2,10 @@
 
 import {useEffect, useMemo, useState} from "react"
 import {useRouter} from "next/navigation"
+import Link from "next/link"
 import {toast} from "sonner"
 import {
-    CalendarDays, ChevronLeft, ChevronRight, Mail, Pencil, Phone, Plus, Search, Trash2,
+    CalendarDays, ChevronLeft, ChevronRight, GraduationCap, Mail, Pencil, Phone, Plus, Search, Trash2,
     TriangleAlert, UserRoundCheck, UsersRound, X,
 } from "lucide-react"
 import PageTitle from "@/components/app/page_title"
@@ -239,6 +240,9 @@ export default function GuardiansClientPage({schoolID, initialGuardians, access}
                                         </div>
                                     </div>
                                     <div className="flex shrink-0 gap-2 self-end sm:self-auto">
+                                        {hasSchoolPermission(access, "guardian.student.list") && <Button size="sm" variant="outline"
+                                            aria-label={t("staff.guardianStudents.open", {name: fullName})}
+                                            render={<Link href={`/app/staff/guardians/${guardian.id}/students`} prefetch={false} />}><GraduationCap /> {t("staff.guardianStudents.button")}</Button>}
                                         {canUpdate && <Button size="icon-sm" variant="ghost" aria-label={t("staff.guardians.editLabel", {name: fullName})} onClick={() => openEdit(guardian)}><Pencil /></Button>}
                                         {canDelete && <Button size="icon-sm" variant="destructive-outline" aria-label={t("staff.guardians.deleteLabel", {name: fullName})} onClick={() => openDelete(guardian)}><Trash2 /></Button>}
                                     </div>

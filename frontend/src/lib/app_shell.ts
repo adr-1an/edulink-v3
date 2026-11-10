@@ -2,6 +2,7 @@ export function usesImmersiveAppShell(pathname: string) {
     const staffWorkspacePrefixes = [
         "/app/staff/schools/",
         "/app/staff/students/",
+        "/app/staff/guardians/",
         "/app/staff/courses/",
         "/app/staff/grades/",
         "/app/staff/assignments/",

@@ -42,13 +42,13 @@ func (h *Handler) CompleteChallenge(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, auth.ErrExpiredChallenge):
 			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staff_helpers.ErrorCodeExpiredToken,
+				"code": staffhelpers.ErrorCodeExpiredToken,
 			})
 
 		case errors.Is(err, auth.ErrInvalidTwoFactorCode):
 			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staff_helpers.ErrorCodeInvalidToken,
+				"code": staffhelpers.ErrorCodeInvalidToken,
 			})
 
 		case errors.Is(err, auth.ErrForbidden):

@@ -20,7 +20,8 @@ export function getSchoolNavigationItems(schoolID: string | null | undefined, pa
             key,
             href,
             active: key === "dashboard" ? pathname === href
-                : pathname.startsWith(href) || (key === "students" && pathname.startsWith("/app/staff/students/")),
+                : pathname.startsWith(href) || (key === "students" && pathname.startsWith("/app/staff/students/"))
+                    || (key === "guardians" && pathname.startsWith("/app/staff/guardians/")),
         }
     })
 }

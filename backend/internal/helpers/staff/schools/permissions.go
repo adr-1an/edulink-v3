@@ -81,6 +81,8 @@ const (
 	PermissionGuardianDelete Permission = "guardian.delete"
 	PermissionGuardianView   Permission = "guardian.view"
 
+	PermissionGuardianStudentList Permission = "guardian.student.list"
+
 	PermissionPortalUserActivate   Permission = "portal.user.activate"
 	PermissionPortalUserDeactivate Permission = "portal.user.deactivate"
 
@@ -176,6 +178,8 @@ var ValidPermissions = map[Permission]struct{}{
 	PermissionGuardianUpdate: {},
 	PermissionGuardianDelete: {},
 	PermissionGuardianView:   {},
+
+	PermissionGuardianStudentList: {},
 
 	PermissionPortalUserActivate:   {},
 	PermissionPortalUserDeactivate: {},

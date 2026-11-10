@@ -120,7 +120,7 @@ func (s *Service) UpdateSchool(ctx context.Context, i *UpdateSchoolInput) error 
 			log.Println(err)
 			return err
 		}
-		if err := staff_helpers.RowsAffected(res); err != nil {
+		if err := staffhelpers.RowsAffected(res); err != nil {
 			return err
 		}
 	}
@@ -135,7 +135,7 @@ func (s *Service) UpdateSchool(ctx context.Context, i *UpdateSchoolInput) error 
 		log.Println(err)
 		return err
 	}
-	if err := staff_helpers.RowsAffected(res); err != nil {
+	if err := staffhelpers.RowsAffected(res); err != nil {
 		return err
 	}
 

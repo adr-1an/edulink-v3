@@ -22,7 +22,7 @@ func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -68,7 +68,7 @@ func (h *Handler) CreateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -104,13 +104,13 @@ func (h *Handler) CreateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, schoolService.ErrInvalidName):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staff_helpers.ErrorCodeInvalidName,
+				"code": staffhelpers.ErrorCodeInvalidName,
 			})
 
 		case errors.Is(err, schoolService.ErrInvalidRegionCode):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staff_helpers.ErrorCodeInvalidRegionCode,
+				"code": staffhelpers.ErrorCodeInvalidRegionCode,
 			})
 
 		case errors.Is(err, schoolService.ErrBadRequest):
@@ -130,7 +130,7 @@ func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -177,13 +177,13 @@ func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, schoolService.ErrInvalidName):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staff_helpers.ErrorCodeInvalidName,
+				"code": staffhelpers.ErrorCodeInvalidName,
 			})
 
 		case errors.Is(err, schoolService.ErrInvalidRegionCode):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staff_helpers.ErrorCodeInvalidRegionCode,
+				"code": staffhelpers.ErrorCodeInvalidRegionCode,
 			})
 
 		case errors.Is(err, schoolService.ErrBadRequest):
@@ -203,7 +203,7 @@ func (h *Handler) DeleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Authenticate
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -335,7 +335,7 @@ func (h *Handler) ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

@@ -85,7 +85,7 @@ func checkSchoolAndEmailConflict(tx *sql.Tx, ctx context.Context, email string) 
 func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -214,7 +214,7 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -226,7 +226,7 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -237,7 +237,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	schoolID, err := staff_helpers.StudentToSchoolID(ctx, h.DB, studentID)
+	schoolID, err := staffhelpers.StudentToSchoolID(ctx, h.DB, studentID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -398,7 +398,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -410,7 +410,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -421,7 +421,7 @@ func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	schoolID, err := staff_helpers.StudentToSchoolID(ctx, h.DB, studentID)
+	schoolID, err := staffhelpers.StudentToSchoolID(ctx, h.DB, studentID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -476,7 +476,7 @@ func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -554,7 +554,7 @@ func (h *Handler) ListStudentsHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -725,7 +725,7 @@ func studentViewPayload(res *staffStudents.ViewStudentResult) map[string]any {
 func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -770,7 +770,7 @@ func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 	if len(p.Students) > 5_000 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorPayloadTooLong,
+			"code": staffhelpers.ErrorPayloadTooLong,
 		})
 		return
 	}
@@ -1042,7 +1042,7 @@ VALUES ($0,$0)
 func (h *Handler) UploadStudentPfpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -1106,7 +1106,7 @@ func (h *Handler) UploadStudentPfpHandler(w http.ResponseWriter, r *http.Request
 func (h *Handler) RemoveStudentPfpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

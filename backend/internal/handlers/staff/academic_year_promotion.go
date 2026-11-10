@@ -24,7 +24,7 @@ func (h *Handler) SchoolPromotionHandler(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -63,7 +63,7 @@ func (h *Handler) SchoolPromotionHandler(w http.ResponseWriter, r *http.Request)
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusForbidden)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staff_helpers.ErrorCodeNoActiveYear,
+				"code": staffhelpers.ErrorCodeNoActiveYear,
 			})
 		} else {
 			log.Println(err)
@@ -125,7 +125,7 @@ func (h *Handler) SchoolPromotionHandler(w http.ResponseWriter, r *http.Request)
 	if exists {
 		w.WriteHeader(http.StatusConflict)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeAcademicYearConflict,
+			"code": staffhelpers.ErrorCodeAcademicYearConflict,
 		})
 		return
 	}
@@ -148,7 +148,7 @@ func (h *Handler) SchoolPromotionHandler(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 		return
 	}
 
@@ -178,7 +178,7 @@ func (h *Handler) SchoolPromotionHandler(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+		if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 			return
 		}
 	}
@@ -268,7 +268,7 @@ func (h *Handler) SchoolPromotionHandler(w http.ResponseWriter, r *http.Request)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			if err := staff_helpers.RowsAffectedOr500(res, w); err != nil {
+			if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
 				return
 			}
 		}

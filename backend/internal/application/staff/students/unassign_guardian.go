@@ -15,12 +15,12 @@ type UnassignGuardianInput struct {
 
 func (s *Service) UnassignGuardian(ctx context.Context, i *UnassignGuardianInput) error {
 	// Get the student & guardian school ID
-	sSchoolID, err := staff_helpers.StudentToSchoolID(ctx, s.DB, i.StudentID)
+	sSchoolID, err := staffhelpers.StudentToSchoolID(ctx, s.DB, i.StudentID)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	gSchoolID, err := staff_helpers.GuardianToSchoolID(ctx, s.DB, i.GuardianID)
+	gSchoolID, err := staffhelpers.GuardianToSchoolID(ctx, s.DB, i.GuardianID)
 	if err != nil {
 		log.Println(err)
 		return err

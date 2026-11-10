@@ -27,7 +27,7 @@ import (
 func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -115,7 +115,7 @@ func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -164,7 +164,7 @@ func (h *Handler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) SendEmailChangeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -227,7 +227,7 @@ func (h *Handler) SendEmailChangeHandler(w http.ResponseWriter, r *http.Request)
 	if !match {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staff_helpers.ErrorCodeIncorrectPassword,
+			"code": staffhelpers.ErrorCodeIncorrectPassword,
 		})
 		return
 	}
@@ -252,7 +252,7 @@ func (h *Handler) SendEmailChangeHandler(w http.ResponseWriter, r *http.Request)
 		SELECT u.email
 		FROM users u
 		JOIN inserted i ON u.id = i.user_id
-	`, tokenHash, userID, staff_helpers.TokenPurposeEmailChange, p.NewEmail).Scan(&userEmail); err != nil {
+	`, tokenHash, userID, staffhelpers.TokenPurposeEmailChange, p.NewEmail).Scan(&userEmail); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -342,7 +342,7 @@ func (h *Handler) EmailUpdateHandler(w http.ResponseWriter, r *http.Request) {
 			WHEN EXISTS (SELECT 1 FROM email_taken) THEN 'email_taken'
 			ELSE 'invalid_token'
 		END AS result
-	`, tokenHash, staff_helpers.TokenPurposeEmailChange).Scan(&res)
+	`, tokenHash, staffhelpers.TokenPurposeEmailChange).Scan(&res)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -396,7 +396,7 @@ New email: %s`, oldEmail, newEmail)
 func (h *Handler) PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -501,7 +501,7 @@ If this wasn't you, review your account security immediately.
 func (h *Handler) UploadPfpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -610,7 +610,7 @@ func (h *Handler) UploadPfpHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ClearPfpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

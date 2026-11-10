@@ -16,7 +16,7 @@ import (
 func (h *Handler) AssignGuardianToStudent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -54,7 +54,7 @@ func (h *Handler) AssignGuardianToStudent(w http.ResponseWriter, r *http.Request
 func (h *Handler) UnassignGuardianFromStudent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -92,7 +92,7 @@ func (h *Handler) UnassignGuardianFromStudent(w http.ResponseWriter, r *http.Req
 func (h *Handler) ListStudentGuardians(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staff_helpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

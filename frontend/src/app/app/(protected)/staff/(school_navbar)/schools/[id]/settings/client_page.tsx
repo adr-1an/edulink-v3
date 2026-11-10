@@ -182,7 +182,7 @@ export default function SettingsClientPage({school, academicYears, canListAcadem
         setDeleting(true)
         const res = await handleDeleteAcademicYear(deleteTarget.id)
         setDeleting(false)
-        if (!res.ok) return toast.error(t("staff.settings.error.action"))
+        if (!res.ok) return toast.error(t(res.errorKey))
 
         setDeleteTarget(null)
         toast.success(t("staff.settings.yearDeleted"))

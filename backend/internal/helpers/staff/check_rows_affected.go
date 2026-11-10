@@ -1,4 +1,4 @@
-package staff_helpers
+package staffhelpers
 
 import (
 	"database/sql"

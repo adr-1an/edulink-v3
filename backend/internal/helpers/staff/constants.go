@@ -1,4 +1,4 @@
-package staff_helpers
+package staffhelpers
 
 // Verification token purposes
 
@@ -32,4 +32,6 @@ const (
 	ErrorCodeNoActiveYear             ResErrCode = "NO_ACTIVE_YEAR"
 	ErrorCodeTargetPrivacyRestricted  ResErrCode = "TARGET_PRIVACY_RESTRICTED"
 	ErrorPayloadTooLong               ResErrCode = "PAYLOAD_TOO_LONG"
+	ErrorYearIsActive                 ResErrCode = "YEAR_IS_ACTIVE"
+	ErrorYearHasGrades                ResErrCode = "YEAR_HAS_GRADES"
 )

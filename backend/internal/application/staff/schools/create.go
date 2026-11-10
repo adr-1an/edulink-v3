@@ -65,7 +65,7 @@ func (s *Service) CreateSchool(ctx context.Context, i *CreateSchoolInput) error 
 		return err
 	}
 
-	if err := staff_helpers.RowsAffected(res); err != nil {
+	if err := staffhelpers.RowsAffected(res); err != nil {
 		return err
 	}
 

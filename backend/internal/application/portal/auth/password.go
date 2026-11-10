@@ -69,7 +69,7 @@ func (s *Service) UpdatePassword(ctx context.Context, i *UpdatePasswordInput) er
 		return err
 	}
 
-	if err := staff_helpers.RowsAffected(res); err != nil {
+	if err := staffhelpers.RowsAffected(res); err != nil {
 		log.Println(err)
 		return err
 	}
