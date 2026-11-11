@@ -1,4 +1,5 @@
-package portal_users
+// Package portalusers contains all the main staff portal users services
+package portalusers
 
 import (
 	"database/sql"

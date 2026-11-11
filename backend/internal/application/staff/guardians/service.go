@@ -1,3 +1,4 @@
+// Package guardians contains all the main staff guardian services
 package guardians
 
 import (

@@ -1,8 +1,6 @@
-package portal_users
+package portalusers
 
 import (
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
 	"context"
 	"database/sql"
 	"errors"
@@ -10,7 +8,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/matoous/go-nanoid/v2"
+	"app/internal/helpers"
+	"app/internal/helpers/staff/schools"
+
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/wneessen/go-mail"
 )
 

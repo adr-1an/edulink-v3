@@ -13,8 +13,8 @@ COPY . .
 
 ARG TARGET=api
 
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -o /out/app ./cmd/${TARGET}
 
 FROM alpine:latest

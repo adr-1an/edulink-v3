@@ -1,0 +1,1 @@
+This migration changes the email of the system deleted user (ID 0) from "Unavailable" to "-".

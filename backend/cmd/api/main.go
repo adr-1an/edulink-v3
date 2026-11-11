@@ -1,15 +1,16 @@
 package main
 
 import (
-	"app/internal/application"
-	"app/internal/helpers"
-	utils2 "app/internal/infra"
-	"app/internal/routes/v1"
 	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	"app/internal/application"
+	"app/internal/helpers"
+	utils2 "app/internal/infra"
+	v1 "app/internal/routes/v1"
 
 	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
@@ -21,7 +22,7 @@ import (
 const version = "3.17.6"
 
 func main() {
-	fmt.Printf("Starting EduLink API v%s\n", version)
+	fmt.Printf("Starting EduLink API v%s...\n", version)
 
 	// Load .env
 	if err := godotenv.Load(); err != nil {

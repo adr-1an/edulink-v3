@@ -1,10 +1,11 @@
 package schools
 
 import (
-	"app/internal/helpers/staff/schools"
 	"context"
 	"log"
 	"strconv"
+
+	"app/internal/helpers/staff/schools"
 )
 
 type DeleteSchoolInput struct {

@@ -1,3 +1,4 @@
+// Package auth contains all the main staff auth services
 package auth
 
 import (

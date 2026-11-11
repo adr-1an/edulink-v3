@@ -1,3 +1,4 @@
+// Package auth contains the main portal auth services
 package auth
 
 import (

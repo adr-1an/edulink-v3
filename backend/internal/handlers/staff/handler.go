@@ -1,8 +1,10 @@
+// Package staff contains the main staff handlers
 package staff
 
 import (
-	"app/internal/application"
 	"database/sql"
+
+	"app/internal/application"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/sony/sonyflake/v2"

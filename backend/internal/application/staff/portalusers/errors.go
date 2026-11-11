@@ -1,4 +1,4 @@
-package portal_users
+package portalusers
 
 import "errors"
 

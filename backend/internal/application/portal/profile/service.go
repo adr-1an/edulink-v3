@@ -1,3 +1,4 @@
+// Package profile contains the main portal profile services
 package profile
 
 import (

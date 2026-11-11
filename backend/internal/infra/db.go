@@ -1,3 +1,4 @@
+// Package infra contains app initialization functions
 package infra
 
 import (

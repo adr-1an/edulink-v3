@@ -1,14 +1,16 @@
+// Package application contains all service definitions
 package application
 
 import (
+	"database/sql"
+
 	portalAuth "app/internal/application/portal/auth"
 	portalProfile "app/internal/application/portal/profile"
 	staffAuth "app/internal/application/staff/auth"
 	"app/internal/application/staff/guardians"
-	"app/internal/application/staff/portal_users"
+	"app/internal/application/staff/portalusers"
 	"app/internal/application/staff/schools"
 	"app/internal/application/staff/students"
-	"database/sql"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/sony/sonyflake/v2"
@@ -38,7 +40,7 @@ func New(
 				DB: db,
 				Sf: sf,
 			},
-			PortalUsers: &portal_users.Service{
+			PortalUsers: &portalusers.Service{
 				DB: db,
 				Sf: sf,
 			},
@@ -67,7 +69,7 @@ type StaffServices struct {
 	Schools     *schools.Service
 	Students    *students.Service
 	Guardians   *guardians.Service
-	PortalUsers *portal_users.Service
+	PortalUsers *portalusers.Service
 }
 
 type PortalServices struct {

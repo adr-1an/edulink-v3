@@ -1,11 +1,12 @@
 package staff
 
 import (
-	"app/internal/application/staff/portal_users"
-	"app/internal/helpers/staff"
 	"errors"
 	"net/http"
 	"strconv"
+
+	"app/internal/application/staff/portalusers"
+	staffhelpers "app/internal/helpers/staff"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -24,16 +25,16 @@ func (h *Handler) SendPortalUserAccountVerificationEmail(w http.ResponseWriter, 
 		return
 	}
 
-	if err := h.App.Staff.PortalUsers.SendActivationEmail(ctx, &portal_users.SendActivationEmailInput{
+	if err := h.App.Staff.PortalUsers.SendActivationEmail(ctx, &portalusers.SendActivationEmailInput{
 		UserID:       userID,
 		PortalUserID: portalUserID,
 	}); err != nil {
 		switch {
-		case errors.Is(err, portal_users.ErrForbidden):
+		case errors.Is(err, portalusers.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
-		case errors.Is(err, portal_users.ErrAccountDisabled):
+		case errors.Is(err, portalusers.ErrAccountDisabled):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-		case errors.Is(err, portal_users.ErrAccountAlreadyActive):
+		case errors.Is(err, portalusers.ErrAccountAlreadyActive):
 			w.WriteHeader(http.StatusConflict)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)

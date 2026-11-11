@@ -1,14 +1,16 @@
+// Package v1 defines all the app routes for API v1.
 package v1
 
 import (
+	"database/sql"
+	"time"
+
 	"app/internal/application"
-	portalHandlers "app/internal/handlers/portal"
+	portalhandlers "app/internal/handlers/portal"
 	"app/internal/handlers/portal/students"
 	"app/internal/handlers/staff"
 	"app/internal/routes/v1/portal"
-	staffRoutes "app/internal/routes/v1/staff"
-	"database/sql"
-	"time"
+	staffroutes "app/internal/routes/v1/staff"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -34,7 +36,7 @@ func MainRouter(
 	}
 
 	// Portal handlers
-	portalHandler := portalHandlers.Handler{
+	portalHandler := portalhandlers.Handler{
 		DB:  db,
 		Sf:  sf,
 		S3:  s3,
@@ -64,7 +66,7 @@ func MainRouter(
 	// API v1
 	r.Route("/v1", func(r chi.Router) {
 		// Staff app
-		r.Mount("/staff", staffRoutes.MainStaffRoutes(&h))
+		r.Mount("/staff", staffroutes.MainStaffRoutes(&h))
 
 		// Portal app
 		r.Mount("/portal", portal.MainPortalRoutes(&portalHandler, &studentHandler))

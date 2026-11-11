@@ -1,3 +1,4 @@
+// Package schools contains serices for schools
 package schools
 
 import (
