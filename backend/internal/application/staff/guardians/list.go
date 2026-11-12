@@ -1,8 +1,9 @@
 package guardians
 
 import (
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+
 	"context"
 	"log"
 	"time"
@@ -21,7 +22,7 @@ type ListGuardian struct {
 }
 
 type ListGuardiansResult struct {
-	Access    schools.AccessData
+	Access    permissions.AccessData
 	Guardians []ListGuardian
 }
 
@@ -31,7 +32,7 @@ type ListGuardiansInput struct {
 }
 
 func (s *Service) ListGuardians(ctx context.Context, i *ListGuardiansInput) (*ListGuardiansResult, error) {
-	if !schools.Can(schools.PermissionGuardianList, i.UserID, i.SchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionGuardianList, i.UserID, i.SchoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -49,7 +50,7 @@ func (s *Service) ListGuardians(ctx context.Context, i *ListGuardiansInput) (*Li
 		FROM portal_users
 		WHERE school_id = $1
 		AND account_type = $2
-	`, i.SchoolID, helpers.AccTypeGuardian)
+	`, i.SchoolID, portalusers.AccTypeGuardian)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func (s *Service) ListGuardians(ctx context.Context, i *ListGuardiansInput) (*Li
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

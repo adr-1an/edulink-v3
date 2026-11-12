@@ -6,8 +6,8 @@ import (
 	"errors"
 	"log"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/submissions"
 
 	"github.com/minio/minio-go/v7"
 )
@@ -36,7 +36,7 @@ func (svc *Service) DeleteReturnedSubmission(ctx context.Context, i *DeleteRetur
 		}
 	}
 
-	if !schools.Can(schools.PermissionSubmissionDelete, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionSubmissionDelete, userID, schoolID, ctx, svc.DB) {
 		return ErrForbidden
 	}
 
@@ -47,7 +47,7 @@ func (svc *Service) DeleteReturnedSubmission(ctx context.Context, i *DeleteRetur
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var status helpers.SubmissionStatus
+	var status submissions.SubmissionStatus
 	if err := tx.QueryRowContext(ctx, `
 		SELECT status
 		FROM assignment_submissions
@@ -62,7 +62,7 @@ func (svc *Service) DeleteReturnedSubmission(ctx context.Context, i *DeleteRetur
 		}
 	}
 
-	if status != helpers.SubmissionStatusReturned {
+	if status != submissions.SubmissionStatusReturned {
 		return ErrConflict
 	}
 
@@ -103,7 +103,7 @@ func (svc *Service) DeleteReturnedSubmission(ctx context.Context, i *DeleteRetur
 		DELETE FROM assignment_submissions
 		WHERE id = $1
 		AND status = $2
-	`, subID, helpers.SubmissionStatusReturned)
+	`, subID, submissions.SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		return err

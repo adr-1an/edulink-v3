@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/uploads"
 )
 
 type ViewPostUser struct {
@@ -43,7 +43,7 @@ type ViewPostInput struct {
 }
 
 type ViewPostResult struct {
-	Access schools.AccessData
+	Access permissions.AccessData
 	Posts  []ViewPostPost
 }
 
@@ -71,7 +71,7 @@ func (svc *Service) ViewPost(ctx context.Context, i *ViewPostInput) (*ViewPostRe
 		}
 	}
 
-	if !schools.Can(schools.PermissionCoursePostView, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCoursePostView, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -92,7 +92,7 @@ func (svc *Service) ViewPost(ctx context.Context, i *ViewPostInput) (*ViewPostRe
 		ON pa.storage_object_id = so.id
 		AND so.status = $2
 		WHERE p.id = $1
-	`, postID, helpers.StatusDone)
+	`, postID, uploads.StatusDone)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -164,7 +164,7 @@ func (svc *Service) ViewPost(ctx context.Context, i *ViewPostInput) (*ViewPostRe
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

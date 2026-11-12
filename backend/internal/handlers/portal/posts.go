@@ -2,8 +2,9 @@ package portal
 
 import (
 	svc "app/internal/application/portal/posts"
-	"app/internal/helpers"
-	portal "app/internal/helpers/portal"
+	"app/internal/auth"
+	"app/internal/portalusers"
+
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 func (h *Handler) ViewPostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeEither)
+	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeEither)
 	if err != nil {
 		return
 	}

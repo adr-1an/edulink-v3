@@ -7,8 +7,9 @@ import (
 	"log"
 	"time"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+	"app/internal/submissions"
 )
 
 type ListAssignmentSubmissionsPortalUser struct {
@@ -49,7 +50,7 @@ type ListAssignmentSubmissionsInput struct {
 }
 
 type ListAssignmentSubmissionsResult struct {
-	Access      schools.AccessData
+	Access      permissions.AccessData
 	Submissions []ListAssignmentSubmissionsSubmission
 }
 
@@ -74,7 +75,7 @@ func (svc *Service) ListAssignmentSubmissions(ctx context.Context, i *ListAssign
 		}
 	}
 
-	if !schools.Can(schools.PermissionSubmissionList, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionSubmissionList, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -91,7 +92,7 @@ func (svc *Service) ListAssignmentSubmissions(ctx context.Context, i *ListAssign
 		  OR s.status = $4)
 		AND s.assignment_id = $2
 		AND u.account_type = $3
-	`, helpers.SubmissionStatusSubmitted, assignmentID, helpers.AccTypeStudent, helpers.SubmissionStatusReturned)
+	`, submissions.SubmissionStatusSubmitted, assignmentID, portalusers.AccTypeStudent, submissions.SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -143,7 +144,7 @@ func (svc *Service) ListAssignmentSubmissions(ctx context.Context, i *ListAssign
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

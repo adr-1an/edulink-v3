@@ -1,7 +1,7 @@
 package guardians
 
 import (
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 	"context"
 	"database/sql"
 	"errors"
@@ -45,11 +45,11 @@ func (s *Service) UpdateGuardian(ctx context.Context, i *UpdateGuardianInput) er
 		return err
 	}
 
-	if !schools.Can(schools.PermissionGuardianUpdate, i.UserID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionGuardianUpdate, i.UserID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
-	if permission, changed := schools.PortalUserActiveStatePermission(accountActive, i.Guardian.AccountActive); changed &&
-		!schools.Can(permission, i.UserID, schoolID, ctx, s.DB) {
+	if permission, changed := permissions.PortalUserActiveStatePermission(accountActive, i.Guardian.AccountActive); changed &&
+		!permissions.Can(permission, i.UserID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 

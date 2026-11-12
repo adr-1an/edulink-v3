@@ -1,13 +1,4 @@
-package staffhelpers
-
-// Verification token purposes
-
-type VerificationTokenPurpose string
-
-const (
-	TokenPurposeEmailChange   VerificationTokenPurpose = "email_change"
-	TokenPurposePasswordReset VerificationTokenPurpose = "password_reset"
-)
+package responsecodes
 
 // Error codes are returned alongside response codes (e.g. 500) in cases where
 // one handler may return the same response code for different errors.

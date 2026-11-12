@@ -7,7 +7,8 @@ import (
 	"log"
 	"strconv"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type DeleteGradeInput struct {
@@ -39,7 +40,7 @@ func (s *Service) DeleteGrade(ctx context.Context, i *DeleteGradeInput) (*Delete
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionGradeDelete, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionGradeDelete, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -75,7 +76,7 @@ func (s *Service) DeleteGrade(ctx context.Context, i *DeleteGradeInput) (*Delete
 	noRowsAffected = noRowsAffected || affectedRows == 0
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionGradeDelete, schools.TypeDelete, "Grade deleted", "{user} deleted the grade '"+gradeName+"'.", tx, ctx, s.Sf, "{user} deleted grade '"+gradeName+"' at level "+strconv.Itoa(gradeLevel)+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionGradeDelete, schoollogs.TypeDelete, "Grade deleted", "{user} deleted the grade '"+gradeName+"'.", tx, ctx, s.Sf, "{user} deleted grade '"+gradeName+"' at level "+strconv.Itoa(gradeLevel)+"."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

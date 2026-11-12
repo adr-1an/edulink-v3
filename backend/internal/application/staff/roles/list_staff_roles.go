@@ -6,7 +6,7 @@ import (
 	"errors"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type StaffRole struct {
@@ -16,7 +16,7 @@ type StaffRole struct {
 	Position int
 }
 type ListStaffRolesResult struct {
-	Access   schools.AccessData
+	Access   permissions.AccessData
 	Roles    []StaffRole
 	SchoolID int64
 }
@@ -43,7 +43,7 @@ func (s *Service) ListStaffRoles(ctx context.Context, i *ListStaffRolesInput) (*
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionStaffRoleList, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStaffRoleList, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -87,7 +87,7 @@ func (s *Service) ListStaffRoles(ctx context.Context, i *ListStaffRolesInput) (*
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, userID, schoolID)
 	if err != nil {
 		return nil, err
 	}

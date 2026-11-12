@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type UpdateRoleInput struct {
@@ -52,7 +53,7 @@ func (s *Service) UpdateRole(ctx context.Context, i *UpdateRoleInput) (*UpdateRo
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionRoleUpdate, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionRoleUpdate, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -114,13 +115,13 @@ func (s *Service) UpdateRole(ctx context.Context, i *UpdateRoleInput) (*UpdateRo
 	}
 
 	// Check if the actor can update the target role and move it to this position, or if the actor is the school owner
-	canUpdateCurrent, err := schools.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, schoolID, currentPosition)
+	canUpdateCurrent, err := permissions.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, schoolID, currentPosition)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
-	canSetPosition, err := schools.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, schoolID, p.Position)
+	canSetPosition, err := permissions.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, schoolID, p.Position)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -178,7 +179,7 @@ func (s *Service) UpdateRole(ctx context.Context, i *UpdateRoleInput) (*UpdateRo
 
 	// Log action
 	details := "{user} updated the role name from '" + oldName + "' to '" + p.Name + "', color from '#" + oldColor + "' to '#" + p.Color + "', and position from " + strconv.Itoa(currentPosition) + " to " + strconv.Itoa(p.Position) + "."
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRoleEdit, schools.TypeEdit, "Role updated", "{user} updated the role '"+p.Name+"'.", tx, ctx, s.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionRoleEdit, schoollogs.TypeEdit, "Role updated", "{user} updated the role '"+p.Name+"'.", tx, ctx, s.Sf, details); err != nil {
 		log.Println(err)
 		return nil, err
 	}

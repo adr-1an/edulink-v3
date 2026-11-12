@@ -7,7 +7,8 @@ import (
 	"log"
 	"strconv"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type DeleteRoleInput struct {
@@ -42,7 +43,7 @@ func (s *Service) DeleteRole(ctx context.Context, i *DeleteRoleInput) (*DeleteRo
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionRoleDelete, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionRoleDelete, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -74,7 +75,7 @@ func (s *Service) DeleteRole(ctx context.Context, i *DeleteRoleInput) (*DeleteRo
 	}
 
 	// Check if the actor can delete this role, or if the actor is the school owner
-	allowed, err := schools.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, schoolID, currentPosition)
+	allowed, err := permissions.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, schoolID, currentPosition)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -110,7 +111,7 @@ func (s *Service) DeleteRole(ctx context.Context, i *DeleteRoleInput) (*DeleteRo
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRoleDelete, schools.TypeDelete, "Role deleted", "{user} deleted the role '"+roleName+"'.", tx, ctx, s.Sf, "{user} deleted role '"+roleName+"' with ID "+strconv.FormatInt(roleID, 10)+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionRoleDelete, schoollogs.TypeDelete, "Role deleted", "{user} deleted the role '"+roleName+"'.", tx, ctx, s.Sf, "{user} deleted role '"+roleName+"' with ID "+strconv.FormatInt(roleID, 10)+"."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

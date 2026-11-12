@@ -1,5 +1,4 @@
-// Package helpers contains common functions used across the app
-package helpers
+package auth
 
 import (
 	"crypto/rand"

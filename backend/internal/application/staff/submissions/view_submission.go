@@ -8,8 +8,9 @@ import (
 	"log"
 	"time"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/submissions"
+	"app/internal/uploads"
 )
 
 type ViewSubmissionUser struct {
@@ -83,7 +84,7 @@ type ViewSubmissionInput struct {
 }
 
 type ViewSubmissionResult struct {
-	Access     schools.AccessData
+	Access     permissions.AccessData
 	Submission ViewSubmissionSubmission
 }
 
@@ -101,7 +102,7 @@ func (svc *Service) ViewSubmission(ctx context.Context, i *ViewSubmissionInput) 
 		}
 	}
 
-	if !schools.Can(schools.PermissionSubmissionView, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionSubmissionView, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -139,7 +140,7 @@ func (svc *Service) ViewSubmission(ctx context.Context, i *ViewSubmissionInput) 
 		LEFT JOIN users gu ON ss.graded_by = gu.id
 		WHERE s.id = $1
 		AND (s.status = $2 OR s.status = $3)
-	`, subID, helpers.SubmissionStatusSubmitted, helpers.SubmissionStatusReturned)
+	`, subID, submissions.SubmissionStatusSubmitted, submissions.SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -208,7 +209,7 @@ func (svc *Service) ViewSubmission(ctx context.Context, i *ViewSubmissionInput) 
 		}
 
 		if r.AttachmentID != nil {
-			objKey := fmt.Sprintf("%s/%s", helpers.UploadCategorySubmissionAttachments, *r.AttachmentID)
+			objKey := fmt.Sprintf("%s/%s", uploads.UploadCategorySubmissionAttachments, *r.AttachmentID)
 
 			url, err := svc.S3.PresignedGetObject(ctx, *r.BucketName, objKey, 5*time.Minute, nil)
 			if err != nil {
@@ -244,7 +245,7 @@ func (svc *Service) ViewSubmission(ctx context.Context, i *ViewSubmissionInput) 
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

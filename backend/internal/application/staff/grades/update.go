@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type UpdateGradeInput struct {
@@ -48,7 +49,7 @@ func (s *Service) UpdateGrade(ctx context.Context, i *UpdateGradeInput) (*Update
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionGradeUpdate, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionGradeUpdate, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -135,7 +136,7 @@ func (s *Service) UpdateGrade(ctx context.Context, i *UpdateGradeInput) (*Update
 
 	// Log action
 	details := "{user} updated the grade name from '" + oldName + "' to '" + p.Name + "' and level from " + strconv.Itoa(oldLevel) + " to " + strconv.Itoa(p.Level) + "."
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionGradeEdit, schools.TypeEdit, "Grade updated", "{user} updated the grade '"+p.Name+"'.", tx, ctx, s.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionGradeEdit, schoollogs.TypeEdit, "Grade updated", "{user} updated the grade '"+p.Name+"'.", tx, ctx, s.Sf, details); err != nil {
 		log.Println(err)
 		return nil, err
 	}

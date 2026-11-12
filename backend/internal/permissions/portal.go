@@ -1,4 +1,4 @@
-package portal
+package permissions
 
 import (
 	"context"

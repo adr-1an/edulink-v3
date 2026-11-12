@@ -9,7 +9,8 @@ import (
 	"os"
 	"strings"
 
-	helpers2 "app/internal/helpers"
+	"app/internal/cryptoutil"
+	"app/internal/mailer"
 
 	"github.com/alexedwards/argon2id"
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -79,7 +80,7 @@ func (s *Service) SendRegistrationLink(ctx context.Context, i *SendRegistrationL
 		log.Println(err)
 		return err
 	}
-	tokenHash := helpers2.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	// Store registration token
 	res, err := s.DB.ExecContext(ctx, `
@@ -112,7 +113,7 @@ func (s *Service) SendRegistrationLink(ctx context.Context, i *SendRegistrationL
 	appName := os.Getenv("APP_NAME")
 	registrationURL := fmt.Sprintf("%s/auth/register/%s", frontendURL, token)
 	msg := fmt.Sprintf("Hi! Let's complete your %s registration: %s", appName, registrationURL)
-	email := helpers2.Mail{
+	email := mailer.Mail{
 		To:          i.Email,
 		Subject:     "Complete your registration",
 		Body:        msg,
@@ -122,7 +123,7 @@ func (s *Service) SendRegistrationLink(ctx context.Context, i *SendRegistrationL
 
 	// Send email
 	go func() {
-		if err := helpers2.SendMail(email); err != nil {
+		if err := mailer.SendMail(email); err != nil {
 			log.Println(err)
 		}
 	}()
@@ -145,7 +146,7 @@ type CheckRegistrationTokenResult struct {
 }
 
 func (s *Service) CheckRegistrationToken(ctx context.Context, i *CheckRegistrationTokenInput) (*CheckRegistrationTokenResult, error) {
-	tokenHash := helpers2.MakeHash256(i.Token)
+	tokenHash := cryptoutil.MakeHash256(i.Token)
 
 	// Get the email from the token
 	var email string
@@ -200,7 +201,7 @@ func (s *Service) Register(ctx context.Context, i *RegisterInput) error {
 	}
 
 	// Hash token
-	tokenHash := helpers2.MakeHash256(i.RegistrationToken)
+	tokenHash := cryptoutil.MakeHash256(i.RegistrationToken)
 
 	// Start tx
 	tx, err := s.DB.BeginTx(ctx, nil)

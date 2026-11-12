@@ -7,7 +7,8 @@ import (
 	"log"
 	"strconv"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type DeletePostInput struct {
@@ -41,7 +42,7 @@ func (svc *Service) DeletePost(ctx context.Context, i *DeletePostInput) (*Delete
 		}
 	}
 
-	if !schools.Can(schools.PermissionCoursePostDelete, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCoursePostDelete, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -74,7 +75,7 @@ func (svc *Service) DeletePost(ctx context.Context, i *DeletePostInput) (*Delete
 		return nil, err
 	}
 
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionPostDelete, schools.TypeDelete, "Post deleted", "{user} deleted the post '"+postTitle+"'.", tx, ctx, svc.Sf, "{user} deleted post '"+postTitle+"' with ID "+strconv.FormatInt(postID, 10)+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionPostDelete, schoollogs.TypeDelete, "Post deleted", "{user} deleted the post '"+postTitle+"'.", tx, ctx, svc.Sf, "{user} deleted post '"+postTitle+"' with ID "+strconv.FormatInt(postID, 10)+"."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

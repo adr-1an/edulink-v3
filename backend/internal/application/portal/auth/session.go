@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"app/internal/helpers"
+	"app/internal/cryptoutil"
 	"context"
 	"database/sql"
 	"errors"
@@ -35,7 +35,7 @@ func (s *Service) TokenCheck(ctx context.Context, i *TokenCheckInput) (*TokenChe
 type LogoutInput struct{ Token string }
 
 func (s *Service) Logout(ctx context.Context, i *LogoutInput) error {
-	_, err := s.DB.ExecContext(ctx, `DELETE FROM portal_sessions WHERE token_hash = $1`, helpers.MakeHash256(i.Token))
+	_, err := s.DB.ExecContext(ctx, `DELETE FROM portal_sessions WHERE token_hash = $1`, cryptoutil.MakeHash256(i.Token))
 	return err
 }
 
@@ -52,7 +52,7 @@ type ActivateInput struct {
 }
 
 func (s *Service) Activate(ctx context.Context, i *ActivateInput) (*LoginResult, error) {
-	tokenHash := helpers.MakeHash256(i.Token)
+	tokenHash := cryptoutil.MakeHash256(i.Token)
 
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -135,7 +135,7 @@ func (s *Service) completeLogin(ctx context.Context, userID int64, i SessionInpu
 	if _, err := netip.ParseAddr(i.SourceIP); err == nil {
 		source = &i.SourceIP
 	}
-	if _, err := s.DB.ExecContext(ctx, `INSERT INTO portal_sessions (token_hash, portal_user_id, x_forwarded_for, source_ip, user_agent) VALUES ($1, $2, $3, $4, $5)`, helpers.MakeHash256(token), userID, forwarded, source, i.UserAgent); err != nil {
+	if _, err := s.DB.ExecContext(ctx, `INSERT INTO portal_sessions (token_hash, portal_user_id, x_forwarded_for, source_ip, user_agent) VALUES ($1, $2, $3, $4, $5)`, cryptoutil.MakeHash256(token), userID, forwarded, source, i.UserAgent); err != nil {
 		return nil, err
 	}
 	return &LoginResult{Token: token}, nil

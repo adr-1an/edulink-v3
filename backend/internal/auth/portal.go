@@ -1,7 +1,8 @@
-package portal
+package auth
 
 import (
-	"app/internal/helpers"
+	"app/internal/cryptoutil"
+	"app/internal/portalusers"
 	"context"
 	"database/sql"
 	"errors"
@@ -22,17 +23,17 @@ func ParseToken(w http.ResponseWriter, r *http.Request) (string, error) {
 	return token, nil
 }
 
-func TokenToUID(w http.ResponseWriter, r *http.Request, db *sql.DB, ctx context.Context, accType helpers.AccType) (int64, error) {
+func TokenToUID(w http.ResponseWriter, r *http.Request, db *sql.DB, ctx context.Context, accType portalusers.AccType) (int64, error) {
 	token, err := ParseToken(w, r)
 	if err != nil {
 		return 0, err
 	}
 
-	tokenHash := helpers.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	var query string
 	switch accType {
-	case helpers.AccTypeEither:
+	case portalusers.AccTypeEither:
 		query = `
 SELECT ps.portal_user_id
 FROM portal_sessions ps

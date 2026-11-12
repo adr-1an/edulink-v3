@@ -1,7 +1,7 @@
 package students
 
 import (
-	"app/internal/helpers"
+	"app/internal/submissions"
 	"context"
 	"log"
 	"strconv"
@@ -79,7 +79,7 @@ func (s *Service) ListAllAssignments(ctx context.Context, i *ListAllAssignmentsI
 		LEFT JOIN users gu
 		    ON ssc.graded_by = gu.id
 		WHERE a.archived_at IS NULL
-	`, userID, helpers.SubmissionStatusReturned)
+	`, userID, submissions.SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -166,7 +166,7 @@ func (s *Service) ListAllAssignments(ctx context.Context, i *ListAllAssignmentsI
 		if submissionID != nil {
 			a.Submission = &AssignmentSubmission{
 				ID:          strconv.FormatInt(*submissionID, 10),
-				Status:      helpers.SubmissionStatus(*submissionStatus),
+				Status:      submissions.SubmissionStatus(*submissionStatus),
 				Notes:       *submissionNotes,
 				Attachments: []AssignmentSubmissionAttachment{},
 				CreatedAt:   *submissionCreatedAt,

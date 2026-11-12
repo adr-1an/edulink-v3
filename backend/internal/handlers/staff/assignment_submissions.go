@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"app/internal/application/staff/submissions"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -56,7 +56,7 @@ func mapListAssignmentSubmissionsSubmission(v submissions.ListAssignmentSubmissi
 func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -195,7 +195,7 @@ func mapViewSubmissionSubmission(v submissions.ViewSubmissionSubmission) ViewSub
 func (h *Handler) ViewSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -226,7 +226,7 @@ func (h *Handler) ViewSubmissionHandler(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -255,7 +255,7 @@ func (h *Handler) ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request
 func (h *Handler) DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

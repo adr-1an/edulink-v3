@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"app/internal/application/staff/auth"
-	staffhelpers "app/internal/helpers/staff"
+	authService "app/internal/application/staff/auth"
+	"app/internal/auth"
+	"app/internal/responsecodes"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -30,7 +31,7 @@ func (h *Handler) SendRegistrationLinkHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	err := h.App.Staff.Auth.SendRegistrationLink(ctx, &auth.SendRegistrationLinkInput{
+	err := h.App.Staff.Auth.SendRegistrationLink(ctx, &authService.SendRegistrationLinkInput{
 		Email: p.Email,
 	})
 
@@ -38,7 +39,7 @@ func (h *Handler) SendRegistrationLinkHandler(w http.ResponseWriter, r *http.Req
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
 
-	case errors.Is(err, auth.ErrUnprocessableEntity):
+	case errors.Is(err, authService.ErrUnprocessableEntity):
 		w.WriteHeader(http.StatusUnprocessableEntity)
 
 	default:
@@ -53,12 +54,12 @@ func (h *Handler) CheckRegistrationTokenHandler(w http.ResponseWriter, r *http.R
 
 	token := chi.URLParam(r, "token")
 
-	res, err := h.App.Staff.Auth.CheckRegistrationToken(ctx, &auth.CheckRegistrationTokenInput{
+	res, err := h.App.Staff.Auth.CheckRegistrationToken(ctx, &authService.CheckRegistrationTokenInput{
 		Token: token,
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrNotFound):
+		case errors.Is(err, authService.ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
 
 		default:
@@ -100,7 +101,7 @@ func (h *Handler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 
 	token := chi.URLParam(r, "token")
 
-	err := h.App.Staff.Auth.Register(ctx, &auth.RegisterInput{
+	err := h.App.Staff.Auth.Register(ctx, &authService.RegisterInput{
 		Name:              p.Name,
 		Phone:             p.Phone,
 		Password:          p.Password,
@@ -108,10 +109,10 @@ func (h *Handler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrUnprocessableEntity):
+		case errors.Is(err, authService.ErrUnprocessableEntity):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 
-		case errors.Is(err, auth.ErrNotFound):
+		case errors.Is(err, authService.ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
 
 		default:
@@ -153,7 +154,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.App.Staff.Auth.Login(ctx, &auth.LoginInput{
+	res, err := h.App.Staff.Auth.Login(ctx, &authService.LoginInput{
 		Email:        p.Email,
 		Password:     p.Password,
 		StayLoggedIn: p.StayLoggedIn,
@@ -162,10 +163,10 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrUnprocessableEntity):
+		case errors.Is(err, authService.ErrUnprocessableEntity):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 
-		case errors.Is(err, auth.ErrUnauthorized):
+		case errors.Is(err, authService.ErrUnauthorized):
 			w.WriteHeader(http.StatusUnauthorized)
 		}
 
@@ -173,12 +174,12 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch res.Type {
-	case auth.LoginResultSuccess:
+	case authService.LoginResultSuccess:
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"token": res.Token,
 		})
 
-	case auth.LoginResultTwoFactor:
+	case authService.LoginResultTwoFactor:
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"twoFactorChallenge": map[string]any{
 				"token":     res.TwoFactorChallenge.Token,
@@ -199,18 +200,18 @@ func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
 	if token == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staffhelpers.ErrorCodeNoToken,
+			"code": responsecodes.ErrorCodeNoToken,
 		})
 		return
 	}
 	token = strings.TrimPrefix(token, "Bearer ")
 
-	valid, err := h.App.Staff.Auth.CheckToken(ctx, &auth.CheckTokenInput{
+	valid, err := h.App.Staff.Auth.CheckToken(ctx, &authService.CheckTokenInput{
 		Token: token,
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrUnauthorized):
+		case errors.Is(err, authService.ErrUnauthorized):
 			w.WriteHeader(http.StatusUnauthorized)
 
 		default:
@@ -245,12 +246,12 @@ func (h *Handler) SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err := h.App.Staff.Auth.SendPasswordResetEmail(ctx, &auth.SendPasswordResetEmailInput{Email: p.Email})
+	err := h.App.Staff.Auth.SendPasswordResetEmail(ctx, &authService.SendPasswordResetEmailInput{Email: p.Email})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrUnprocessableEntity):
+		case errors.Is(err, authService.ErrUnprocessableEntity):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidEmail})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidEmail})
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -266,7 +267,7 @@ func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 	if token == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staffhelpers.ErrorCodeNoToken,
+			"code": responsecodes.ErrorCodeNoToken,
 		})
 		return
 	}
@@ -284,14 +285,14 @@ func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err := h.App.Staff.Auth.ResetPassword(ctx, &auth.ResetPasswordInput{Token: token, NewPassword: p.NewPassword})
+	err := h.App.Staff.Auth.ResetPassword(ctx, &authService.ResetPasswordInput{Token: token, NewPassword: p.NewPassword})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrUnprocessableEntity):
+		case errors.Is(err, authService.ErrUnprocessableEntity):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-		case errors.Is(err, auth.ErrUnauthorized):
+		case errors.Is(err, authService.ErrUnauthorized):
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidToken})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidToken})
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -302,16 +303,16 @@ func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tokenHash, err := staffhelpers.TokenToHash(w, r)
+	tokenHash, err := auth.TokenToHash(w, r)
 	if err != nil {
 		return
 	}
-	err = h.App.Staff.Auth.Logout(ctx, &auth.LogoutInput{TokenHash: tokenHash})
+	err = h.App.Staff.Auth.Logout(ctx, &authService.LogoutInput{TokenHash: tokenHash})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrUnauthorized):
+		case errors.Is(err, authService.ErrUnauthorized):
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidToken})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidToken})
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -323,16 +324,16 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
-	res, err := h.App.Staff.Auth.EnableTwoFactor(ctx, &auth.EnableTwoFactorInput{UserID: userID})
+	res, err := h.App.Staff.Auth.EnableTwoFactor(ctx, &authService.EnableTwoFactorInput{UserID: userID})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrForbidden):
+		case errors.Is(err, authService.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
-		case errors.Is(err, auth.ErrConflict):
+		case errors.Is(err, authService.ErrConflict):
 			w.WriteHeader(http.StatusConflict)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
@@ -345,7 +346,7 @@ func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -361,14 +362,14 @@ func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	res, err := h.App.Staff.Auth.VerifyTwoFactor(ctx, &auth.VerifyTwoFactorInput{UserID: userID, TOTP: p.TOTP})
+	res, err := h.App.Staff.Auth.VerifyTwoFactor(ctx, &authService.VerifyTwoFactorInput{UserID: userID, TOTP: p.TOTP})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrUnprocessableEntity):
+		case errors.Is(err, authService.ErrUnprocessableEntity):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-		case errors.Is(err, auth.ErrForbidden):
+		case errors.Is(err, authService.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
-		case errors.Is(err, auth.ErrUnauthorized):
+		case errors.Is(err, authService.ErrUnauthorized):
 			w.WriteHeader(http.StatusUnauthorized)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
@@ -382,7 +383,7 @@ func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Disable2faHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -399,14 +400,14 @@ func (h *Handler) Disable2faHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = h.App.Staff.Auth.DisableTwoFactor(ctx, &auth.DisableTwoFactorInput{UserID: userID, TOTP: p.TOTP, Password: p.Password})
+	err = h.App.Staff.Auth.DisableTwoFactor(ctx, &authService.DisableTwoFactorInput{UserID: userID, TOTP: p.TOTP, Password: p.Password})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrUnprocessableEntity):
+		case errors.Is(err, authService.ErrUnprocessableEntity):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-		case errors.Is(err, auth.ErrForbidden):
+		case errors.Is(err, authService.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
-		case errors.Is(err, auth.ErrUnauthorized):
+		case errors.Is(err, authService.ErrUnauthorized):
 			w.WriteHeader(http.StatusUnauthorized)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
@@ -430,12 +431,12 @@ func (h *Handler) RecoverTwoFactorHandler(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err := h.App.Staff.Auth.RecoverTwoFactor(ctx, &auth.RecoverTwoFactorInput{RecoveryCode: p.RecoveryCode})
+	err := h.App.Staff.Auth.RecoverTwoFactor(ctx, &authService.RecoverTwoFactorInput{RecoveryCode: p.RecoveryCode})
 	if err != nil {
 		switch {
-		case errors.Is(err, auth.ErrNotFound):
+		case errors.Is(err, authService.ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidRecoveryCode})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidRecoveryCode})
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}

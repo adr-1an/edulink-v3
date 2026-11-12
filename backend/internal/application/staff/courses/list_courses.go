@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type ListCoursesCourse struct {
@@ -20,7 +20,7 @@ type ListCoursesInput struct {
 }
 
 type ListCoursesResult struct {
-	Access  schools.AccessData
+	Access  permissions.AccessData
 	Courses []ListCoursesCourse
 }
 
@@ -40,7 +40,7 @@ func (svc *Service) ListCourses(ctx context.Context, i *ListCoursesInput) (*List
 		return nil, err
 	}
 
-	if !schools.Can(schools.PermissionCourseList, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCourseList, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -81,7 +81,7 @@ func (svc *Service) ListCourses(ctx context.Context, i *ListCoursesInput) (*List
 	}
 
 	// Get user access
-	access, err := schools.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

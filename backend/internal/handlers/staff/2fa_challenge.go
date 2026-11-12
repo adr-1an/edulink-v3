@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"app/internal/application/staff/auth"
-	staffhelpers "app/internal/helpers/staff"
+	"app/internal/responsecodes"
 )
 
 type challengeCompletionPayload struct {
@@ -42,13 +42,13 @@ func (h *Handler) CompleteChallenge(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, auth.ErrExpiredChallenge):
 			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staffhelpers.ErrorCodeExpiredToken,
+				"code": responsecodes.ErrorCodeExpiredToken,
 			})
 
 		case errors.Is(err, auth.ErrInvalidTwoFactorCode):
 			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staffhelpers.ErrorCodeInvalidToken,
+				"code": responsecodes.ErrorCodeInvalidToken,
 			})
 
 		case errors.Is(err, auth.ErrForbidden):

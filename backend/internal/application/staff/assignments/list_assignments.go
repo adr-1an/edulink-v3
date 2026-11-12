@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	schools2 "app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type ListAssignmentsPost struct {
@@ -32,7 +32,7 @@ type ListAssignmentsInput struct {
 }
 
 type ListAssignmentsResult struct {
-	Access      schools2.AccessData
+	Access      permissions.AccessData
 	Assignments []ListAssignmentsAssignment
 }
 
@@ -46,7 +46,7 @@ func (svc *Service) ListAssignments(ctx context.Context, i *ListAssignmentsInput
 		return nil, err
 	}
 
-	if !schools2.Can(schools2.PermissionCourseAssignmentList, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCourseAssignmentList, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -113,7 +113,7 @@ func (svc *Service) ListAssignments(ctx context.Context, i *ListAssignmentsInput
 		return nil, err
 	}
 
-	access, err := schools2.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

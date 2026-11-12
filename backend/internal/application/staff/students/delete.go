@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"app/internal/helpers"
-	staffhelpers "app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+	"app/internal/schoollogs"
 )
 
 type DeleteStudentInput struct {
@@ -19,13 +19,13 @@ func (s *Service) DeleteStudent(ctx context.Context, i *DeleteStudentInput) erro
 	userID := i.UserID
 	studentID := i.StudentID
 
-	schoolID, err := staffhelpers.StudentToSchoolID(ctx, s.DB, studentID)
+	schoolID, err := portalusers.StudentToSchoolID(ctx, s.DB, studentID)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	if !schools.Can(schools.PermissionStudentDelete, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStudentDelete, userID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 
@@ -46,13 +46,13 @@ func (s *Service) DeleteStudent(ctx context.Context, i *DeleteStudentInput) erro
 		AND school_id = $2
 		AND account_type = $3
 		RETURNING name, email
-	`, studentID, schoolID, helpers.AccTypeStudent).Scan(&name, &email); err != nil {
+	`, studentID, schoolID, portalusers.AccTypeStudent).Scan(&name, &email); err != nil {
 		log.Println(err)
 		return err
 	}
 
 	details := fmt.Sprintf("{user} deleted the student %s <%s>.", name, email)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStudentDelete, schools.TypeDelete, "Student deleted", "{user} deleted a student.", tx, ctx, s.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionStudentDelete, schoollogs.TypeDelete, "Student deleted", "{user} deleted a student.", tx, ctx, s.Sf, details); err != nil {
 		log.Println(err)
 		return err
 	}

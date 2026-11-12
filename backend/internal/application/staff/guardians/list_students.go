@@ -1,9 +1,9 @@
 package guardians
 
 import (
-	"app/internal/helpers"
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+
 	"context"
 	"log"
 	"time"
@@ -22,7 +22,7 @@ type ListGuardianStudentsInput struct {
 }
 
 type ListGuardianStudentsResult struct {
-	Access   schools.AccessData
+	Access   permissions.AccessData
 	Students []Student
 	SchoolID int64
 }
@@ -34,13 +34,13 @@ func (s *Service) ListGuardianStudents(
 	*ListGuardianStudentsResult,
 	error,
 ) {
-	schoolID, err := staffhelpers.GuardianToSchoolID(ctx, s.DB, i.GuardianID)
+	schoolID, err := portalusers.GuardianToSchoolID(ctx, s.DB, i.GuardianID)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
-	if !schools.Can(schools.PermissionGuardianStudentList, i.UserID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionGuardianStudentList, i.UserID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -51,7 +51,7 @@ func (s *Service) ListGuardianStudents(
 		WHERE gs.guardian_id = $1
 		AND s.school_id = $2
 		AND s.account_type = $3
-	`, i.GuardianID, schoolID, helpers.AccTypeStudent)
+	`, i.GuardianID, schoolID, portalusers.AccTypeStudent)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -75,7 +75,7 @@ func (s *Service) ListGuardianStudents(
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, i.UserID, schoolID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

@@ -9,7 +9,8 @@ import (
 	"time"
 
 	staffStudents "app/internal/application/staff/students"
-	staffhelpers "app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/responsecodes"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -19,7 +20,7 @@ type StudentPayload = staffStudents.StudentPayload
 func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -57,7 +58,7 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -95,7 +96,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -121,7 +122,7 @@ func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -192,7 +193,7 @@ func (h *Handler) ListStudentsHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -356,7 +357,7 @@ func studentViewPayload(res *staffStudents.ViewStudentResult) map[string]any {
 func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -385,7 +386,7 @@ func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusConflict)
 		case errors.Is(err, staffStudents.ErrPayloadTooLong):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorPayloadTooLong})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorPayloadTooLong})
 		case errors.As(err, &invalidRow):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{"invalidRow": invalidRow.Row})
@@ -407,7 +408,7 @@ func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UploadStudentPfpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -471,7 +472,7 @@ func (h *Handler) UploadStudentPfpHandler(w http.ResponseWriter, r *http.Request
 func (h *Handler) RemoveStudentPfpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

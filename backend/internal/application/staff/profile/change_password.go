@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	helpers2 "app/internal/helpers"
+	"app/internal/mailer"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/wneessen/go-mail"
@@ -79,7 +79,7 @@ func (s *Service) ChangePassword(ctx context.Context, i *ChangePasswordInput) er
 Your %s account password has been changed.
 If this wasn't you, review your account security immediately.
 `, uName, appName)
-	email := helpers2.Mail{
+	email := mailer.Mail{
 		To:          uEmail,
 		Subject:     "Password changed",
 		ContentType: mail.TypeTextPlain,
@@ -87,7 +87,7 @@ If this wasn't you, review your account security immediately.
 		Body:        msg,
 	}
 	go func() {
-		if err := helpers2.SendMail(email); err != nil {
+		if err := mailer.SendMail(email); err != nil {
 			log.Println(err)
 		}
 	}()

@@ -7,7 +7,7 @@ import (
 	"log"
 	"strconv"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/schoollogs"
 )
 
 type RejectInvitationByIDInput struct {
@@ -79,7 +79,7 @@ func (s *Service) RejectInvitationByID(ctx context.Context, i *RejectInvitationB
 	noRowsAffected = noRowsAffected || affectedRows == 0
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationEdit, schools.TypeOther, "Staff invitation rejected", "{user} rejected a staff invitation.", tx, ctx, s.Sf, "{user} rejected staff invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionStaffInvitationEdit, schoollogs.TypeOther, "Staff invitation rejected", "{user} rejected a staff invitation.", tx, ctx, s.Sf, "{user} rejected staff invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

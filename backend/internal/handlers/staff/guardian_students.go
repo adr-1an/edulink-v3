@@ -2,7 +2,7 @@ package staff
 
 import (
 	"app/internal/application/staff/guardians"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
 	"encoding/json"
 	"errors"
 	"log"
@@ -15,7 +15,7 @@ import (
 func (h *Handler) ListGuardianStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

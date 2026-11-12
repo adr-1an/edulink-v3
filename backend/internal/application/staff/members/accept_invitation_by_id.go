@@ -7,7 +7,7 @@ import (
 	"log"
 	"strconv"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/schoollogs"
 )
 
 type AcceptInvitationByIDInput struct {
@@ -100,13 +100,13 @@ func (s *Service) AcceptInvitationByID(ctx context.Context, i *AcceptInvitationB
 	noRowsAffected = noRowsAffected || affectedRows == 0
 
 	// Log invitation action
-	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffInvitationDelete, schools.TypeOther, "Staff invitation accepted", "{user} accepted a staff invitation.", tx, ctx, s.Sf, "{user} accepted staff invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(inv.SchoolID, userID, schoollogs.ActionStaffInvitationDelete, schoollogs.TypeOther, "Staff invitation accepted", "{user} accepted a staff invitation.", tx, ctx, s.Sf, "{user} accepted staff invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffCreate, schools.TypeCreate, "Staff member added", "{user} joined the school.", tx, ctx, s.Sf, "{user} was added as a staff member from invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(inv.SchoolID, userID, schoollogs.ActionStaffCreate, schoollogs.TypeCreate, "Staff member added", "{user} joined the school.", tx, ctx, s.Sf, "{user} was added as a staff member from invitation ID "+strconv.FormatInt(invitationID, 10)+"."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

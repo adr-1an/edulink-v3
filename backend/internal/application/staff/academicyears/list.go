@@ -3,7 +3,7 @@ package academicyears
 import (
 	"context"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type ListAcademicYear struct {
@@ -19,12 +19,12 @@ type ListAcademicYearsInput struct {
 }
 
 type ListAcademicYearsResult struct {
-	Access        schools.AccessData
+	Access        permissions.AccessData
 	AcademicYears []ListAcademicYear
 }
 
 func (s *Service) ListAcademicYears(ctx context.Context, i *ListAcademicYearsInput) (*ListAcademicYearsResult, error) {
-	if !schools.Can(schools.PermissionAcademicYearList, i.UserID, i.SchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionAcademicYearList, i.UserID, i.SchoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -53,7 +53,7 @@ func (s *Service) ListAcademicYears(ctx context.Context, i *ListAcademicYearsInp
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
 	if err != nil {
 		return nil, err
 	}

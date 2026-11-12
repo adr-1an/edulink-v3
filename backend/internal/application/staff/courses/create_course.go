@@ -5,7 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type CreateCourseData struct {
@@ -42,7 +43,7 @@ func (svc *Service) CreateCourse(ctx context.Context, i *CreateCourseInput) (*Cr
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionCourseCreate, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCourseCreate, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -102,7 +103,7 @@ func (svc *Service) CreateCourse(ctx context.Context, i *CreateCourseInput) (*Cr
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionCourseCreate, schools.TypeCreate, "Course created", "{user} created the course '"+p.Name+"'.", tx, ctx, svc.Sf, "{user} created course '"+p.Name+"' with color '#"+p.Color+"' and description '"+p.Description+"'."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionCourseCreate, schoollogs.TypeCreate, "Course created", "{user} created the course '"+p.Name+"'.", tx, ctx, svc.Sf, "{user} created course '"+p.Name+"' with color '#"+p.Color+"' and description '"+p.Description+"'."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

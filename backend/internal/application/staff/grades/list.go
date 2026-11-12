@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type ListGrade struct {
@@ -13,7 +13,7 @@ type ListGrade struct {
 	Level int
 }
 type ListGradesResult struct {
-	Access   schools.AccessData
+	Access   permissions.AccessData
 	Grades   []ListGrade
 	SchoolID int64
 }
@@ -26,7 +26,7 @@ func (s *Service) ListGrades(ctx context.Context, i *ListGradesInput) (*ListGrad
 	userID := i.UserID
 	schoolID := i.SchoolID
 	// Check permissions
-	if !schools.Can(schools.PermissionGradeList, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionGradeList, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -62,7 +62,7 @@ func (s *Service) ListGrades(ctx context.Context, i *ListGradesInput) (*ListGrad
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, userID, schoolID)
 	if err != nil {
 		return nil, err
 	}

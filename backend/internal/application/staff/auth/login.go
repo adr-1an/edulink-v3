@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	helpers2 "app/internal/helpers"
+	"app/internal/cryptoutil"
 
 	"github.com/alexedwards/argon2id"
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -115,7 +115,7 @@ func (s *Service) Login(
 			return nil, err
 		}
 
-		tokenHash := helpers2.MakeHash256(token)
+		tokenHash := cryptoutil.MakeHash256(token)
 
 		id, err := s.Sf.NextID()
 		if err != nil {
@@ -186,7 +186,7 @@ func (s *Service) completeLogin(
 		return "", err
 	}
 
-	sessionTokenHash := helpers2.MakeHash256(sessionToken)
+	sessionTokenHash := cryptoutil.MakeHash256(sessionToken)
 
 	now := time.Now()
 

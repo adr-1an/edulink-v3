@@ -6,7 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type CreateRoleInput struct {
@@ -35,7 +36,7 @@ func (s *Service) CreateRole(ctx context.Context, i *CreateRoleInput) (*CreateRo
 	schoolID := i.SchoolID
 	p := i.Role
 	// Check permissions
-	if !schools.Can(schools.PermissionRoleCreate, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionRoleCreate, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -76,7 +77,7 @@ func (s *Service) CreateRole(ctx context.Context, i *CreateRoleInput) (*CreateRo
 	}
 
 	// Check if the actor can create a role at this position, or if the actor is the school owner.
-	allowed, err := schools.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, schoolID, p.Position)
+	allowed, err := permissions.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, schoolID, p.Position)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -139,7 +140,7 @@ func (s *Service) CreateRole(ctx context.Context, i *CreateRoleInput) (*CreateRo
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRoleCreate, schools.TypeCreate, "Role created", "{user} created the role '"+p.Name+"'.", tx, ctx, s.Sf, "{user} created role '"+p.Name+"' at position "+strconv.Itoa(p.Position)+" with color '#"+color+"'."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionRoleCreate, schoollogs.TypeCreate, "Role created", "{user} created the role '"+p.Name+"'.", tx, ctx, s.Sf, "{user} created role '"+p.Name+"' at position "+strconv.Itoa(p.Position)+" with color '#"+color+"'."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

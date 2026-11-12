@@ -6,7 +6,8 @@ import (
 	"errors"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type RemoveStaffRoleInput struct {
@@ -44,12 +45,12 @@ func (s *Service) RemoveStaffRole(ctx context.Context, i *RemoveStaffRoleInput) 
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionStaffRoleRemove, userID, target.StaffSchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStaffRoleRemove, userID, target.StaffSchoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 
 	// Check if the user can remove this role
-	allowed, err := schools.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, target.StaffSchoolID, target.RolePosition)
+	allowed, err := permissions.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, target.StaffSchoolID, target.RolePosition)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -70,7 +71,7 @@ func (s *Service) RemoveStaffRole(ctx context.Context, i *RemoveStaffRoleInput) 
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(target.StaffSchoolID, userID, schools.ActionStaffRoleDelete, schools.TypeDelete, "Staff role removed", "{user} removed the role '"+target.RoleName+"' from "+target.StaffName+".", tx, ctx, s.Sf, "{user} removed role '"+target.RoleName+"' from staff member "+target.StaffName+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(target.StaffSchoolID, userID, schoollogs.ActionStaffRoleDelete, schoollogs.TypeDelete, "Staff role removed", "{user} removed the role '"+target.RoleName+"' from "+target.StaffName+".", tx, ctx, s.Sf, "{user} removed role '"+target.RoleName+"' from staff member "+target.StaffName+"."); err != nil {
 		log.Println(err)
 		return err
 	}

@@ -6,7 +6,8 @@ import (
 	"errors"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type UpdateCourseData struct {
@@ -41,7 +42,7 @@ func (svc *Service) UpdateCourse(ctx context.Context, i *UpdateCourseInput) (*Up
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionCourseUpdate, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCourseUpdate, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -108,7 +109,7 @@ func (svc *Service) UpdateCourse(ctx context.Context, i *UpdateCourseInput) (*Up
 
 	// Log action
 	details := "{user} updated the course name from '" + oldName + "' to '" + p.Name + "', description from '" + oldDescription + "' to '" + p.Description + "', and color from '#" + oldColor + "' to '#" + p.Color + "'."
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionCourseEdit, schools.TypeEdit, "Course updated", "{user} updated the course '"+p.Name+"'.", tx, ctx, svc.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionCourseEdit, schoollogs.TypeEdit, "Course updated", "{user} updated the course '"+p.Name+"'.", tx, ctx, svc.Sf, details); err != nil {
 		log.Println(err)
 		return nil, err
 	}

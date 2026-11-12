@@ -8,7 +8,8 @@ import (
 	"strconv"
 
 	"app/internal/application/staff/academicyears"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/responsecodes"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -17,7 +18,7 @@ func (h *Handler) ListAcademicYearsHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -77,7 +78,7 @@ func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -124,7 +125,7 @@ func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 		case errors.Is(err, academicyears.ErrAcademicYearConflict):
 			w.WriteHeader(http.StatusConflict)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staffhelpers.ErrorCodeAcademicYearConflict,
+				"code": responsecodes.ErrorCodeAcademicYearConflict,
 			})
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
@@ -142,7 +143,7 @@ func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -165,10 +166,10 @@ func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(http.StatusForbidden)
 		case errors.Is(err, academicyears.ErrYearIsActive):
 			w.WriteHeader(http.StatusConflict)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorYearIsActive})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorYearIsActive})
 		case errors.Is(err, academicyears.ErrYearHasGrades):
 			w.WriteHeader(http.StatusConflict)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorYearHasGrades})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorYearHasGrades})
 		default:
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -186,7 +187,7 @@ func (h *Handler) ClearAcademicYearHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

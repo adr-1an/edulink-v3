@@ -7,9 +7,10 @@ import (
 	"log"
 	"time"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+	"app/internal/submissions"
+	"app/internal/uploads"
 )
 
 type ViewStudentInput struct {
@@ -77,14 +78,14 @@ type student struct {
 }
 
 type ViewStudentResult struct {
-	Access      schools.AccessData
+	Access      permissions.AccessData
 	SchoolID    int64
 	Submissions []submission
 	Student     student
 }
 
 func (s *Service) ViewStudent(ctx context.Context, i *ViewStudentInput) (*ViewStudentResult, error) {
-	schoolID, err := staffhelpers.StudentToSchoolID(ctx, s.DB, i.StudentID)
+	schoolID, err := portalusers.StudentToSchoolID(ctx, s.DB, i.StudentID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrForbidden
@@ -93,7 +94,7 @@ func (s *Service) ViewStudent(ctx context.Context, i *ViewStudentInput) (*ViewSt
 		return nil, err
 	}
 
-	if !schools.Can(schools.PermissionStudentView, i.UserID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStudentView, i.UserID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -124,7 +125,7 @@ func (s *Service) ViewStudent(ctx context.Context, i *ViewStudentInput) (*ViewSt
 		LEFT JOIN portal_users gu ON gu.id = gs.guardian_id
 			AND gu.account_type = $3
 		WHERE st.id = $2
-	`, helpers.SubmissionStatusSubmitted, i.StudentID, helpers.AccTypeGuardian)
+	`, submissions.SubmissionStatusSubmitted, i.StudentID, portalusers.AccTypeGuardian)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -259,7 +260,7 @@ func (s *Service) ViewStudent(ctx context.Context, i *ViewStudentInput) (*ViewSt
 		JOIN storage_objects so ON so.id = p.storage_object_id
 		WHERE p.portal_user_id = $1
 		  AND so.status = $2
-	`, i.StudentID, helpers.StatusDone).Scan(&pfpBucketName, &pfpObjectKey); err != nil {
+	`, i.StudentID, uploads.StatusDone).Scan(&pfpBucketName, &pfpObjectKey); err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			log.Println(err)
 			return nil, err
@@ -275,7 +276,7 @@ func (s *Service) ViewStudent(ctx context.Context, i *ViewStudentInput) (*ViewSt
 		}
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, i.UserID, schoolID)
 	if err != nil {
 		return nil, err
 	}

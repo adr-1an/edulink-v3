@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"app/internal/application/staff/schools"
-	helpers2 "app/internal/helpers"
+	"app/internal/cryptoutil"
 
 	"github.com/pquerna/otp/totp"
 )
@@ -49,7 +49,7 @@ func (s *Service) CompleteChallenge(
 		return nil, ErrInvalidCode
 	}
 
-	tokenHash := helpers2.MakeHash256(i.ChallengeToken)
+	tokenHash := cryptoutil.MakeHash256(i.ChallengeToken)
 
 	var (
 		id         int64
@@ -165,13 +165,13 @@ func (s *Service) verifyTFA(
 		return err
 	}
 
-	appKey, err := helpers2.LoadAppEncKey()
+	appKey, err := cryptoutil.LoadAppEncKey()
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	secret, err := helpers2.DecryptString(secretKey, appKey)
+	secret, err := cryptoutil.DecryptString(secretKey, appKey)
 	if err != nil {
 		log.Println(err)
 		return err

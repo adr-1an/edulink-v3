@@ -7,9 +7,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"app/internal/application/staff/auth"
+	authService "app/internal/application/staff/auth"
 	schoolService "app/internal/application/staff/schools"
-	staffhelpers "app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/responsecodes"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -18,7 +19,7 @@ func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -69,7 +70,7 @@ func (h *Handler) CreateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -104,13 +105,13 @@ func (h *Handler) CreateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, schoolService.ErrInvalidName):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staffhelpers.ErrorCodeInvalidName,
+				"code": responsecodes.ErrorCodeInvalidName,
 			})
 
 		case errors.Is(err, schoolService.ErrInvalidRegionCode):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staffhelpers.ErrorCodeInvalidRegionCode,
+				"code": responsecodes.ErrorCodeInvalidRegionCode,
 			})
 
 		case errors.Is(err, schoolService.ErrBadRequest):
@@ -130,7 +131,7 @@ func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -176,13 +177,13 @@ func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, schoolService.ErrInvalidName):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staffhelpers.ErrorCodeInvalidName,
+				"code": responsecodes.ErrorCodeInvalidName,
 			})
 
 		case errors.Is(err, schoolService.ErrInvalidRegionCode):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staffhelpers.ErrorCodeInvalidRegionCode,
+				"code": responsecodes.ErrorCodeInvalidRegionCode,
 			})
 
 		case errors.Is(err, schoolService.ErrBadRequest):
@@ -202,7 +203,7 @@ func (h *Handler) DeleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Authenticate
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -214,9 +215,9 @@ func (h *Handler) DeleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.App.Staff.Auth.RequestSchoolDeletion(ctx, &auth.RequestSchoolDeletionInput{UserID: userID, SchoolID: schoolID})
+	res, err := h.App.Staff.Auth.RequestSchoolDeletion(ctx, &authService.RequestSchoolDeletionInput{UserID: userID, SchoolID: schoolID})
 	if err != nil {
-		if errors.Is(err, auth.ErrForbidden) {
+		if errors.Is(err, authService.ErrForbidden) {
 			w.WriteHeader(http.StatusForbidden)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -234,7 +235,7 @@ func (h *Handler) ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

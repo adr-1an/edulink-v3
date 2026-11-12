@@ -1,7 +1,8 @@
-package staffhelpers
+package auth
 
 import (
-	"app/internal/helpers"
+	"app/internal/cryptoutil"
+	"app/internal/responsecodes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -17,12 +18,12 @@ func TokenToUserID(ctx context.Context, w http.ResponseWriter, r *http.Request, 
 	if token == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": ErrorCodeNoToken,
+			"code": responsecodes.ErrorCodeNoToken,
 		})
 		return 0, errors.New("missing token")
 	}
 	token = strings.TrimPrefix(token, "Bearer ")
-	tokenHash := helpers.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	var uid int64
 	err := db.QueryRowContext(ctx, `
@@ -50,11 +51,11 @@ func TokenToHash(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 	if token == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": ErrorCodeNoToken,
+			"code": responsecodes.ErrorCodeNoToken,
 		})
 		return nil, errors.New("missing token")
 	}
 	token = strings.TrimPrefix(token, "Bearer ")
 
-	return helpers.MakeHash256(token), nil
+	return cryptoutil.MakeHash256(token), nil
 }

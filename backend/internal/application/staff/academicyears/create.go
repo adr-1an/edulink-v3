@@ -5,7 +5,8 @@ import (
 	"log"
 	"strconv"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type CreateAcademicYear struct {
@@ -29,7 +30,7 @@ func (s *Service) CreateAcademicYear(ctx context.Context, i *CreateAcademicYearI
 	var noRowsAffected bool
 	var affectedRows int64
 
-	if !schools.Can(schools.PermissionAcademicYearCreate, i.UserID, i.SchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionAcademicYearCreate, i.UserID, i.SchoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -95,7 +96,7 @@ func (s *Service) CreateAcademicYear(ctx context.Context, i *CreateAcademicYearI
 
 	yearLabel := strconv.Itoa(i.AcademicYear.From) + "-" + strconv.Itoa(i.AcademicYear.To)
 	// Log action
-	if err := schools.StoreSchoolLog(i.SchoolID, i.UserID, schools.ActionAcademicYearCreate, schools.TypeCreate, "Academic year created", "{user} created the academic year "+yearLabel+".", tx, ctx, s.Sf, "{user} created academic year "+yearLabel+" with ID "+strconv.FormatInt(id, 10)+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(i.SchoolID, i.UserID, schoollogs.ActionAcademicYearCreate, schoollogs.TypeCreate, "Academic year created", "{user} created the academic year "+yearLabel+".", tx, ctx, s.Sf, "{user} created academic year "+yearLabel+" with ID "+strconv.FormatInt(id, 10)+"."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

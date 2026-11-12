@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"app/internal/application/staff/courses"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -21,7 +21,7 @@ type CreateCoursePayload struct {
 func (h *Handler) CreateCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -69,7 +69,7 @@ type UpdateCoursePayload struct {
 func (h *Handler) UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -111,7 +111,7 @@ func (h *Handler) UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteCourseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -158,7 +158,7 @@ func mapListCoursesCourse(v courses.ListCoursesCourse) ListCoursesCourse {
 func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

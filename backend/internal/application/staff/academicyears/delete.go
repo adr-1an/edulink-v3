@@ -5,7 +5,8 @@ import (
 	"log"
 	"strconv"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type DeleteAcademicYearInput struct {
@@ -44,7 +45,7 @@ func (s *Service) DeleteAcademicYear(ctx context.Context, i *DeleteAcademicYearI
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionAcademicYearDelete, userID, yearSchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionAcademicYearDelete, userID, yearSchoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -97,7 +98,7 @@ func (s *Service) DeleteAcademicYear(ctx context.Context, i *DeleteAcademicYearI
 	noRowsAffected = noRowsAffected || affectedRows == 0
 
 	yearLabel := strconv.Itoa(startYear) + "-" + strconv.Itoa(endYear)
-	if err := schools.StoreSchoolLog(yearSchoolID, userID, schools.ActionAcademicYearDelete, schools.TypeDelete, "Academic year deleted", "{user} deleted the academic year "+yearLabel+".", tx, ctx, s.Sf, "{user} deleted academic year "+yearLabel+" with ID "+strconv.FormatInt(acYearID, 10)+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(yearSchoolID, userID, schoollogs.ActionAcademicYearDelete, schoollogs.TypeDelete, "Academic year deleted", "{user} deleted the academic year "+yearLabel+".", tx, ctx, s.Sf, "{user} deleted academic year "+yearLabel+" with ID "+strconv.FormatInt(acYearID, 10)+"."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

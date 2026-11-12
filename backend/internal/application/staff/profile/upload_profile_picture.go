@@ -7,7 +7,8 @@ import (
 	"os"
 	"time"
 
-	helpers2 "app/internal/helpers"
+	"app/internal/cryptoutil"
+	"app/internal/uploads"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -48,7 +49,7 @@ func (s *Service) UploadProfilePicture(ctx context.Context, i *UploadProfilePict
 		return nil, fmt.Errorf("S3_BUCKET environment variable not set")
 	}
 
-	upload := helpers2.UploadService{
+	upload := uploads.UploadService{
 		Db:         s.DB,
 		S3:         s.S3,
 		Ctx:        ctx,
@@ -72,9 +73,9 @@ func (s *Service) UploadProfilePicture(ctx context.Context, i *UploadProfilePict
 		log.Println(err)
 		return nil, err
 	}
-	tokenHash := helpers2.MakeHash256(completionToken)
+	tokenHash := cryptoutil.MakeHash256(completionToken)
 
-	objKey := fmt.Sprintf("%s/%d", helpers2.UploadCategoryUserProfilePics, id)
+	objKey := fmt.Sprintf("%s/%d", uploads.UploadCategoryUserProfilePics, id)
 
 	if err := upload.StoreStorageObjectsRow(id, tokenHash, userID, i.Name, i.DeclaredSize, i.DeclaredContentType, objKey); err != nil {
 		log.Println(err)

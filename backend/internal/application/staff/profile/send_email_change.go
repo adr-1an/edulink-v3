@@ -7,8 +7,9 @@ import (
 	"os"
 	"strings"
 
-	helpers2 "app/internal/helpers"
-	staffhelpers "app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/cryptoutil"
+	"app/internal/mailer"
 
 	"github.com/alexedwards/argon2id"
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -71,7 +72,7 @@ func (s *Service) SendEmailChange(ctx context.Context, i *SendEmailChangeInput) 
 		log.Println(err)
 		return err
 	}
-	tokenHash := helpers2.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	// Store token
 	var userEmail string
@@ -84,7 +85,7 @@ func (s *Service) SendEmailChange(ctx context.Context, i *SendEmailChangeInput) 
 		SELECT u.email
 		FROM users u
 		JOIN inserted i ON u.id = i.user_id
-	`, tokenHash, userID, staffhelpers.TokenPurposeEmailChange, i.NewEmail).Scan(&userEmail); err != nil {
+	`, tokenHash, userID, auth.TokenPurposeEmailChange, i.NewEmail).Scan(&userEmail); err != nil {
 		log.Println(err)
 		return err
 	}
@@ -92,14 +93,14 @@ func (s *Service) SendEmailChange(ctx context.Context, i *SendEmailChangeInput) 
 	// Send verification email
 	verURL := fmt.Sprintf("%s/auth/verify-change/%s", os.Getenv("FRONTEND_URL"), token)
 	msg := fmt.Sprintf("Click this link to finish changing your email: %s", verURL)
-	email := helpers2.Mail{
+	email := mailer.Mail{
 		To:          i.NewEmail,
 		Subject:     "Verify your Email",
 		ContentType: mail.TypeTextPlain,
 		Importance:  mail.ImportanceHigh,
 		Body:        msg,
 	}
-	if err := helpers2.SendMail(email); err != nil {
+	if err := mailer.SendMail(email); err != nil {
 		log.Println(err)
 		// Don't return - token was already stored
 	}

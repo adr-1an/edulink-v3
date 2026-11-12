@@ -8,7 +8,8 @@ import (
 	"log"
 	"time"
 
-	schools2 "app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type UpdateAssignmentInput struct {
@@ -33,7 +34,7 @@ func (svc *Service) UpdateAssignment(ctx context.Context, i *UpdateAssignmentInp
 		}
 	}
 
-	if !schools2.Can(schools2.PermissionCourseAssignmentUpdate, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCourseAssignmentUpdate, userID, schoolID, ctx, svc.DB) {
 		return ErrForbidden
 	}
 
@@ -109,7 +110,7 @@ func (svc *Service) UpdateAssignment(ctx context.Context, i *UpdateAssignmentInp
 	}
 
 	details := fmt.Sprintf("{user} edited the assignment '%s'.", p.Title)
-	if err := schools2.StoreSchoolLog(schoolID, userID, schools2.ActionAssignmentEdit, schools2.TypeEdit, "Assignment updated", "{user} edited an assignment.", tx, ctx, svc.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionAssignmentEdit, schoollogs.TypeEdit, "Assignment updated", "{user} edited an assignment.", tx, ctx, svc.Sf, details); err != nil {
 		log.Println(err)
 		return err
 	}

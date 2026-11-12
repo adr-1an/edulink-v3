@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"app/internal/application/staff/guardians"
-	staffhelpers "app/internal/helpers/staff"
+	"app/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -29,7 +29,7 @@ func (h *Handler) CreateGuardianHandler(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -91,7 +91,7 @@ func (h *Handler) CreateGuardianHandler(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) ListGuardiansHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -154,7 +154,7 @@ func (h *Handler) ListGuardiansHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateGuardianHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -208,7 +208,7 @@ func (h *Handler) UpdateGuardianHandler(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) DeleteGuardianHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

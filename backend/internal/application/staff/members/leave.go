@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/schoollogs"
 )
 
 type LeaveSchoolStaffInput struct {
@@ -65,7 +65,7 @@ func (s *Service) LeaveSchoolStaff(ctx context.Context, i *LeaveSchoolStaffInput
 	}
 
 	details := fmt.Sprintf("%s <%s> left the school's staff members.", userName, userEmail)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolLeave, schools.TypeDelete, "User left", "{user} left the school.", tx, ctx, s.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionSchoolLeave, schoollogs.TypeDelete, "User left", "{user} left the school.", tx, ctx, s.Sf, details); err != nil {
 		log.Println(err)
 		return nil, err
 	}

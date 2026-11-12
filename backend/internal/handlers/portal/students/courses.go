@@ -2,8 +2,9 @@ package students
 
 import (
 	svc "app/internal/application/portal/students"
-	"app/internal/helpers"
-	portal "app/internal/helpers/portal"
+	"app/internal/auth"
+	"app/internal/portalusers"
+
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeStudent)
+	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeStudent)
 	if err != nil {
 		return
 	}
@@ -28,7 +29,7 @@ func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeStudent)
+	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeStudent)
 	if err != nil {
 		return
 	}

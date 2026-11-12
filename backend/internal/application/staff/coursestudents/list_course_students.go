@@ -6,8 +6,8 @@ import (
 	"errors"
 	"log"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
 )
 
 type ListCourseStudentsStudent struct {
@@ -24,7 +24,7 @@ type ListCourseStudentsInput struct {
 }
 
 type ListCourseStudentsResult struct {
-	Access   schools.AccessData
+	Access   permissions.AccessData
 	Students []ListCourseStudentsStudent
 }
 
@@ -49,7 +49,7 @@ func (svc *Service) ListCourseStudents(ctx context.Context, i *ListCourseStudent
 		}
 	}
 
-	if !schools.Can(schools.PermissionCourseStudentList, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCourseStudentList, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -69,7 +69,7 @@ func (svc *Service) ListCourseStudents(ctx context.Context, i *ListCourseStudent
 		WHERE s.school_id = $2
 		AND s.account_type = $3
 		ORDER BY s.last_name, s.name
-	`, courseID, schoolID, helpers.AccTypeStudent)
+	`, courseID, schoolID, portalusers.AccTypeStudent)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -92,7 +92,7 @@ func (svc *Service) ListCourseStudents(ctx context.Context, i *ListCourseStudent
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

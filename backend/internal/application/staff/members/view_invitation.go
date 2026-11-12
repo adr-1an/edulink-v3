@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	helpers2 "app/internal/helpers"
+	"app/internal/cryptoutil"
 )
 
 type Invitation struct {
@@ -29,7 +29,7 @@ type ViewInvitationInput struct {
 
 func (s *Service) ViewInvitation(ctx context.Context, i *ViewInvitationInput) (*ViewInvitationResult, error) {
 	token := i.Token
-	tokenHash := helpers2.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	var inv Invitation
 

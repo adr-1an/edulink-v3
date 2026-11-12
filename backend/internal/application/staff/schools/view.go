@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type SchoolViewInput struct {
@@ -13,7 +13,7 @@ type SchoolViewInput struct {
 }
 
 type SchoolViewResult struct {
-	Access schools.AccessData
+	Access permissions.AccessData
 	School schoolView
 }
 
@@ -36,7 +36,7 @@ type schoolView struct {
 
 func (s *Service) ViewSchool(ctx context.Context, i *SchoolViewInput) (*SchoolViewResult, error) {
 	// Check permissions
-	if !schools.Can(schools.PermissionSchoolView, i.UserID, i.SchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionSchoolView, i.UserID, i.SchoolID, ctx, s.DB) {
 		return nil, ErrNoPermission
 	}
 
@@ -99,7 +99,7 @@ func (s *Service) ViewSchool(ctx context.Context, i *SchoolViewInput) (*SchoolVi
 	// Return data
 	sc.Grades = gs
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
 	if err != nil {
 		return nil, err
 	}

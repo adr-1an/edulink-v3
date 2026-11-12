@@ -1,7 +1,7 @@
 package profile
 
 import (
-	helpers2 "app/internal/helpers"
+	"app/internal/uploads"
 	"context"
 	"log"
 	"time"
@@ -58,7 +58,7 @@ func (s *Service) ViewProfile(ctx context.Context, i *ViewProfileInput) (*ViewPr
 		LEFT JOIN portal_user_profile_pictures pfp ON pfp.portal_user_id = pu.id
 		LEFT JOIN storage_objects so ON so.id = pfp.storage_object_id AND status = $2
 		WHERE pu.id = $1
-	`, i.UserID, helpers2.StatusDone).
+	`, i.UserID, uploads.StatusDone).
 		Scan(
 			&p.School.Owner.Name,
 			&p.School.Owner.Email,

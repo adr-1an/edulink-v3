@@ -7,7 +7,7 @@ import (
 	"log"
 
 	"app/internal/application/staff/submissions"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type ClearSubmissionScoreInput struct {
@@ -29,7 +29,7 @@ func (svc *Service) ClearSubmissionScore(ctx context.Context, i *ClearSubmission
 		}
 	}
 
-	if !schools.Can(schools.PermissionSubmissionRemoveGrade, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionSubmissionRemoveGrade, userID, schoolID, ctx, svc.DB) {
 		return ErrForbidden
 	}
 

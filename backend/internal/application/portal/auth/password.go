@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"app/internal/helpers/staff"
+	"app/internal/dbutil"
 	"context"
 	"database/sql"
 	"errors"
@@ -69,7 +69,7 @@ func (s *Service) UpdatePassword(ctx context.Context, i *UpdatePasswordInput) er
 		return err
 	}
 
-	if err := staffhelpers.RowsAffected(res); err != nil {
+	if err := dbutil.RowsAffected(res); err != nil {
 		log.Println(err)
 		return err
 	}

@@ -5,7 +5,7 @@ import (
 	"log"
 	"strconv"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/schoollogs"
 )
 
 type DeleteSchoolInput struct {
@@ -41,7 +41,7 @@ func (s *Service) DeleteSchool(ctx context.Context, i *DeleteSchoolInput) error 
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(i.SchoolID, i.UserID, schools.ActionSchoolDelete, schools.TypeDelete, "School deleted", "{user} deleted the school '"+schoolName+"'.", tx, ctx, s.Sf, "{user} deleted school '"+schoolName+"' with ID "+strconv.FormatInt(i.SchoolID, 10)+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(i.SchoolID, i.UserID, schoollogs.ActionSchoolDelete, schoollogs.TypeDelete, "School deleted", "{user} deleted the school '"+schoolName+"'.", tx, ctx, s.Sf, "{user} deleted school '"+schoolName+"' with ID "+strconv.FormatInt(i.SchoolID, 10)+"."); err != nil {
 		log.Println(err)
 		return err
 	}

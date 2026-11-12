@@ -2,7 +2,7 @@ package staff
 
 import (
 	"app/internal/application/staff/students"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -14,7 +14,7 @@ import (
 func (h *Handler) AssignGuardianToStudent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -52,7 +52,7 @@ func (h *Handler) AssignGuardianToStudent(w http.ResponseWriter, r *http.Request
 func (h *Handler) UnassignGuardianFromStudent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -90,7 +90,7 @@ func (h *Handler) UnassignGuardianFromStudent(w http.ResponseWriter, r *http.Req
 func (h *Handler) ListStudentGuardians(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"log"
 
-	helpers2 "app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/cryptoutil"
+	"app/internal/schoollogs"
 )
 
 type RejectInvitationInput struct {
@@ -26,7 +26,7 @@ func (s *Service) RejectInvitation(ctx context.Context, i *RejectInvitationInput
 
 	userID := i.UserID
 	token := i.Token
-	tokenHash := helpers2.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	// Start tx
 	tx, err := s.DB.BeginTx(ctx, nil)
@@ -81,7 +81,7 @@ func (s *Service) RejectInvitation(ctx context.Context, i *RejectInvitationInput
 	noRowsAffected = noRowsAffected || affectedRows == 0
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationEdit, schools.TypeEdit, "Staff invitation rejected", "{user} rejected a staff invitation.", tx, ctx, s.Sf, "{user} rejected a staff invitation by token."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionStaffInvitationEdit, schoollogs.TypeEdit, "Staff invitation rejected", "{user} rejected a staff invitation.", tx, ctx, s.Sf, "{user} rejected a staff invitation by token."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

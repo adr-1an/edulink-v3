@@ -6,7 +6,8 @@ import (
 	"errors"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type DeleteStaffMemberInput struct {
@@ -107,7 +108,7 @@ func (s *Service) DeleteStaffMember(ctx context.Context, i *DeleteStaffMemberInp
 			actorStaffID,
 			schoolID,
 			targetHighestPos,
-			schools.PermissionStaffDelete,
+			permissions.PermissionStaffDelete,
 		).Scan(&allowed)
 		if err != nil {
 			log.Println(err)
@@ -139,7 +140,7 @@ func (s *Service) DeleteStaffMember(ctx context.Context, i *DeleteStaffMemberInp
 		return ErrNotFound
 	}
 
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffDelete, schools.TypeDelete, "Staff member removed", "{user} removed "+targetName+" from the school staff.", tx, ctx, s.Sf, "{user} removed staff member "+targetName+" <"+targetEmail+">."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionStaffDelete, schoollogs.TypeDelete, "Staff member removed", "{user} removed "+targetName+" from the school staff.", tx, ctx, s.Sf, "{user} removed staff member "+targetName+" <"+targetEmail+">."); err != nil {
 		log.Println(err)
 		return err
 	}

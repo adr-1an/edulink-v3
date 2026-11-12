@@ -1,4 +1,4 @@
-package schools
+package schoollogs
 
 import (
 	"context"

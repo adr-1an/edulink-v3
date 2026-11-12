@@ -8,8 +8,9 @@ import (
 	"log"
 	"os"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/cryptoutil"
+	"app/internal/mailer"
+	"app/internal/permissions"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/wneessen/go-mail"
@@ -54,7 +55,7 @@ func (s *Service) SendActivationEmail(ctx context.Context, i *SendActivationEmai
 		return err
 	}
 
-	if !schools.Can(schools.PermissionPortalUserActivate, i.UserID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionPortalUserActivate, i.UserID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 
@@ -62,14 +63,14 @@ func (s *Service) SendActivationEmail(ctx context.Context, i *SendActivationEmai
 		return err
 	}
 
-	mailQueue := make([]helpers.MailQueue, 0, 1)
+	mailQueue := make([]mailer.MailQueue, 0, 1)
 
 	token, err := gonanoid.New(128)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	tokenHash := helpers.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO portal_account_activation_tokens (token_hash, portal_user_id)
@@ -91,18 +92,19 @@ Here's your account activation link:
 %s
 `, name, activationUrl)
 
-	mailQueue = append(mailQueue, helpers.MailQueue{
+	purpose := mailer.MailPurposePortalAccountActivation
+	mailQueue = append(mailQueue, mailer.MailQueue{
 		To:          targetEmail,
 		Subject:     "Activate your account",
 		ContentType: mail.TypeTextPlain,
 		Importance:  mail.ImportanceNormal,
 		Body:        body,
 		SendAt:      nil,
-		Purpose:     helpers.Ptr(helpers.MailPurposePortalAccountActivation),
+		Purpose:     &purpose,
 		MaxRetries:  nil,
 	})
 
-	if err := helpers.AppendMailQueue(mailQueue, s.Sf, tx, ctx); err != nil {
+	if err := mailer.AppendMailQueue(mailQueue, s.Sf, tx, ctx); err != nil {
 		log.Println(err)
 		return err
 	}

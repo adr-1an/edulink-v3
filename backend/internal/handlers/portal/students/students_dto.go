@@ -2,7 +2,7 @@ package students
 
 import (
 	svc "app/internal/application/portal/students"
-	"app/internal/helpers"
+	"app/internal/submissions"
 	"time"
 )
 
@@ -490,7 +490,7 @@ func mapSubmissionGradeSlice(v []svc.SubmissionGrade) []SubmissionGrade {
 
 type AssignmentSubmission struct {
 	ID          string                           `json:"id"`
-	Status      helpers.SubmissionStatus         `json:"status"`
+	Status      submissions.SubmissionStatus     `json:"status"`
 	Grade       *SubmissionGrade                 `json:"SubmissionGrade"`
 	Notes       string                           `json:"notes"`
 	Attachments []AssignmentSubmissionAttachment `json:"attachments"`

@@ -1,7 +1,7 @@
 package students
 
 import (
-	"app/internal/helpers"
+	"app/internal/submissions"
 	"time"
 )
 
@@ -101,7 +101,7 @@ type SubmissionGrade struct {
 }
 type AssignmentSubmission struct {
 	ID          string
-	Status      helpers.SubmissionStatus
+	Status      submissions.SubmissionStatus
 	Grade       *SubmissionGrade
 	Notes       string
 	Attachments []AssignmentSubmissionAttachment

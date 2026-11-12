@@ -30,23 +30,6 @@ func mapViewPostPost(v svc.ViewPostPost) ViewPostPost {
 		EditedAt:    v.EditedAt,
 	}
 }
-func mapViewPostPostPtr(v *svc.ViewPostPost) *ViewPostPost {
-	if v == nil {
-		return nil
-	}
-	r := mapViewPostPost(*v)
-	return &r
-}
-func mapViewPostPostSlice(v []svc.ViewPostPost) []ViewPostPost {
-	if v == nil {
-		return nil
-	}
-	r := make([]ViewPostPost, len(v))
-	for k := range v {
-		r[k] = mapViewPostPost(v[k])
-	}
-	return r
-}
 
 type ViewPostAttachment struct {
 	ID           string `json:"id"`
@@ -63,13 +46,7 @@ func mapViewPostAttachment(v svc.ViewPostAttachment) ViewPostAttachment {
 		ContentType:  v.ContentType,
 	}
 }
-func mapViewPostAttachmentPtr(v *svc.ViewPostAttachment) *ViewPostAttachment {
-	if v == nil {
-		return nil
-	}
-	r := mapViewPostAttachment(*v)
-	return &r
-}
+
 func mapViewPostAttachmentSlice(v []svc.ViewPostAttachment) []ViewPostAttachment {
 	if v == nil {
 		return nil
@@ -93,21 +70,4 @@ func mapViewPostUser(v svc.ViewPostUser) ViewPostUser {
 		Name:  v.Name,
 		Email: v.Email,
 	}
-}
-func mapViewPostUserPtr(v *svc.ViewPostUser) *ViewPostUser {
-	if v == nil {
-		return nil
-	}
-	r := mapViewPostUser(*v)
-	return &r
-}
-func mapViewPostUserSlice(v []svc.ViewPostUser) []ViewPostUser {
-	if v == nil {
-		return nil
-	}
-	r := make([]ViewPostUser, len(v))
-	for k := range v {
-		r[k] = mapViewPostUser(v[k])
-	}
-	return r
 }

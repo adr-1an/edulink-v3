@@ -9,7 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type PromoteSchoolInput struct {
@@ -44,7 +45,7 @@ func (s *Service) PromoteSchool(ctx context.Context, i *PromoteSchoolInput) (*Pr
 	schoolID := i.SchoolID
 	p := i.Promotion
 	// Check permissions
-	if !schools.Can(schools.PermissionSchoolPromote, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionSchoolPromote, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -258,7 +259,7 @@ func (s *Service) PromoteSchool(ctx context.Context, i *PromoteSchoolInput) (*Pr
 	if p.Opts.PromoteGradeLevels {
 		promotionDetails += " Grade levels were promoted."
 	}
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolPromote, schools.TypeOther, "School promoted", "{user} promoted the school to academic year "+strconv.Itoa(p.NewAcademicYear.From)+"-"+strconv.Itoa(p.NewAcademicYear.To)+".", tx, ctx, s.Sf, promotionDetails); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionSchoolPromote, schoollogs.TypeOther, "School promoted", "{user} promoted the school to academic year "+strconv.Itoa(p.NewAcademicYear.From)+"-"+strconv.Itoa(p.NewAcademicYear.To)+".", tx, ctx, s.Sf, promotionDetails); err != nil {
 		log.Println(err)
 		return nil, err
 	}

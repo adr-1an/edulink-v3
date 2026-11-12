@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"log"
 
-	helpers2 "app/internal/helpers"
-	staffhelpers "app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/cryptoutil"
+	"app/internal/mailer"
 
 	"github.com/wneessen/go-mail"
 )
@@ -16,7 +17,7 @@ import (
 type UpdateEmailInput struct{ Token string }
 
 func (s *Service) UpdateEmail(ctx context.Context, i *UpdateEmailInput) error {
-	tokenHash := helpers2.MakeHash256(i.Token)
+	tokenHash := cryptoutil.MakeHash256(i.Token)
 
 	// Get old email
 	var oldEmail string
@@ -72,7 +73,7 @@ func (s *Service) UpdateEmail(ctx context.Context, i *UpdateEmailInput) error {
 			WHEN EXISTS (SELECT 1 FROM email_taken) THEN 'email_taken'
 			ELSE 'invalid_token'
 		END AS result
-	`, tokenHash, staffhelpers.TokenPurposeEmailChange).Scan(&res)
+	`, tokenHash, auth.TokenPurposeEmailChange).Scan(&res)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -92,14 +93,14 @@ func (s *Service) UpdateEmail(ctx context.Context, i *UpdateEmailInput) error {
 		msg := fmt.Sprintf(`Your account email has been changed.
 Old email: %s
 New email: %s`, oldEmail, newEmail)
-		emailOld := helpers2.Mail{
+		emailOld := mailer.Mail{
 			To:          oldEmail,
 			Subject:     "Email changed",
 			ContentType: mail.TypeTextPlain,
 			Importance:  mail.ImportanceNormal,
 			Body:        msg,
 		}
-		emailNew := helpers2.Mail{
+		emailNew := mailer.Mail{
 			To:          newEmail,
 			Subject:     "Email changed",
 			ContentType: mail.TypeTextPlain,
@@ -108,10 +109,10 @@ New email: %s`, oldEmail, newEmail)
 		}
 
 		go func() {
-			if err := helpers2.SendMail(emailOld); err != nil {
+			if err := mailer.SendMail(emailOld); err != nil {
 				log.Println(err)
 			}
-			if err := helpers2.SendMail(emailNew); err != nil {
+			if err := mailer.SendMail(emailNew); err != nil {
 				log.Println(err)
 			}
 		}()

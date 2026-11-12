@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type CancelInvitationInput struct {
@@ -40,7 +41,7 @@ func (s *Service) CancelInvitation(ctx context.Context, i *CancelInvitationInput
 
 	}
 
-	if !schools.Can(schools.PermissionSchoolInviteCancel, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionSchoolInviteCancel, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -62,7 +63,7 @@ func (s *Service) CancelInvitation(ctx context.Context, i *CancelInvitationInput
 	}
 
 	details := fmt.Sprintf("{user} canceled the staff invitation sent to %s.", invEmail)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationCancel, schools.TypeEdit, "Staff invitation canceled", "{user} canceled a staff invitation.", tx, ctx, s.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionStaffInvitationCancel, schoollogs.TypeEdit, "Staff invitation canceled", "{user} canceled a staff invitation.", tx, ctx, s.Sf, details); err != nil {
 		log.Println(err)
 		return nil, err
 	}

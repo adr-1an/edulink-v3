@@ -1,8 +1,9 @@
 package posts
 
 import (
-	helpers2 "app/internal/helpers"
-	portal2 "app/internal/helpers/portal"
+	"app/internal/permissions"
+	"app/internal/uploads"
+
 	"context"
 	"database/sql"
 	"errors"
@@ -42,7 +43,7 @@ func (s *Service) ViewPost(ctx context.Context, i *ViewPostInput) (*ViewPostResu
 		}
 	}
 
-	if !portal2.CanAccessCourse(s.DB, userID, courseID, ctx) {
+	if !permissions.CanAccessCourse(s.DB, userID, courseID, ctx) {
 		return nil, ErrForbidden
 	}
 
@@ -78,7 +79,7 @@ func (s *Service) ViewPost(ctx context.Context, i *ViewPostInput) (*ViewPostResu
 		ON pa.storage_object_id = so.id
 		AND so.status = $2
 		WHERE pa.post_id = $1
-	`, postID, helpers2.StatusDone)
+	`, postID, uploads.StatusDone)
 	if err != nil {
 		log.Println(err)
 		return nil, err

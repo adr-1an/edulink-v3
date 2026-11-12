@@ -9,8 +9,8 @@ import (
 	"time"
 
 	schoolService "app/internal/application/staff/schools"
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/cryptoutil"
+	"app/internal/permissions"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -30,8 +30,8 @@ func (s *Service) RequestSchoolDeletion(ctx context.Context, i *RequestSchoolDel
 	userID, schoolID := i.UserID, i.SchoolID
 
 	// Permission check
-	if !schools.Can(
-		schools.SchoolOwner,
+	if !permissions.Can(
+		permissions.SchoolOwner,
 		userID,
 		schoolID,
 		ctx,
@@ -64,7 +64,7 @@ func (s *Service) RequestSchoolDeletion(ctx context.Context, i *RequestSchoolDel
 			return nil, err
 		}
 
-		tokenHash := helpers.MakeHash256(token)
+		tokenHash := cryptoutil.MakeHash256(token)
 
 		id, err := s.Sf.NextID()
 		if err != nil {

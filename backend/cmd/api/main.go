@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"app/internal/application"
-	"app/internal/helpers"
+	"app/internal/cryptoutil"
 	utils2 "app/internal/infra"
 	v1 "app/internal/routes/v1"
 
@@ -30,7 +30,7 @@ func main() {
 	}
 
 	// Load app encryption key
-	_, err := helpers.LoadAppEncKey()
+	_, err := cryptoutil.LoadAppEncKey()
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -7,7 +7,8 @@ import (
 	"log"
 	"strconv"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type UpdatePostInput struct {
@@ -44,7 +45,7 @@ func (svc *Service) UpdatePost(ctx context.Context, i *UpdatePostInput) (*Update
 		}
 	}
 
-	if !schools.Can(schools.PermissionCoursePostUpdate, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCoursePostUpdate, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -95,7 +96,7 @@ func (svc *Service) UpdatePost(ctx context.Context, i *UpdatePostInput) (*Update
 	}
 
 	details := "{user} updated the post title from '" + oldTitle + "' to '" + p.Title + "', changed accent color from '#" + oldAccentColor + "' to '#" + p.AccentColor + "', and changed the body length from " + strconv.Itoa(len(oldBody)) + " to " + strconv.Itoa(len(p.Body)) + " characters."
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionPostEdit, schools.TypeEdit, "Post updated", "{user} updated the post '"+p.Title+"'.", tx, ctx, svc.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionPostEdit, schoollogs.TypeEdit, "Post updated", "{user} updated the post '"+p.Title+"'.", tx, ctx, svc.Sf, details); err != nil {
 		log.Println(err)
 		return nil, err
 	}

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"log"
 
-	helpers2 "app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/cryptoutil"
+	"app/internal/schoollogs"
 )
 
 type AcceptInvitationInput struct {
@@ -26,7 +26,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, i *AcceptInvitationInput
 
 	userID := i.UserID
 	token := i.Token
-	tokenHash := helpers2.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	type StaffInvitation struct {
 		SchoolID   int64
@@ -117,13 +117,13 @@ func (s *Service) AcceptInvitation(ctx context.Context, i *AcceptInvitationInput
 	noRowsAffected = noRowsAffected || affectedRows == 0
 
 	// Log invitation action
-	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffInvitationDelete, schools.TypeDelete, "Staff invitation accepted", "{user} accepted a staff invitation.", tx, ctx, s.Sf, "{user} accepted the staff invitation sent to '"+inv.UserEmail+"'."); err != nil {
+	if err := schoollogs.StoreSchoolLog(inv.SchoolID, userID, schoollogs.ActionStaffInvitationDelete, schoollogs.TypeDelete, "Staff invitation accepted", "{user} accepted a staff invitation.", tx, ctx, s.Sf, "{user} accepted the staff invitation sent to '"+inv.UserEmail+"'."); err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(inv.SchoolID, userID, schools.ActionStaffCreate, schools.TypeCreate, "Staff member added", "{user} joined the school.", tx, ctx, s.Sf, "{user} was added as a staff member after accepting an invitation."); err != nil {
+	if err := schoollogs.StoreSchoolLog(inv.SchoolID, userID, schoollogs.ActionStaffCreate, schoollogs.TypeCreate, "Staff member added", "{user} joined the school.", tx, ctx, s.Sf, "{user} was added as a staff member after accepting an invitation."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

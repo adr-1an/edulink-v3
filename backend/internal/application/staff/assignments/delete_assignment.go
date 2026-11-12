@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"log"
 
-	schools2 "app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type DeleteAssignmentInput struct {
@@ -29,7 +30,7 @@ func (svc *Service) DeleteAssignment(ctx context.Context, i *DeleteAssignmentInp
 		}
 	}
 
-	if !schools2.Can(schools2.PermissionCourseAssignmentDelete, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCourseAssignmentDelete, userID, schoolID, ctx, svc.DB) {
 		return ErrForbidden
 	}
 
@@ -57,7 +58,7 @@ func (svc *Service) DeleteAssignment(ctx context.Context, i *DeleteAssignmentInp
 	}
 
 	details := fmt.Sprintf("{user} deleted the assignment '%s'.", assignmentName)
-	if err := schools2.StoreSchoolLog(schoolID, userID, schools2.ActionAssignmentDelete, schools2.TypeDelete, "Assignment deleted", "{user} deleted an assignment.", tx, ctx, svc.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionAssignmentDelete, schoollogs.TypeDelete, "Assignment deleted", "{user} deleted an assignment.", tx, ctx, svc.Sf, details); err != nil {
 		log.Println(err)
 		return err
 	}

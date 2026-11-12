@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
-	helpers2 "app/internal/helpers"
-	staffhelpers "app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/cryptoutil"
 
 	"github.com/alexedwards/argon2id"
 )
@@ -17,7 +17,7 @@ type ResetPasswordInput struct {
 }
 
 func (s *Service) ResetPassword(ctx context.Context, i *ResetPasswordInput) error {
-	tokenHash := helpers2.MakeHash256(i.Token)
+	tokenHash := cryptoutil.MakeHash256(i.Token)
 
 	// Validate
 	if len(i.NewPassword) < 8 {
@@ -32,7 +32,7 @@ func (s *Service) ResetPassword(ctx context.Context, i *ResetPasswordInput) erro
 			AND created_at >= NOW() - INTERVAL '24 hours'
 	   		AND purpose = $2
 		RETURNING user_id
-	`, tokenHash, staffhelpers.TokenPurposePasswordReset).Scan(&userID)
+	`, tokenHash, auth.TokenPurposePasswordReset).Scan(&userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrUnauthorized

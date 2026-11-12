@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"app/internal/helpers"
+	"app/internal/cryptoutil"
 )
 
 type CheckTokenInput struct {
@@ -12,7 +12,7 @@ type CheckTokenInput struct {
 }
 
 func (s *Service) CheckToken(ctx context.Context, i *CheckTokenInput) (bool, error) {
-	tokenHash := helpers.MakeHash256(i.Token)
+	tokenHash := cryptoutil.MakeHash256(i.Token)
 
 	// Check if token is valid
 	var exists bool

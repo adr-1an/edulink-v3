@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 
 	"github.com/lib/pq"
 )
@@ -18,7 +18,7 @@ type ListRole struct {
 	Permissions []string
 }
 type ListRolesResult struct {
-	Access   schools.AccessData
+	Access   permissions.AccessData
 	Roles    []ListRole
 	SchoolID int64
 }
@@ -31,7 +31,7 @@ func (s *Service) ListRoles(ctx context.Context, i *ListRolesInput) (*ListRolesR
 	userID := i.UserID
 	schoolID := i.SchoolID
 	// Check permissions
-	if !schools.Can(schools.PermissionRoleList, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionRoleList, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -81,7 +81,7 @@ func (s *Service) ListRoles(ctx context.Context, i *ListRolesInput) (*ListRolesR
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, userID, schoolID)
 	if err != nil {
 		return nil, err
 	}

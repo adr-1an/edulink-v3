@@ -1,8 +1,11 @@
 package students
 
 import (
-	"app/internal/helpers"
-	portal2 "app/internal/helpers/portal"
+	"app/internal/cryptoutil"
+	"app/internal/permissions"
+	"app/internal/submissions"
+	"app/internal/uploads"
+
 	"context"
 	"database/sql"
 	"errors"
@@ -37,7 +40,7 @@ func listAssignmentSubmissionAttachments(ctx context.Context, db *sql.DB, submis
 		WHERE sa.submission_id = ANY($1)
 		AND so.status = $2
 		ORDER BY sa.created_at, sa.id
-	`, pq.Array(submissionIDs), helpers.StatusDone)
+	`, pq.Array(submissionIDs), uploads.StatusDone)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +102,7 @@ func (s *Service) DeleteSubmissionAttachment(ctx context.Context, i *DeleteSubmi
 	defer func() { _ = tx.Rollback() }()
 
 	var submittedBy int64
-	var status helpers.SubmissionStatus
+	var status submissions.SubmissionStatus
 	var storageObjectID int64
 	var bucketName string
 	var objectKey string
@@ -147,7 +150,7 @@ func (s *Service) DeleteSubmissionAttachment(ctx context.Context, i *DeleteSubmi
 		return ErrForbidden
 	}
 
-	if status != helpers.SubmissionStatusPending {
+	if status != submissions.SubmissionStatusPending {
 		return ErrConflict
 	}
 
@@ -179,7 +182,7 @@ type CreateAssignmentSubmissionInput struct {
 }
 type CreateAssignmentSubmissionResult struct {
 	SubmissionID string
-	Status       helpers.SubmissionStatus
+	Status       submissions.SubmissionStatus
 }
 
 func (s *Service) CreateAssignmentSubmission(ctx context.Context, i *CreateAssignmentSubmissionInput) (*CreateAssignmentSubmissionResult, error) {
@@ -206,7 +209,7 @@ func (s *Service) CreateAssignmentSubmission(ctx context.Context, i *CreateAssig
 		}
 	}
 
-	if !portal2.CanAccessCourse(s.DB, userID, courseID, ctx) {
+	if !permissions.CanAccessCourse(s.DB, userID, courseID, ctx) {
 		return nil, ErrForbidden
 	}
 
@@ -243,7 +246,7 @@ func (s *Service) CreateAssignmentSubmission(ctx context.Context, i *CreateAssig
 		SET notes = EXCLUDED.notes
 		WHERE assignment_submissions.status = $5
 		RETURNING id
-	`, newSubID, assignmentID, userID, i.Notes, helpers.SubmissionStatusPending, helpers.SubmissionStatusReturned).Scan(&submissionID); err != nil {
+	`, newSubID, assignmentID, userID, i.Notes, submissions.SubmissionStatusPending, submissions.SubmissionStatusReturned).Scan(&submissionID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrConflict
 		} else {
@@ -252,7 +255,7 @@ func (s *Service) CreateAssignmentSubmission(ctx context.Context, i *CreateAssig
 		}
 	}
 
-	return &CreateAssignmentSubmissionResult{SubmissionID: strconv.FormatInt(submissionID, 10), Status: helpers.SubmissionStatusPending}, nil
+	return &CreateAssignmentSubmissionResult{SubmissionID: strconv.FormatInt(submissionID, 10), Status: submissions.SubmissionStatusPending}, nil
 }
 
 type InitSubmissionAttachmentUploadInput struct {
@@ -324,7 +327,7 @@ func (s *Service) InitSubmissionAttachmentUpload(ctx context.Context, i *InitSub
 		log.Println(err)
 		return nil, err
 	}
-	tokenHash := helpers.MakeHash256(completionToken)
+	tokenHash := cryptoutil.MakeHash256(completionToken)
 
 	bucketName := os.Getenv("S3_BUCKET")
 	if bucketName == "" {
@@ -332,7 +335,7 @@ func (s *Service) InitSubmissionAttachmentUpload(ctx context.Context, i *InitSub
 		return nil, ErrInternal
 	}
 
-	objectKey := fmt.Sprintf("%s/%d", helpers.UploadCategorySubmissionAttachments, storageObjID)
+	objectKey := fmt.Sprintf("%s/%d", uploads.UploadCategorySubmissionAttachments, storageObjID)
 
 	// Generate the URL before opening the transaction so no database lock is held
 	// while communicating with object storage.
@@ -350,7 +353,7 @@ func (s *Service) InitSubmissionAttachmentUpload(ctx context.Context, i *InitSub
 	defer func() { _ = tx.Rollback() }()
 
 	var submittedBy int64
-	var status helpers.SubmissionStatus
+	var status submissions.SubmissionStatus
 	var submissionsOpen bool
 	var canAccessCourse bool
 	if err := tx.QueryRowContext(ctx, `
@@ -383,11 +386,11 @@ func (s *Service) InitSubmissionAttachmentUpload(ctx context.Context, i *InitSub
 		return nil, ErrForbidden
 	}
 
-	if status != helpers.SubmissionStatusPending || !submissionsOpen {
+	if status != submissions.SubmissionStatusPending || !submissionsOpen {
 		return nil, ErrConflict
 	}
 
-	upload := helpers.UploadService{
+	upload := uploads.UploadService{
 		Db:         tx,
 		S3:         s.S3,
 		Ctx:        ctx,
@@ -433,7 +436,7 @@ func (s *Service) CompleteSubmissionCreation(ctx context.Context, i *CompleteSub
 
 	var assignmentID int64
 	var submittedBy int64
-	var status helpers.SubmissionStatus
+	var status submissions.SubmissionStatus
 	var submissionsOpen bool
 	var canAccessCourse bool
 	var assignmentArchived bool
@@ -478,11 +481,11 @@ func (s *Service) CompleteSubmissionCreation(ctx context.Context, i *CompleteSub
 	}
 
 	// Finishing an already submitted submission is idempotent.
-	if status == helpers.SubmissionStatusSubmitted {
+	if status == submissions.SubmissionStatusSubmitted {
 		return nil
 	}
 
-	if status != helpers.SubmissionStatusPending || !submissionsOpen {
+	if status != submissions.SubmissionStatusPending || !submissionsOpen {
 		return ErrConflict
 	}
 
@@ -496,7 +499,7 @@ func (s *Service) CompleteSubmissionCreation(ctx context.Context, i *CompleteSub
 		WHERE assignment_id = $1
 		AND submitted_by = $2
 		AND status = $3
-	`, assignmentID, userID, helpers.SubmissionStatusReturned); err != nil {
+	`, assignmentID, userID, submissions.SubmissionStatusReturned); err != nil {
 		log.Println(err)
 		return err
 	}
@@ -511,7 +514,7 @@ func (s *Service) CompleteSubmissionCreation(ctx context.Context, i *CompleteSub
 		    WHERE sa.submission_id = $1
 		    AND so.status = $2
 		)
-	`, submissionID, helpers.StatusPending).Scan(&hasIncompleteAttachments); err != nil {
+	`, submissionID, uploads.StatusPending).Scan(&hasIncompleteAttachments); err != nil {
 		log.Println(err)
 		return err
 	}
@@ -523,7 +526,7 @@ func (s *Service) CompleteSubmissionCreation(ctx context.Context, i *CompleteSub
 			USING portal_storage_objects so
 			WHERE so.status = $1
 			AND sa.submission_id = $2
-		`, helpers.StatusPending, submissionID); err != nil {
+		`, uploads.StatusPending, submissionID); err != nil {
 			log.Println(err)
 			return err
 		}
@@ -537,9 +540,9 @@ func (s *Service) CompleteSubmissionCreation(ctx context.Context, i *CompleteSub
 		AND status = $3
 		AND submitted_by = $4
 	`,
-		helpers.SubmissionStatusSubmitted,
+		submissions.SubmissionStatusSubmitted,
 		submissionID,
-		helpers.SubmissionStatusPending,
+		submissions.SubmissionStatusPending,
 		userID,
 	); err != nil {
 		log.Println(err)

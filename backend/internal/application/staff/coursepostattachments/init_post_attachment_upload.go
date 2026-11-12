@@ -9,8 +9,9 @@ import (
 	"os"
 	"time"
 
-	helpers2 "app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/cryptoutil"
+	"app/internal/permissions"
+	"app/internal/uploads"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -59,7 +60,7 @@ func (svc *Service) InitPostAttachmentUpload(ctx context.Context, i *InitPostAtt
 		}
 	}
 
-	if !schools.Can(schools.PermissionPostAttachmentCreate, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionPostAttachmentCreate, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -106,7 +107,7 @@ func (svc *Service) InitPostAttachmentUpload(ctx context.Context, i *InitPostAtt
 		log.Println(err)
 		return nil, err
 	}
-	tokenHash := helpers2.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	bucketName := os.Getenv("S3_BUCKET")
 	if bucketName == "" {
@@ -115,14 +116,14 @@ func (svc *Service) InitPostAttachmentUpload(ctx context.Context, i *InitPostAtt
 	}
 
 	// store row
-	s := helpers2.UploadService{
+	s := uploads.UploadService{
 		Db:         svc.DB,
 		S3:         svc.S3,
 		Ctx:        ctx,
 		BucketName: bucketName,
 	}
 
-	objectKey := fmt.Sprintf("%s/%d", helpers2.UploadCategoryPostAttachments, id)
+	objectKey := fmt.Sprintf("%s/%d", uploads.UploadCategoryPostAttachments, id)
 
 	if err := s.StoreStorageObjectsRow(id, tokenHash, userID, p.Name, p.DeclaredSize, p.DeclaredContentType, objectKey); err != nil {
 		log.Println(err)

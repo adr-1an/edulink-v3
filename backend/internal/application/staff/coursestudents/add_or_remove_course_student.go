@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"log"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+	"app/internal/schoollogs"
 )
 
 type AddOrRemoveCourseStudentData struct {
@@ -47,11 +48,11 @@ func (svc *Service) AddOrRemoveCourseStudent(ctx context.Context, i *AddOrRemove
 	}
 
 	if assign {
-		if !schools.Can(schools.PermissionCourseStudentAssign, userID, schoolID, ctx, svc.DB) {
+		if !permissions.Can(permissions.PermissionCourseStudentAssign, userID, schoolID, ctx, svc.DB) {
 			return ErrForbidden
 		}
 	} else {
-		if !schools.Can(schools.PermissionCourseStudentRemove, userID, schoolID, ctx, svc.DB) {
+		if !permissions.Can(permissions.PermissionCourseStudentRemove, userID, schoolID, ctx, svc.DB) {
 			return ErrForbidden
 		}
 	}
@@ -83,7 +84,7 @@ func (svc *Service) AddOrRemoveCourseStudent(ctx context.Context, i *AddOrRemove
 		    (SELECT exists FROM exists),
 		    (SELECT name FROM course_name),
 		    (SELECT name FROM student_name)
-	`, p.StudentID, schoolID, courseID, helpers.AccTypeStudent).Scan(&belongsToSchool, &courseName, &studentName); err != nil {
+	`, p.StudentID, schoolID, courseID, portalusers.AccTypeStudent).Scan(&belongsToSchool, &courseName, &studentName); err != nil {
 		log.Println(err)
 		return err
 	}
@@ -93,15 +94,15 @@ func (svc *Service) AddOrRemoveCourseStudent(ctx context.Context, i *AddOrRemove
 	}
 
 	var query string
-	var logAction schools.Action
-	var logType schools.Type
+	var logAction schoollogs.Action
+	var logType schoollogs.Type
 	var logTitle string
 	var logDesc string
 	var logDetails string
 	switch assign {
 	case true:
-		logAction = schools.ActionCourseStudentAssign
-		logType = schools.TypeCreate
+		logAction = schoollogs.ActionCourseStudentAssign
+		logType = schoollogs.TypeCreate
 		logTitle = "Course student assigned"
 		logDesc = fmt.Sprintf("A student was assigned to the course %s.", courseName)
 		logDetails = fmt.Sprintf("{user} assigned %s to the course %s.", studentName, courseName)
@@ -111,8 +112,8 @@ VALUES ($1, $2)
 ON CONFLICT DO NOTHING
 `
 	default:
-		logAction = schools.ActionCourseStudentRemove
-		logType = schools.TypeDelete
+		logAction = schoollogs.ActionCourseStudentRemove
+		logType = schoollogs.TypeDelete
 		logTitle = "Course student removed"
 		logDesc = fmt.Sprintf("A student was removed from the course %s.", courseName)
 		logDetails = fmt.Sprintf("{user} removed %s from the course %s.", studentName, courseName)
@@ -135,7 +136,7 @@ WHERE portal_user_id = $1 AND course_id = $2
 	}
 
 	if affected != 0 {
-		if err := schools.StoreSchoolLog(schoolID, userID, logAction, logType, logTitle, logDesc, tx, ctx, svc.Sf, logDetails); err != nil {
+		if err := schoollogs.StoreSchoolLog(schoolID, userID, logAction, logType, logTitle, logDesc, tx, ctx, svc.Sf, logDetails); err != nil {
 			log.Println(err)
 			return err
 		}

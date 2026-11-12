@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	helpers2 "app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/uploads"
 )
 
 type UserSummary struct {
@@ -30,7 +30,7 @@ type Member struct {
 	Roles     []MemberRole
 }
 type ListStaffMembersResult struct {
-	Access   schools.AccessData
+	Access   permissions.AccessData
 	Staff    []Member
 	SchoolID int64
 }
@@ -43,7 +43,7 @@ func (s *Service) ListStaffMembers(ctx context.Context, i *ListStaffMembersInput
 	userID := i.UserID
 	schoolID := i.SchoolID
 	// Check permissions
-	if !schools.Can(schools.PermissionStaffView, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStaffView, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -72,7 +72,7 @@ func (s *Service) ListStaffMembers(ctx context.Context, i *ListStaffMembersInput
 		LEFT JOIN storage_objects so ON so.id = upp.storage_object_id AND status = $2
 		WHERE s.school_id = $1
 		ORDER BY s.created_at, s.id, sr.position DESC
-	`, schoolID, helpers2.StatusDone)
+	`, schoolID, uploads.StatusDone)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -172,7 +172,7 @@ func (s *Service) ListStaffMembers(ctx context.Context, i *ListStaffMembersInput
 		sMembers = append(sMembers, *staffByID[id])
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, userID, schoolID)
 	if err != nil {
 		return nil, err
 	}

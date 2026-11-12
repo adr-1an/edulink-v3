@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"app/internal/application/staff/coursestudents"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -20,7 +20,7 @@ type AddOrRemoveCourseStudentPayload struct {
 func (h *Handler) AddOrRemoveCourseStudentHandler(w http.ResponseWriter, r *http.Request, assign bool) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -80,7 +80,7 @@ func mapListCourseStudentsStudent(v coursestudents.ListCourseStudentsStudent) Li
 func (h *Handler) ListCourseStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

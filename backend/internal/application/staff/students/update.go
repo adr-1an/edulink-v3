@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log"
 
-	"app/internal/helpers"
-	staffhelpers "app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
+	"app/internal/dbutil"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+	"app/internal/schoollogs"
 
 	"github.com/alexedwards/argon2id"
 )
@@ -24,13 +25,13 @@ func (s *Service) UpdateStudent(ctx context.Context, i *UpdateStudentInput) erro
 	studentID := i.StudentID
 	p := i.Student
 
-	schoolID, err := staffhelpers.StudentToSchoolID(ctx, s.DB, studentID)
+	schoolID, err := portalusers.StudentToSchoolID(ctx, s.DB, studentID)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	if !schools.Can(schools.PermissionStudentUpdate, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStudentUpdate, userID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 
@@ -67,12 +68,12 @@ func (s *Service) UpdateStudent(ctx context.Context, i *UpdateStudentInput) erro
 		WHERE id = $1
 		AND school_id = $2
 		AND account_type = $3
-	`, studentID, schoolID, helpers.AccTypeStudent).Scan(&accountActive); err != nil {
+	`, studentID, schoolID, portalusers.AccTypeStudent).Scan(&accountActive); err != nil {
 		log.Println(err)
 		return err
 	}
-	if permission, changed := schools.PortalUserActiveStatePermission(accountActive, p.AccountActive); changed &&
-		!schools.Can(permission, userID, schoolID, ctx, s.DB) {
+	if permission, changed := permissions.PortalUserActiveStatePermission(accountActive, p.AccountActive); changed &&
+		!permissions.Can(permission, userID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 
@@ -102,7 +103,7 @@ func (s *Service) UpdateStudent(ctx context.Context, i *UpdateStudentInput) erro
 		WHERE id = $1
 		AND school_id = $2
 		AND account_type = $3
-	`, studentID, schoolID, helpers.AccTypeStudent).Scan(&name, &lastName, &email); err != nil {
+	`, studentID, schoolID, portalusers.AccTypeStudent).Scan(&name, &lastName, &email); err != nil {
 		log.Println(err)
 		return err
 	}
@@ -134,7 +135,7 @@ func (s *Service) UpdateStudent(ctx context.Context, i *UpdateStudentInput) erro
 		passHash,
 		studentID,
 		schoolID,
-		helpers.AccTypeStudent,
+		portalusers.AccTypeStudent,
 	)
 	if err != nil {
 		log.Println(err)
@@ -155,7 +156,7 @@ func (s *Service) UpdateStudent(ctx context.Context, i *UpdateStudentInput) erro
 	details := fmt.Sprintf(
 		"{user} updated the student %s %s <%s> to %s %s <%s>.",
 		name, lastName, email, p.Name, p.LastName, p.Email)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStudentEdit, schools.TypeEdit, "Student updated", "{user} updated a student.", tx, ctx, s.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionStudentEdit, schoollogs.TypeEdit, "Student updated", "{user} updated a student.", tx, ctx, s.Sf, details); err != nil {
 		log.Println(err)
 		return err
 	}
@@ -165,7 +166,7 @@ func (s *Service) UpdateStudent(ctx context.Context, i *UpdateStudentInput) erro
 		return err
 	}
 
-	if err := staffhelpers.RowsAffected(res); err != nil {
+	if err := dbutil.RowsAffected(res); err != nil {
 		return err
 	}
 

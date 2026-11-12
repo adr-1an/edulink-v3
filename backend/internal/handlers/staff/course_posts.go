@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"app/internal/application/staff/courseposts"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -24,7 +24,7 @@ type CreatePostPayload struct {
 func (h *Handler) CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -74,7 +74,7 @@ type UpdatePostPayload struct {
 func (h *Handler) UpdatePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -167,7 +167,7 @@ func mapListPostsPost(v courseposts.ListPostsPost) ListPostsPost {
 func (h *Handler) ListPostsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -205,7 +205,7 @@ func (h *Handler) ListPostsHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeletePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -299,7 +299,7 @@ func mapViewPostPost(v courseposts.ViewPostPost) ViewPostPost {
 func (h *Handler) ViewPostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

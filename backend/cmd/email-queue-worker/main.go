@@ -1,8 +1,8 @@
 package main
 
 import (
-	"app/internal/helpers"
 	"app/internal/infra"
+	"app/internal/mailer"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -38,7 +38,7 @@ func loop(db *sql.DB) {
 		Retries    int
 		MaxRetries int
 
-		Purpose   *helpers.MailQueuePurpose
+		Purpose   *mailer.MailQueuePurpose
 		Metadata  json.RawMessage
 		SendAt    time.Time
 		CreatedAt time.Time
@@ -108,7 +108,7 @@ func loop(db *sql.DB) {
 	}
 
 	for _, e := range emails {
-		msg := helpers.Mail{
+		msg := mailer.Mail{
 			To:          e.SendTo,
 			Subject:     e.Subject,
 			ContentType: e.ContentType,
@@ -116,7 +116,7 @@ func loop(db *sql.DB) {
 			Body:        e.Body,
 		}
 
-		if err := helpers.SendMail(msg); err != nil {
+		if err := mailer.SendMail(msg); err != nil {
 			nextRetries := e.Retries + 1
 
 			if nextRetries >= e.MaxRetries {

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log"
 
-	"app/internal/helpers"
-	staffhelpers "app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
+	"app/internal/dbutil"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+	"app/internal/schoollogs"
 
 	"github.com/alexedwards/argon2id"
 )
@@ -24,7 +25,7 @@ func (s *Service) CreateStudent(ctx context.Context, i *CreateStudentInput) erro
 	schoolID := i.SchoolID
 	p := i.Student
 
-	if !schools.Can(schools.PermissionStudentCreate, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStudentCreate, userID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 
@@ -36,7 +37,7 @@ func (s *Service) CreateStudent(ctx context.Context, i *CreateStudentInput) erro
 	if err != nil {
 		return ErrInvalidData
 	}
-	if p.AccountActive && !schools.Can(schools.PermissionPortalUserActivate, userID, schoolID, ctx, s.DB) {
+	if p.AccountActive && !permissions.Can(permissions.PermissionPortalUserActivate, userID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 
@@ -107,7 +108,7 @@ func (s *Service) CreateStudent(ctx context.Context, i *CreateStudentInput) erro
 		p.AccountEnabled,
 		p.AccountActive,
 		passHash,
-		helpers.AccTypeStudent,
+		portalusers.AccTypeStudent,
 	)
 	if err != nil {
 		log.Println(err)
@@ -115,7 +116,7 @@ func (s *Service) CreateStudent(ctx context.Context, i *CreateStudentInput) erro
 	}
 
 	details := fmt.Sprintf("{user} created a new student: %s <%s>", p.Name, p.Email)
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStudentCreate, schools.TypeCreate, "Student created", "{user} created a student.", tx, ctx, s.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionStudentCreate, schoollogs.TypeCreate, "Student created", "{user} created a student.", tx, ctx, s.Sf, details); err != nil {
 		log.Println(err)
 		return err
 	}
@@ -125,7 +126,7 @@ func (s *Service) CreateStudent(ctx context.Context, i *CreateStudentInput) erro
 		return err
 	}
 
-	if err := staffhelpers.RowsAffected(res); err != nil {
+	if err := dbutil.RowsAffected(res); err != nil {
 		return err
 	}
 

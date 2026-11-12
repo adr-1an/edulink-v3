@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"app/internal/application/staff/logs"
-	staffhelpers "app/internal/helpers/staff"
+	"app/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -32,7 +32,7 @@ type schoolLog struct {
 func (h *Handler) ListSchoolLogsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

@@ -5,8 +5,9 @@ import (
 	"log"
 	"time"
 
-	helpers2 "app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+	"app/internal/uploads"
 )
 
 type ListStudentsInput struct {
@@ -38,12 +39,12 @@ type studentType struct {
 }
 
 type ListStudentsResult struct {
-	Access   schools.AccessData
+	Access   permissions.AccessData
 	Students []studentType
 }
 
 func (s *Service) ListStudents(ctx context.Context, i *ListStudentsInput) (*ListStudentsResult, error) {
-	if !schools.Can(schools.PermissionStudentList, i.UserID, i.SchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStudentList, i.UserID, i.SchoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -68,7 +69,7 @@ func (s *Service) ListStudents(ctx context.Context, i *ListStudentsInput) (*List
 			AND g.account_type = $4
 		WHERE pu.school_id = $1
 		AND pu.account_type = $2
-	`, i.SchoolID, helpers2.AccTypeStudent, helpers2.StatusDone, helpers2.AccTypeGuardian)
+	`, i.SchoolID, portalusers.AccTypeStudent, uploads.StatusDone, portalusers.AccTypeGuardian)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -122,7 +123,7 @@ func (s *Service) ListStudents(ctx context.Context, i *ListStudentsInput) (*List
 	// Release the read transaction before looking up access through the connection pool.
 	_ = tx.Rollback()
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
 	if err != nil {
 		return nil, err
 	}

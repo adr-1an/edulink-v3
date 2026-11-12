@@ -7,7 +7,8 @@ import (
 	"log"
 	"strconv"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type ClearAcademicYearInput struct {
@@ -27,7 +28,7 @@ func (s *Service) ClearAcademicYear(ctx context.Context, i *ClearAcademicYearInp
 	userID := i.UserID
 	schoolID := i.SchoolID
 	// Check permissions
-	if !schools.Can(schools.PermissionAcademicYearToggleActive, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionAcademicYearToggleActive, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -67,7 +68,7 @@ func (s *Service) ClearAcademicYear(ctx context.Context, i *ClearAcademicYearInp
 	if activeYearID != 0 {
 		details = "{user} cleared active academic year " + strconv.Itoa(activeStartYear) + "-" + strconv.Itoa(activeEndYear) + " with ID " + strconv.FormatInt(activeYearID, 10) + "."
 	}
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolEdit, schools.TypeEdit, "Active academic year cleared", "{user} cleared the active academic year.", tx, ctx, s.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionSchoolEdit, schoollogs.TypeEdit, "Active academic year cleared", "{user} cleared the active academic year.", tx, ctx, s.Sf, details); err != nil {
 		log.Println(err)
 		return nil, err
 	}

@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"app/internal/application/staff/members"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/responsecodes"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -18,7 +19,7 @@ func (h *Handler) ListUserInvitationsHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -66,7 +67,7 @@ func (h *Handler) ListUserInvitationsHandler(w http.ResponseWriter, r *http.Requ
 func (h *Handler) ListSchoolInvitationsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -119,7 +120,7 @@ func (h *Handler) ListSchoolInvitationsHandler(w http.ResponseWriter, r *http.Re
 func (h *Handler) CancelSchoolInvitationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -173,7 +174,7 @@ func (h *Handler) ViewInvitationHandler(w http.ResponseWriter, r *http.Request) 
 		switch {
 		case errors.Is(err, members.ErrInvalidToken):
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidToken})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidToken})
 		case errors.Is(err, members.ErrExpired):
 			w.WriteHeader(http.StatusGone)
 		default:
@@ -193,7 +194,7 @@ func (h *Handler) SendStaffInvitationHandler(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -232,19 +233,19 @@ func (h *Handler) SendStaffInvitationHandler(w http.ResponseWriter, r *http.Requ
 			w.WriteHeader(http.StatusForbidden)
 		case errors.Is(err, members.ErrInvalidEmail):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidEmail})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidEmail})
 		case errors.Is(err, members.ErrInvalidMailImportance):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidMailImportance})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidMailImportance})
 		case errors.Is(err, members.ErrStaffMemberEmailConflict):
 			w.WriteHeader(http.StatusConflict)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeStaffMemberEmailConflict})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeStaffMemberEmailConflict})
 		case errors.Is(err, members.ErrInvitationEmailConflict):
 			w.WriteHeader(http.StatusConflict)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvitationEmailConflict})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvitationEmailConflict})
 		case errors.Is(err, members.ErrTargetPrivacyRestricted):
 			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeTargetPrivacyRestricted})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeTargetPrivacyRestricted})
 		default:
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -265,7 +266,7 @@ func (h *Handler) AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -283,7 +284,7 @@ func (h *Handler) AcceptStaffInvitationHandler(w http.ResponseWriter, r *http.Re
 			w.WriteHeader(http.StatusForbidden)
 		case errors.Is(err, members.ErrInvalidToken):
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidToken})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidToken})
 		default:
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -301,7 +302,7 @@ func (h *Handler) RejectStaffInvitationHandler(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -319,7 +320,7 @@ func (h *Handler) RejectStaffInvitationHandler(w http.ResponseWriter, r *http.Re
 			w.WriteHeader(http.StatusForbidden)
 		case errors.Is(err, members.ErrInvalidToken):
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidToken})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidToken})
 		default:
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -337,7 +338,7 @@ func (h *Handler) AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *htt
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -358,7 +359,7 @@ func (h *Handler) AcceptStaffInvitationByIDHandler(w http.ResponseWriter, r *htt
 		switch {
 		case errors.Is(err, members.ErrInvalidToken):
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidToken})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidToken})
 		default:
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -376,7 +377,7 @@ func (h *Handler) RejectStaffInvitationByIDHandler(w http.ResponseWriter, r *htt
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -399,7 +400,7 @@ func (h *Handler) RejectStaffInvitationByIDHandler(w http.ResponseWriter, r *htt
 			w.WriteHeader(http.StatusForbidden)
 		case errors.Is(err, members.ErrInvalidToken):
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidToken})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidToken})
 		default:
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -417,7 +418,7 @@ func (h *Handler) ListStaffMembersHandler(w http.ResponseWriter, r *http.Request
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -490,7 +491,7 @@ func (h *Handler) ListStaffMembersHandler(w http.ResponseWriter, r *http.Request
 func (h *Handler) DeleteStaffMemberHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -524,7 +525,7 @@ func (h *Handler) DeleteStaffMemberHandler(w http.ResponseWriter, r *http.Reques
 func (h *Handler) LeaveSchoolStaffHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

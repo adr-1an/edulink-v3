@@ -8,7 +8,8 @@ import (
 	"strconv"
 
 	"app/internal/application/staff/grades"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/responsecodes"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -17,7 +18,7 @@ func (h *Handler) ListGradesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -69,7 +70,7 @@ func (h *Handler) CreateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -107,13 +108,13 @@ func (h *Handler) CreateGradeHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusForbidden)
 		case errors.Is(err, grades.ErrMissingLevelVar):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeMissingLevelVar})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeMissingLevelVar})
 		case errors.Is(err, grades.ErrInvalidName):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidName})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidName})
 		case errors.Is(err, grades.ErrLevelOutOfRange):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeLevelOutOfRange})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeLevelOutOfRange})
 		case errors.Is(err, grades.ErrConflict):
 			w.WriteHeader(http.StatusConflict)
 		default:
@@ -133,7 +134,7 @@ func (h *Handler) UpdateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -171,13 +172,13 @@ func (h *Handler) UpdateGradeHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusForbidden)
 		case errors.Is(err, grades.ErrMissingLevelVar):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeMissingLevelVar})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeMissingLevelVar})
 		case errors.Is(err, grades.ErrInvalidName):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidName})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeInvalidName})
 		case errors.Is(err, grades.ErrLevelOutOfRange):
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeLevelOutOfRange})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeLevelOutOfRange})
 		case errors.Is(err, grades.ErrConflict):
 			w.WriteHeader(http.StatusConflict)
 		default:
@@ -197,7 +198,7 @@ func (h *Handler) DeleteGradeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"app/internal/application/staff/coursepostattachments"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -21,7 +21,7 @@ type InitPostAttachmentUploadPayload struct {
 func (h *Handler) InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -62,7 +62,7 @@ func (h *Handler) InitPostAttachmentUploadHandler(w http.ResponseWriter, r *http
 func (h *Handler) DeletePostAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

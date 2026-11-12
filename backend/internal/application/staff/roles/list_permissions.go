@@ -4,7 +4,7 @@ import (
 	"context"
 	"sort"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type ListPermissionsInput struct{}
@@ -14,7 +14,7 @@ func (s *Service) ListPermissions(ctx context.Context, i *ListPermissionsInput) 
 	// Get all valid permissions
 	var perms []string
 
-	for perm := range schools.ValidPermissions {
+	for perm := range permissions.ValidPermissions {
 		p := perm.String()
 		perms = append(perms, p)
 	}

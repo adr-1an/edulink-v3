@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
+	"app/internal/dbutil"
+	"app/internal/schoollogs"
 
 	"golang.org/x/text/language"
 )
@@ -66,12 +66,12 @@ func (s *Service) CreateSchool(ctx context.Context, i *CreateSchoolInput) error 
 		return err
 	}
 
-	if err := staffhelpers.RowsAffected(res); err != nil {
+	if err := dbutil.RowsAffected(res); err != nil {
 		return err
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(id, i.UserID, schools.ActionSchoolCreate, schools.TypeCreate, "School created", "{user} created the school '"+i.School.Name+"'.", tx, ctx, s.Sf, "{user} created school '"+i.School.Name+"' in region '"+i.School.RegionCode+"'."); err != nil {
+	if err := schoollogs.StoreSchoolLog(id, i.UserID, schoollogs.ActionSchoolCreate, schoollogs.TypeCreate, "School created", "{user} created the school '"+i.School.Name+"'.", tx, ctx, s.Sf, "{user} created school '"+i.School.Name+"' in region '"+i.School.RegionCode+"'."); err != nil {
 		log.Println(err)
 		return err
 	}

@@ -8,8 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/cryptoutil"
+	"app/internal/mailer"
+	"app/internal/permissions"
+	"app/internal/portalusers"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/wneessen/go-mail"
@@ -42,7 +44,7 @@ func (svc *Service) ImportStudents(ctx context.Context, i *ImportStudentsInput) 
 	schoolID := i.SchoolID
 	p := i.Data
 
-	if !schools.Can(schools.PermissionStudentCreate, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionStudentCreate, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -133,7 +135,7 @@ func (svc *Service) ImportStudents(ctx context.Context, i *ImportStudentsInput) 
 				log.Println(err)
 				return nil, err
 			}
-			activationTokenHash := helpers.MakeHash256(activationToken)
+			activationTokenHash := cryptoutil.MakeHash256(activationToken)
 
 			sRow.ActivationToken = &activationToken
 			sRow.ActivationTokenHash = &activationTokenHash
@@ -154,7 +156,7 @@ func (svc *Service) ImportStudents(ctx context.Context, i *ImportStudentsInput) 
 	confArgs := make([]any, 0, len(studentList))
 	confPlaceholders := make([]string, 0, len(studentList))
 
-	mailQ := make([]helpers.MailQueue, 0, len(studentList))
+	mailQ := make([]mailer.MailQueue, 0, len(studentList))
 
 	for i, s := range studentList {
 		n := i*argLen + 1
@@ -183,7 +185,7 @@ func (svc *Service) ImportStudents(ctx context.Context, i *ImportStudentsInput) 
 			s.Phone,
 			s.Notes,
 			s.AccountEnabled,
-			helpers.AccTypeStudent,
+			portalusers.AccTypeStudent,
 		)
 
 		// Build placeholders & args for the account activation token insert query
@@ -209,21 +211,22 @@ Your %s Portal account has been created. Please activate it here:
 				verificationURL,
 			)
 
-			mailQ = append(mailQ, helpers.MailQueue{
+			purpose := mailer.MailPurposeStudentAccountCreation
+			mailQ = append(mailQ, mailer.MailQueue{
 				To:          s.Email,
 				Subject:     fmt.Sprintf("Your %s account", strings.TrimSpace(appName)),
 				ContentType: mail.TypeTextPlain,
 				Importance:  mail.ImportanceNormal,
 				Body:        msgBody,
 				SendAt:      nil,
-				Purpose:     helpers.Ptr(helpers.MailPurposeStudentAccountCreation),
+				Purpose:     &purpose,
 				MaxRetries:  nil,
 			})
 		}
 	}
 
 	if p.EnableAccounts {
-		if err := helpers.AppendMailQueue(mailQ, svc.Sf, tx, ctx); err != nil {
+		if err := mailer.AppendMailQueue(mailQ, svc.Sf, tx, ctx); err != nil {
 			log.Println(err)
 			return nil, err
 		}

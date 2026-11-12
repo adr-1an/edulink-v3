@@ -1,8 +1,10 @@
 package students
 
 import (
-	"app/internal/helpers"
-	portal "app/internal/helpers/portal"
+	"app/internal/permissions"
+	"app/internal/submissions"
+	"app/internal/uploads"
+
 	"context"
 	"database/sql"
 	"errors"
@@ -76,7 +78,7 @@ func (s *Service) CourseDashboard(ctx context.Context, i *CourseDashboardInput) 
 	userID := i.UserID
 	courseID := i.CourseID
 
-	if !portal.CanAccessCourse(s.DB, userID, courseID, ctx) {
+	if !permissions.CanAccessCourse(s.DB, userID, courseID, ctx) {
 		return nil, ErrForbidden
 	}
 
@@ -115,7 +117,7 @@ func (s *Service) CourseDashboard(ctx context.Context, i *CourseDashboardInput) 
 		LEFT JOIN storage_objects so ON pa.storage_object_id = so.id AND so.status = $2
 		WHERE p.course_id = $1
 		AND (p.show_until IS NULL OR p.show_until > NOW())
-	`, courseID, helpers.StatusDone)
+	`, courseID, uploads.StatusDone)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -250,7 +252,7 @@ func (s *Service) CourseDashboard(ctx context.Context, i *CourseDashboardInput) 
 		JOIN academic_years y ON g.academic_year_id = y.id AND y.is_active = TRUE
 		WHERE a.course_id = $1
 		AND a.archived_at IS NULL
-	`, courseID, userID, helpers.SubmissionStatusReturned)
+	`, courseID, userID, submissions.SubmissionStatusReturned)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -324,7 +326,7 @@ func (s *Service) CourseDashboard(ctx context.Context, i *CourseDashboardInput) 
 		if submissionID != nil {
 			a.Submission = &AssignmentSubmission{
 				ID:          strconv.FormatInt(*submissionID, 10),
-				Status:      helpers.SubmissionStatus(*submissionStatus),
+				Status:      submissions.SubmissionStatus(*submissionStatus),
 				Grade:       nil,
 				Notes:       *submissionNotes,
 				Attachments: []AssignmentSubmissionAttachment{},

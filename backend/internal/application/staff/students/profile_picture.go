@@ -9,8 +9,9 @@ import (
 	"os"
 	"time"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/cryptoutil"
+	"app/internal/permissions"
+	"app/internal/uploads"
 
 	"github.com/lib/pq"
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -48,7 +49,7 @@ func (s *Service) UploadStudentProfilePicture(ctx context.Context, i *UploadProf
 	}
 
 	// Check perms
-	if !schools.Can(schools.PermissionStudentUpdate, i.UserID, portalUserSchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStudentUpdate, i.UserID, portalUserSchoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -92,9 +93,9 @@ func (s *Service) UploadStudentProfilePicture(ctx context.Context, i *UploadProf
 	if err != nil {
 		return nil, err
 	}
-	tokenHash := helpers.MakeHash256(completionToken)
+	tokenHash := cryptoutil.MakeHash256(completionToken)
 
-	objKey := fmt.Sprintf("%s/%d", helpers.UploadCategoryStudentProfilePics, objectID)
+	objKey := fmt.Sprintf("%s/%d", uploads.UploadCategoryStudentProfilePics, objectID)
 
 	url, err := s.S3.PresignedPutObject(ctx, bucketName, objKey, 5*time.Minute)
 	if err != nil {
@@ -108,7 +109,7 @@ func (s *Service) UploadStudentProfilePicture(ctx context.Context, i *UploadProf
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	uploadService := helpers.UploadService{
+	uploadService := uploads.UploadService{
 		Db:         tx,
 		S3:         s.S3,
 		Ctx:        ctx,
@@ -171,7 +172,7 @@ func (s *Service) ClearStudentProfilePicture(ctx context.Context, i *ClearStuden
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionStudentUpdate, i.UserID, studentSchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStudentUpdate, i.UserID, studentSchoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
 )
 
 type UnassignGuardianInput struct {
@@ -16,12 +16,12 @@ type UnassignGuardianInput struct {
 
 func (s *Service) UnassignGuardian(ctx context.Context, i *UnassignGuardianInput) error {
 	// Get the student & guardian school ID
-	sSchoolID, err := staffhelpers.StudentToSchoolID(ctx, s.DB, i.StudentID)
+	sSchoolID, err := portalusers.StudentToSchoolID(ctx, s.DB, i.StudentID)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	gSchoolID, err := staffhelpers.GuardianToSchoolID(ctx, s.DB, i.GuardianID)
+	gSchoolID, err := portalusers.GuardianToSchoolID(ctx, s.DB, i.GuardianID)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -31,7 +31,7 @@ func (s *Service) UnassignGuardian(ctx context.Context, i *UnassignGuardianInput
 		return ErrForbidden
 	}
 
-	if !schools.Can(schools.PermissionStudentGuardianUnassign, i.UserID, sSchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStudentGuardianUnassign, i.UserID, sSchoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 

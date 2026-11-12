@@ -4,7 +4,8 @@ import (
 	"context"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type CreatePostInput struct {
@@ -38,7 +39,7 @@ func (svc *Service) CreatePost(ctx context.Context, i *CreatePostInput) (*Create
 		return nil, err
 	}
 
-	if !schools.Can(schools.PermissionCoursePostCreate, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCoursePostCreate, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -81,7 +82,7 @@ func (svc *Service) CreatePost(ctx context.Context, i *CreatePostInput) (*Create
 		return nil, err
 	}
 
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionPostCreate, schools.TypeCreate, "Post created", "{user} created the post '"+p.Title+"'.", tx, ctx, svc.Sf, "{user} created post '"+p.Title+"' with accent color '#"+p.AccentColor+"'."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionPostCreate, schoollogs.TypeCreate, "Post created", "{user} created the post '"+p.Title+"'.", tx, ctx, svc.Sf, "{user} created post '"+p.Title+"' with accent color '#"+p.AccentColor+"'."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

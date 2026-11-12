@@ -6,14 +6,14 @@ import (
 	"errors"
 	"log"
 
-	helpers2 "app/internal/helpers"
+	"app/internal/cryptoutil"
 )
 
 type RecoverTwoFactorInput struct{ RecoveryCode string }
 
 func (s *Service) RecoverTwoFactor(ctx context.Context, i *RecoverTwoFactorInput) error {
 
-	codeHash := helpers2.MakeHash256(i.RecoveryCode)
+	codeHash := cryptoutil.MakeHash256(i.RecoveryCode)
 
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {

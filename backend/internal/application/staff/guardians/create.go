@@ -1,8 +1,9 @@
 package guardians
 
 import (
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+
 	"context"
 	"log"
 	"strings"
@@ -34,10 +35,10 @@ type CreateGuardianResult struct {
 }
 
 func (s *Service) CreateGuardian(ctx context.Context, i *CreateGuardianInput) (*CreateGuardianResult, error) {
-	if !schools.Can(schools.PermissionGuardianCreate, i.UserID, i.SchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionGuardianCreate, i.UserID, i.SchoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
-	if i.Guardian.ActivateAccount && !schools.Can(schools.PermissionPortalUserActivate, i.UserID, i.SchoolID, ctx, s.DB) {
+	if i.Guardian.ActivateAccount && !permissions.Can(permissions.PermissionPortalUserActivate, i.UserID, i.SchoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -130,7 +131,7 @@ func (s *Service) CreateGuardian(ctx context.Context, i *CreateGuardianInput) (*
 		i.Guardian.AccountEnabled,
 		i.Guardian.ActivateAccount,
 		guardianPass,
-		helpers.AccTypeGuardian,
+		portalusers.AccTypeGuardian,
 	)
 	if err != nil {
 		log.Println(err)

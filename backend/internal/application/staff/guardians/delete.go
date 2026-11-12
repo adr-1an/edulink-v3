@@ -1,8 +1,9 @@
 package guardians
 
 import (
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/portalusers"
+
 	"context"
 	"database/sql"
 	"errors"
@@ -22,7 +23,7 @@ func (s *Service) DeleteGuardian(ctx context.Context, i *DeleteGuardianInput) er
 		FROM portal_users
 		WHERE id = $1
 	  	AND account_type = $2
-	`, i.GuardianID, helpers.AccTypeGuardian).Scan(&schoolID); err != nil {
+	`, i.GuardianID, portalusers.AccTypeGuardian).Scan(&schoolID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrForbidden
 		}
@@ -30,7 +31,7 @@ func (s *Service) DeleteGuardian(ctx context.Context, i *DeleteGuardianInput) er
 		return err
 	}
 
-	if !schools.Can(schools.PermissionGuardianDelete, i.UserID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionGuardianDelete, i.UserID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 

@@ -8,7 +8,8 @@ import (
 	"log"
 	"strings"
 
-	helpers2 "app/internal/helpers"
+	"app/internal/auth"
+	"app/internal/cryptoutil"
 
 	"github.com/pquerna/otp/totp"
 )
@@ -47,13 +48,13 @@ func (s *Service) VerifyTwoFactor(ctx context.Context, i *VerifyTwoFactorInput) 
 		}
 	}
 
-	appKey, err := helpers2.LoadAppEncKey()
+	appKey, err := cryptoutil.LoadAppEncKey()
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
-	secret, err := helpers2.DecryptString(totpSecret, appKey)
+	secret, err := cryptoutil.DecryptString(totpSecret, appKey)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -77,13 +78,13 @@ func (s *Service) VerifyTwoFactor(ctx context.Context, i *VerifyTwoFactorInput) 
 	args := make([]any, 0, 16)
 
 	for i := range 8 {
-		code, err := helpers2.GenerateRecoveryCode()
+		code, err := auth.GenerateRecoveryCode()
 		if err != nil {
 			log.Println(err)
 			return nil, err
 		}
 
-		codeHash := helpers2.MakeHash256(code)
+		codeHash := cryptoutil.MakeHash256(code)
 		codes[i] = code
 
 		n := len(args)

@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"app/internal/application/staff/submissionscores"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -21,7 +21,7 @@ type GradeSubmissionPayload struct {
 func (h *Handler) GradeSubmissionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -59,7 +59,7 @@ func (h *Handler) GradeSubmissionHandler(w http.ResponseWriter, r *http.Request)
 func (h *Handler) ClearSubmissionScoreHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

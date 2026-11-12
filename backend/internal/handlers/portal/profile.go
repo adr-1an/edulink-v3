@@ -2,8 +2,9 @@ package portal
 
 import (
 	portalProfile "app/internal/application/portal/profile"
-	"app/internal/helpers"
-	"app/internal/helpers/portal"
+	"app/internal/auth"
+	"app/internal/portalusers"
+
 	"encoding/json"
 	"net/http"
 	"time"
@@ -12,7 +13,7 @@ import (
 func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeEither)
+	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeEither)
 	if err != nil {
 		return
 	}

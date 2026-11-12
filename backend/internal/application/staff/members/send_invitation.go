@@ -10,8 +10,10 @@ import (
 	"os"
 	"strings"
 
-	helpers2 "app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/cryptoutil"
+	"app/internal/mailer"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 
 	"github.com/matoous/go-nanoid/v2"
 	"github.com/wneessen/go-mail"
@@ -40,7 +42,7 @@ func (s *Service) SendInvitation(ctx context.Context, i *SendInvitationInput) (*
 	schoolID := i.SchoolID
 	p := i.Invitation
 	// Check permissions
-	allowed := schools.Can(schools.PermissionStaffCreate, userID, schoolID, ctx, s.DB)
+	allowed := permissions.Can(permissions.PermissionStaffCreate, userID, schoolID, ctx, s.DB)
 	if !allowed {
 		return nil, ErrForbidden
 	}
@@ -177,7 +179,7 @@ func (s *Service) SendInvitation(ctx context.Context, i *SendInvitationInput) (*
 		log.Println(err)
 		return nil, err
 	}
-	tokenHash := helpers2.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	// Generate invitation ID
 	id, err := s.Sf.NextID()
@@ -207,7 +209,7 @@ func (s *Service) SendInvitation(ctx context.Context, i *SendInvitationInput) (*
 	if p.Importance == "" {
 		p.Importance = "normal"
 	}
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionStaffInvitationCreate, schools.TypeCreate, "Staff invitation sent", "{user} invited '"+p.Email+"' to join the school.", tx, ctx, s.Sf, "{user} sent a staff invitation to '"+p.Email+"' with "+p.Importance+" importance."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionStaffInvitationCreate, schoollogs.TypeCreate, "Staff invitation sent", "{user} invited '"+p.Email+"' to join the school.", tx, ctx, s.Sf, "{user} sent a staff invitation to '"+p.Email+"' with "+p.Importance+" importance."); err != nil {
 		log.Println(err)
 		return nil, err
 	}
@@ -226,7 +228,7 @@ func (s *Service) SendInvitation(ctx context.Context, i *SendInvitationInput) (*
 	msg := fmt.Sprintf(`Hello%s,
 You've been invited to join a school as a staff member. Click the link below to view the invitation:
 %s`, userName, verificationLink)
-	email := helpers2.Mail{
+	email := mailer.Mail{
 		To:          p.Email,
 		Subject:     "EduLink staff invitation",
 		ContentType: mail.TypeTextPlain,
@@ -235,7 +237,7 @@ You've been invited to join a school as a staff member. Click the link below to 
 	}
 
 	go func() {
-		if err := helpers2.SendMail(email); err != nil {
+		if err := mailer.SendMail(email); err != nil {
 			log.Println(err)
 		}
 	}()

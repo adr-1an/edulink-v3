@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type CreateGradeInput struct {
@@ -48,7 +49,7 @@ func (s *Service) CreateGrade(ctx context.Context, i *CreateGradeInput) (*Create
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionGradeCreate, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionGradeCreate, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -121,7 +122,7 @@ func (s *Service) CreateGrade(ctx context.Context, i *CreateGradeInput) (*Create
 	noRowsAffected = noRowsAffected || affectedRows == 0
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionGradeCreate, schools.TypeCreate, "Grade created", "{user} created the grade '"+p.Name+"'.", tx, ctx, s.Sf, "{user} created grade '"+p.Name+"' at level "+strconv.Itoa(p.Level)+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionGradeCreate, schoollogs.TypeCreate, "Grade created", "{user} created the grade '"+p.Name+"'.", tx, ctx, s.Sf, "{user} created grade '"+p.Name+"' at level "+strconv.Itoa(p.Level)+"."); err != nil {
 		log.Println(err)
 		return nil, err
 	}

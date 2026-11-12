@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"app/internal/application/staff/assignments"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -27,7 +27,7 @@ type CreateAssignmentPayload struct {
 func (h *Handler) CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -105,7 +105,7 @@ func mapListAssignmentsAssignment(v assignments.ListAssignmentsAssignment) ListA
 func (h *Handler) ListAssignmentsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -153,7 +153,7 @@ type UpdateAssignmentPayload struct {
 func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -189,7 +189,7 @@ func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request
 func (h *Handler) DeleteAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

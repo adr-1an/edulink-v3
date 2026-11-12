@@ -9,8 +9,9 @@ import (
 	"os"
 	"strings"
 
-	helpers2 "app/internal/helpers"
-	staffhelpers "app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/cryptoutil"
+	"app/internal/mailer"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/wneessen/go-mail"
@@ -46,7 +47,7 @@ func (s *Service) SendPasswordResetEmail(ctx context.Context, i *SendPasswordRes
 		DELETE FROM verification_tokens
 		WHERE user_id = $1
 		AND purpose = $2
-	`, userID, staffhelpers.TokenPurposePasswordReset)
+	`, userID, auth.TokenPurposePasswordReset)
 	if err != nil {
 		return err
 	}
@@ -56,13 +57,13 @@ func (s *Service) SendPasswordResetEmail(ctx context.Context, i *SendPasswordRes
 	if err != nil {
 		return err
 	}
-	resetTokenHash := helpers2.MakeHash256(resetToken)
+	resetTokenHash := cryptoutil.MakeHash256(resetToken)
 
 	// Store in DB
 	_, err = s.DB.ExecContext(ctx, `
 		INSERT INTO verification_tokens (token_hash, user_id, purpose)
 		VALUES ($1, $2, $3)
-	`, resetTokenHash, userID, staffhelpers.TokenPurposePasswordReset)
+	`, resetTokenHash, userID, auth.TokenPurposePasswordReset)
 	if err != nil {
 		return err
 	}
@@ -72,7 +73,7 @@ func (s *Service) SendPasswordResetEmail(ctx context.Context, i *SendPasswordRes
 	resetURL := fmt.Sprintf("%s/auth/reset/%s", frontendURL, resetToken)
 
 	msgBody := fmt.Sprintf("Did you request a password reset? If so, here's your link: %s", resetURL)
-	msg := helpers2.Mail{
+	msg := mailer.Mail{
 		To:          i.Email,
 		Subject:     "Password reset request",
 		ContentType: mail.TypeTextPlain,
@@ -80,7 +81,7 @@ func (s *Service) SendPasswordResetEmail(ctx context.Context, i *SendPasswordRes
 		Body:        msgBody,
 	}
 	go func() {
-		if err := helpers2.SendMail(msg); err != nil {
+		if err := mailer.SendMail(msg); err != nil {
 			log.Println(err)
 			return
 		}

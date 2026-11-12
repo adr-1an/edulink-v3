@@ -6,8 +6,8 @@ import (
 	"errors"
 	"log"
 
-	helpers2 "app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/uploads"
 
 	"github.com/minio/minio-go/v7"
 )
@@ -39,7 +39,7 @@ func (svc *Service) DeletePostAttachment(ctx context.Context, i *DeletePostAttac
 		ON so.id = pa.storage_object_id
 		WHERE so.status = $1
 		AND pa.id = $2
-	`, helpers2.StatusDone, attachmentID).Scan(&schoolID, &bucketName, &objKey); err != nil {
+	`, uploads.StatusDone, attachmentID).Scan(&schoolID, &bucketName, &objKey); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrForbidden
 		} else {
@@ -48,7 +48,7 @@ func (svc *Service) DeletePostAttachment(ctx context.Context, i *DeletePostAttac
 		}
 	}
 
-	if !schools.Can(schools.PermissionPostAttachmentDelete, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionPostAttachmentDelete, userID, schoolID, ctx, svc.DB) {
 		return ErrForbidden
 	}
 

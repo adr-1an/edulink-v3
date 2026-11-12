@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"log"
 
-	schools2 "app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type CreateAssignmentInput struct {
@@ -39,7 +40,7 @@ func (svc *Service) CreateAssignment(ctx context.Context, i *CreateAssignmentInp
 		}
 	}
 
-	if !schools2.Can(schools2.PermissionCourseAssignmentCreate, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCourseAssignmentCreate, userID, schoolID, ctx, svc.DB) {
 		return ErrForbidden
 	}
 
@@ -114,7 +115,7 @@ func (svc *Service) CreateAssignment(ctx context.Context, i *CreateAssignmentInp
 	}
 
 	details := fmt.Sprintf("{user} created the assignment '%s' with submissions %s.", p.Title, submissions)
-	if err := schools2.StoreSchoolLog(schoolID, userID, schools2.ActionAssignmentCreate, schools2.TypeCreate, "Assignment created", "{user} created an assignment", tx, ctx, svc.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionAssignmentCreate, schoollogs.TypeCreate, "Assignment created", "{user} created an assignment", tx, ctx, svc.Sf, details); err != nil {
 		log.Println(err)
 		return err
 	}

@@ -11,7 +11,8 @@ import (
 	"strconv"
 
 	staffProfile "app/internal/application/staff/profile"
-	staffhelpers "app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/responsecodes"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -19,7 +20,7 @@ import (
 func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -41,7 +42,7 @@ func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -78,7 +79,7 @@ func (h *Handler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) SendEmailChangeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -104,7 +105,7 @@ func (h *Handler) SendEmailChangeHandler(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusUnprocessableEntity)
 		case errors.Is(err, staffProfile.ErrIncorrectPassword):
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeIncorrectPassword})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeIncorrectPassword})
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -140,7 +141,7 @@ func (h *Handler) EmailUpdateHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -178,7 +179,7 @@ func (h *Handler) PasswordChangeHandler(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) UploadPfpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -213,7 +214,7 @@ func (h *Handler) UploadPfpHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ClearPfpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}

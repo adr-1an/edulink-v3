@@ -7,7 +7,8 @@ import (
 	"log"
 	"strings"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type SetStaffRolePermissionInput struct {
@@ -45,7 +46,7 @@ func (s *Service) SetStaffRolePermission(ctx context.Context, i *SetStaffRolePer
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionRolePermissionUpdate, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionRolePermissionUpdate, userID, schoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 
@@ -57,7 +58,7 @@ func (s *Service) SetStaffRolePermission(ctx context.Context, i *SetStaffRolePer
 	p.Permission = strings.TrimSpace(p.Permission)
 
 	// Validate
-	if !schools.ValidatePermissionString(p.Permission) {
+	if !permissions.ValidatePermissionString(p.Permission) {
 		return ErrUnprocessableEntity
 	}
 
@@ -70,7 +71,7 @@ func (s *Service) SetStaffRolePermission(ctx context.Context, i *SetStaffRolePer
 	defer func() { _ = tx.Rollback() }()
 
 	// Check if the user owns the school or can edit the role
-	allowed, err := schools.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, schoolID, position)
+	allowed, err := permissions.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, schoolID, position)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -112,7 +113,7 @@ func (s *Service) SetStaffRolePermission(ctx context.Context, i *SetStaffRolePer
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionRolePermissionEdit, schools.TypeEdit, title, message, tx, ctx, s.Sf); err != nil {
+	if err := schoollogs.StoreSchoolLog(schoolID, userID, schoollogs.ActionRolePermissionEdit, schoollogs.TypeEdit, title, message, tx, ctx, s.Sf); err != nil {
 		log.Println(err)
 		return err
 	}

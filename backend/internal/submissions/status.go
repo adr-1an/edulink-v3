@@ -1,4 +1,4 @@
-package helpers
+package submissions
 
 type SubmissionStatus string
 

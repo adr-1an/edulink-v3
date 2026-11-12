@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"app/internal/application/staff/submissions"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type GradeSubmissionData struct {
@@ -38,7 +38,7 @@ func (svc *Service) GradeSubmission(ctx context.Context, i *GradeSubmissionInput
 		}
 	}
 
-	if !schools.Can(schools.PermissionSubmissionGrade, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionSubmissionGrade, userID, schoolID, ctx, svc.DB) {
 		return ErrForbidden
 	}
 

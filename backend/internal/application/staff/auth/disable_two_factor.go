@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	helpers2 "app/internal/helpers"
+	"app/internal/cryptoutil"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/pquerna/otp/totp"
@@ -53,13 +53,13 @@ func (s *Service) DisableTwoFactor(ctx context.Context, i *DisableTwoFactorInput
 	}
 
 	// Check TOTP
-	appKey, err := helpers2.LoadAppEncKey()
+	appKey, err := cryptoutil.LoadAppEncKey()
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	secret, err := helpers2.DecryptString(totpSecret, appKey)
+	secret, err := cryptoutil.DecryptString(totpSecret, appKey)
 	if err != nil {
 		log.Println(err)
 		return err

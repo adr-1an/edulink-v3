@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"app/internal/helpers"
+	"app/internal/cryptoutil"
 	"context"
 	"database/sql"
 	"errors"
@@ -58,7 +58,7 @@ func (s *Service) Login(ctx context.Context, i *LoginInput) (*LoginResult, error
 	if !loginAllowed {
 		return nil, ErrUnauthorized
 	}
-        
+
 	match, err := argon2id.ComparePasswordAndHash(i.Password, passwordHash)
 	if err != nil {
 		log.Println(err)
@@ -74,7 +74,7 @@ func (s *Service) Login(ctx context.Context, i *LoginInput) (*LoginResult, error
 		log.Println(err)
 		return nil, err
 	}
-	tokenHash := helpers.MakeHash256(token)
+	tokenHash := cryptoutil.MakeHash256(token)
 
 	if _, err := s.DB.ExecContext(ctx, `
 		INSERT INTO portal_sessions (token_hash, portal_user_id)

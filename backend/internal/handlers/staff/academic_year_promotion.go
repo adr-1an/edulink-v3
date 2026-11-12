@@ -8,7 +8,8 @@ import (
 	"strconv"
 
 	"app/internal/application/staff/academicyears"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
+	"app/internal/responsecodes"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -22,7 +23,7 @@ func (h *Handler) SchoolPromotionHandler(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -80,12 +81,12 @@ func (h *Handler) SchoolPromotionHandler(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusForbidden)
 		case errors.Is(err, academicyears.ErrNoActiveYear):
 			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeNoActiveYear})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeNoActiveYear})
 		case errors.Is(err, academicyears.ErrUnprocessableEntity):
 			w.WriteHeader(http.StatusUnprocessableEntity)
 		case errors.Is(err, academicyears.ErrAcademicYearConflict):
 			w.WriteHeader(http.StatusConflict)
-			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeAcademicYearConflict})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": responsecodes.ErrorCodeAcademicYearConflict})
 		default:
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)

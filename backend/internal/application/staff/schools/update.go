@@ -8,8 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
+	"app/internal/dbutil"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 
 	"golang.org/x/text/language"
 )
@@ -28,14 +29,14 @@ type UpdateSchoolInput struct {
 
 func (s *Service) UpdateSchool(ctx context.Context, i *UpdateSchoolInput) error {
 	// School permission check
-	if !schools.Can(schools.PermissionSchoolUpdate, i.UserID, i.SchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionSchoolUpdate, i.UserID, i.SchoolID, ctx, s.DB) {
 		return ErrNoPermission
 	}
 
 	if i.School.ActiveAcademicYearID != nil &&
 		// If p.ActiveAcademicYearID isn't null, it means the user is trying to change the currently active academic year.
 		// To do that, they need the academicYear.toggle permission.
-		!schools.Can(schools.PermissionAcademicYearToggleActive, i.UserID, i.SchoolID, ctx, s.DB) {
+		!permissions.Can(permissions.PermissionAcademicYearToggleActive, i.UserID, i.SchoolID, ctx, s.DB) {
 		return ErrNoPermission
 	}
 
@@ -121,7 +122,7 @@ func (s *Service) UpdateSchool(ctx context.Context, i *UpdateSchoolInput) error 
 			log.Println(err)
 			return err
 		}
-		if err := staffhelpers.RowsAffected(res); err != nil {
+		if err := dbutil.RowsAffected(res); err != nil {
 			return err
 		}
 	}
@@ -136,13 +137,13 @@ func (s *Service) UpdateSchool(ctx context.Context, i *UpdateSchoolInput) error 
 		log.Println(err)
 		return err
 	}
-	if err := staffhelpers.RowsAffected(res); err != nil {
+	if err := dbutil.RowsAffected(res); err != nil {
 		return err
 	}
 
 	// Log action
 	details := "{user} updated the school name from '" + oldName + "' to '" + i.School.Name + "' and region from '" + oldRegionCode + "' to '" + i.School.RegionCode + "'." + activeYearDetails
-	if err := schools.StoreSchoolLog(i.SchoolID, i.UserID, schools.ActionSchoolEdit, schools.TypeEdit, "School updated", "{user} updated the school '"+i.School.Name+"'.", tx, ctx, s.Sf, details); err != nil {
+	if err := schoollogs.StoreSchoolLog(i.SchoolID, i.UserID, schoollogs.ActionSchoolEdit, schoollogs.TypeEdit, "School updated", "{user} updated the school '"+i.School.Name+"'.", tx, ctx, s.Sf, details); err != nil {
 		log.Println(err)
 		return err
 	}

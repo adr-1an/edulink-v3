@@ -1,4 +1,4 @@
-package staffhelpers
+package dbutil
 
 import (
 	"database/sql"

@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type SchoolInvitationUser struct {
@@ -22,7 +22,7 @@ type SchoolInvitation struct {
 	ExpiresAt time.Time
 }
 type ListSchoolInvitationsResult struct {
-	Access      schools.AccessData
+	Access      permissions.AccessData
 	Invitations []SchoolInvitation
 	SchoolID    int64
 }
@@ -34,7 +34,7 @@ type ListSchoolInvitationsInput struct {
 func (s *Service) ListSchoolInvitations(ctx context.Context, i *ListSchoolInvitationsInput) (*ListSchoolInvitationsResult, error) {
 	userID := i.UserID
 	schoolID := i.SchoolID
-	if !schools.Can(schools.PermissionSchoolInviteList, userID, schoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionSchoolInviteList, userID, schoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -81,7 +81,7 @@ func (s *Service) ListSchoolInvitations(ctx context.Context, i *ListSchoolInvita
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, userID, schoolID)
 	if err != nil {
 		return nil, err
 	}

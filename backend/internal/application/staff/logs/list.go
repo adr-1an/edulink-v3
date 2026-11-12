@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
 )
 
 type ListLogsInput struct {
@@ -30,13 +30,13 @@ type SchoolLog struct {
 }
 
 type ListLogsResult struct {
-	Access   schools.AccessData
+	Access   permissions.AccessData
 	Logs     []SchoolLog
 	SchoolID int64
 }
 
 func (s *Service) ListLogs(ctx context.Context, i *ListLogsInput) (*ListLogsResult, error) {
-	if !schools.Can(schools.PermissionLogsList, i.UserID, i.SchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionLogsList, i.UserID, i.SchoolID, ctx, s.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -90,7 +90,7 @@ func (s *Service) ListLogs(ctx context.Context, i *ListLogsInput) (*ListLogsResu
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

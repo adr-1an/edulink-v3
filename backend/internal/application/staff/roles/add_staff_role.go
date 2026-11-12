@@ -6,7 +6,8 @@ import (
 	"errors"
 	"log"
 
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/schoollogs"
 )
 
 type AddStaffRoleInput struct {
@@ -44,12 +45,12 @@ func (s *Service) AddStaffRole(ctx context.Context, i *AddStaffRoleInput) error 
 	}
 
 	// Check permissions
-	if !schools.Can(schools.PermissionStaffRoleAdd, userID, target.StaffSchoolID, ctx, s.DB) {
+	if !permissions.Can(permissions.PermissionStaffRoleAdd, userID, target.StaffSchoolID, ctx, s.DB) {
 		return ErrForbidden
 	}
 
 	// Check if the user can assign this role
-	allowed, err := schools.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, target.StaffSchoolID, target.RolePosition)
+	allowed, err := permissions.OwnsSchoolOrHasRoleAbovePosition(ctx, tx, userID, target.StaffSchoolID, target.RolePosition)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -70,7 +71,7 @@ func (s *Service) AddStaffRole(ctx context.Context, i *AddStaffRoleInput) error 
 	}
 
 	// Log action
-	if err := schools.StoreSchoolLog(target.StaffSchoolID, userID, schools.ActionStaffRoleCreate, schools.TypeCreate, "Staff role added", "{user} added the role '"+target.RoleName+"' to "+target.StaffName+".", tx, ctx, s.Sf, "{user} added role '"+target.RoleName+"' to staff member "+target.StaffName+"."); err != nil {
+	if err := schoollogs.StoreSchoolLog(target.StaffSchoolID, userID, schoollogs.ActionStaffRoleCreate, schoollogs.TypeCreate, "Staff role added", "{user} added the role '"+target.RoleName+"' to "+target.StaffName+".", tx, ctx, s.Sf, "{user} added role '"+target.RoleName+"' to staff member "+target.StaffName+"."); err != nil {
 		log.Println(err)
 		return err
 	}

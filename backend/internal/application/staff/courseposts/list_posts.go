@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/uploads"
 )
 
 type ListPostsAttachment struct {
@@ -38,7 +38,7 @@ type ListPostsInput struct {
 }
 
 type ListPostsResult struct {
-	Access schools.AccessData
+	Access permissions.AccessData
 	Posts  []ListPostsPost
 }
 
@@ -60,7 +60,7 @@ func (svc *Service) ListPosts(ctx context.Context, i *ListPostsInput) (*ListPost
 		return nil, err
 	}
 
-	if !schools.Can(schools.PermissionCoursePostList, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionCoursePostList, userID, schoolID, ctx, svc.DB) {
 		return nil, ErrForbidden
 	}
 
@@ -78,7 +78,7 @@ func (svc *Service) ListPosts(ctx context.Context, i *ListPostsInput) (*ListPost
 		LEFT JOIN storage_objects pso ON pso.id = upp.storage_object_id AND pso.status = $2
 		LEFT JOIN storage_objects so ON so.id = pa.storage_object_id AND so.status = $2
 		WHERE p.course_id = $1
-	`, courseID, helpers.StatusDone)
+	`, courseID, uploads.StatusDone)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -172,7 +172,7 @@ func (svc *Service) ListPosts(ctx context.Context, i *ListPostsInput) (*ListPost
 		return nil, err
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
+	access, err := permissions.GetAllUserPermissions(ctx, svc.DB, userID, schoolID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

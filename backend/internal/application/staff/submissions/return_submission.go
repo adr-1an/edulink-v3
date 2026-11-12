@@ -6,8 +6,8 @@ import (
 	"errors"
 	"log"
 
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
+	"app/internal/permissions"
+	"app/internal/submissions"
 )
 
 type ReturnSubmissionInput struct {
@@ -29,7 +29,7 @@ func (svc *Service) ReturnSubmission(ctx context.Context, i *ReturnSubmissionInp
 		}
 	}
 
-	if !schools.Can(schools.PermissionSubmissionReturn, userID, schoolID, ctx, svc.DB) {
+	if !permissions.Can(permissions.PermissionSubmissionReturn, userID, schoolID, ctx, svc.DB) {
 		return ErrForbidden
 	}
 
@@ -45,7 +45,7 @@ func (svc *Service) ReturnSubmission(ctx context.Context, i *ReturnSubmissionInp
 		SET status = $1
 		WHERE id = $2
 		AND status = $3
-	`, helpers.SubmissionStatusReturned, subID, helpers.SubmissionStatusSubmitted)
+	`, submissions.SubmissionStatusReturned, subID, submissions.SubmissionStatusSubmitted)
 	if err != nil {
 		log.Println(err)
 		return err

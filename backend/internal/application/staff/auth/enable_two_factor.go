@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	helpers2 "app/internal/helpers"
+	"app/internal/cryptoutil"
 
 	"github.com/pquerna/otp/totp"
 )
@@ -55,14 +55,14 @@ func (s *Service) EnableTwoFactor(ctx context.Context, i *EnableTwoFactorInput) 
 	secret := key.Secret()
 	url := key.URL()
 
-	appKey, err := helpers2.LoadAppEncKey()
+	appKey, err := cryptoutil.LoadAppEncKey()
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
 	// Encrypt secret
-	encSecret, err := helpers2.EncryptString(secret, appKey)
+	encSecret, err := cryptoutil.EncryptString(secret, appKey)
 	if err != nil {
 		log.Println(err)
 		return nil, err

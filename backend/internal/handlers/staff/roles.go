@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"app/internal/application/staff/roles"
-	"app/internal/helpers/staff"
+	"app/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -17,7 +17,7 @@ func (h *Handler) CreateRoleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -75,7 +75,7 @@ func (h *Handler) ListRolesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -126,7 +126,7 @@ func (h *Handler) UpdateRoleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -184,7 +184,7 @@ func (h *Handler) DeleteRoleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -221,7 +221,7 @@ func (h *Handler) SetStaffRolePermissionHandler(w http.ResponseWriter, r *http.R
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -279,7 +279,7 @@ func (h *Handler) ListPermissionsHandler(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 
 	// Get user ID
-	_, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	_, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -300,7 +300,7 @@ func (h *Handler) AddStaffRoleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -340,7 +340,7 @@ func (h *Handler) RemoveStaffRoleHandler(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
@@ -380,7 +380,7 @@ func (h *Handler) ListStaffRolesHandler(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 
 	// Get user ID
-	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
+	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
 		return
 	}
