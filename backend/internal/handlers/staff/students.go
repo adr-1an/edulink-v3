@@ -17,7 +17,7 @@ import (
 
 type StudentPayload = staffStudents.StudentPayload
 
-func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateStudent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -55,7 +55,7 @@ func (h *Handler) CreateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateStudent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -93,7 +93,7 @@ func (h *Handler) UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteStudent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -119,7 +119,7 @@ func (h *Handler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) ListStudentsHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListStudents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -190,7 +190,7 @@ func (h *Handler) ListStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) ViewStudentHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ViewStudent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -354,7 +354,7 @@ func studentViewPayload(res *staffStudents.ViewStudentResult) map[string]any {
 	}
 }
 
-func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ImportStudents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -405,7 +405,7 @@ func (h *Handler) ImportStudentHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (h *Handler) UploadStudentPfpHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UploadStudentProfilePicture(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -469,7 +469,7 @@ func (h *Handler) UploadStudentPfpHandler(w http.ResponseWriter, r *http.Request
 	})
 }
 
-func (h *Handler) RemoveStudentPfpHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ClearStudentProfilePicture(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)

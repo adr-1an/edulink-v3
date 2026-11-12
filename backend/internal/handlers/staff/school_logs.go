@@ -29,7 +29,7 @@ type schoolLog struct {
 	CreatedAt string `json:"createdAt"`
 }
 
-func (h *Handler) ListSchoolLogsHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListSchoolLogs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)

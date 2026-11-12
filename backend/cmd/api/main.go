@@ -77,7 +77,7 @@ func main() {
 	app := application.New(db, sf, s3)
 
 	// Init routes
-	r := v1.MainRouter(db, sf, s3, app, trustForwardedFor)
+	r := v1.NewRouter(db, sf, s3, app, trustForwardedFor)
 
 	// Start server
 	port := fmt.Sprintf(":%s", os.Getenv("APP_PORT"))

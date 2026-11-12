@@ -1,17 +1,17 @@
 package portal
 
 import (
-	portalhandlers "app/internal/handlers/portal"
+	handlers "app/internal/handlers/portal"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func PostRoutes(h *portalhandlers.Handler) chi.Router {
+func postRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{postID}", func(r chi.Router) {
 		// View post
-		r.Get("/", h.ViewPostHandler)
+		r.Get("/", h.ViewPost)
 	})
 
 	return r

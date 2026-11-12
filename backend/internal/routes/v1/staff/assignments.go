@@ -1,35 +1,35 @@
 package staff
 
 import (
-	staffhandlers "app/internal/handlers/staff"
+	handlers "app/internal/handlers/staff"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func CourseAssignmentRoutes(h *staffhandlers.Handler) chi.Router {
+func courseAssignmentRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// Create assignment
-	r.Post("/", h.CreateAssignmentHandler)
+	r.Post("/", h.CreateAssignment)
 
 	// List assignments
-	r.Get("/", h.ListAssignmentsHandler)
+	r.Get("/", h.ListAssignments)
 
 	return r
 }
 
-func AssignmentRoutes(h *staffhandlers.Handler) chi.Router {
+func assignmentRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{assignmentID}", func(r chi.Router) {
 		// Update assignment
-		r.Patch("/", h.UpdateAssignmentHandler)
+		r.Patch("/", h.UpdateAssignment)
 
 		// Delete assignment
-		r.Delete("/", h.DeleteAssignmentHandler)
+		r.Delete("/", h.DeleteAssignment)
 
 		// Submissions
-		r.Mount("/submissions", AssignmentSubmissionRoutes(h))
+		r.Mount("/submissions", assignmentSubmissionRoutes(h))
 	})
 
 	return r

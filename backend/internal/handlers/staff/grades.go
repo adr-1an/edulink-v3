@@ -14,7 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (h *Handler) ListGradesHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListGrades(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -66,7 +66,7 @@ func (h *Handler) ListGradesHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) CreateGradeHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateGrade(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -130,7 +130,7 @@ func (h *Handler) CreateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (h *Handler) UpdateGradeHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateGrade(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -194,7 +194,7 @@ func (h *Handler) UpdateGradeHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) DeleteGradeHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteGrade(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID

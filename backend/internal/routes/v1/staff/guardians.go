@@ -1,35 +1,35 @@
 package staff
 
 import (
-	staffhandlers "app/internal/handlers/staff"
+	handlers "app/internal/handlers/staff"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func SchoolGuardianRoutes(h *staffhandlers.Handler) chi.Router {
+func schoolGuardianRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// Create guardian
-	r.Post("/", h.CreateGuardianHandler)
+	r.Post("/", h.CreateGuardian)
 
 	// List guardians
-	r.Get("/", h.ListGuardiansHandler)
+	r.Get("/", h.ListGuardians)
 
 	return r
 }
 
-func GuardianRoutes(h *staffhandlers.Handler) chi.Router {
+func guardianRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{guardianID}", func(r chi.Router) {
 		// Update guardian
-		r.Patch("/", h.UpdateGuardianHandler)
+		r.Patch("/", h.UpdateGuardian)
 
 		// Delete guardian
-		r.Delete("/", h.DeleteGuardianHandler)
+		r.Delete("/", h.DeleteGuardian)
 
 		// List students
-		r.Get("/", h.ListGuardianStudentsHandler)
+		r.Get("/", h.ListGuardianStudents)
 	})
 
 	return r

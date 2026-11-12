@@ -25,7 +25,7 @@ type guardiansPayload struct {
 	Password        *string   `json:"password"`
 }
 
-func (h *Handler) CreateGuardianHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateGuardian(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -88,7 +88,7 @@ func (h *Handler) CreateGuardianHandler(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-func (h *Handler) ListGuardiansHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListGuardians(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -151,7 +151,7 @@ func (h *Handler) ListGuardiansHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) UpdateGuardianHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateGuardian(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -205,7 +205,7 @@ func (h *Handler) UpdateGuardianHandler(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) DeleteGuardianHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteGuardian(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)

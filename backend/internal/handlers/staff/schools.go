@@ -15,7 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListSchools(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -66,7 +66,7 @@ func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) CreateSchoolHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateSchool(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -127,7 +127,7 @@ func (h *Handler) CreateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateSchool(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -199,7 +199,7 @@ func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) DeleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteSchool(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Authenticate
@@ -231,7 +231,7 @@ func (h *Handler) DeleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ViewSchool(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID

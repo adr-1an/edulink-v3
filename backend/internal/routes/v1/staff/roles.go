@@ -1,56 +1,65 @@
 package staff
 
 import (
-	staffhandlers "app/internal/handlers/staff"
+	handlers "app/internal/handlers/staff"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func RoleRoutes(h *staffhandlers.Handler) chi.Router {
+func roleRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// List role permissions
-	r.Get("/permissions", h.ListPermissionsHandler)
+	r.Get("/permissions", h.ListPermissions)
 
 	// List roles
-	r.Get("/", h.ListRolesHandler)
+	r.Get("/", h.ListRoles)
 
 	// Role-specific
 	r.Route("/{roleID}", func(r chi.Router) {
 		// Update role
-		r.Patch("/", h.UpdateRoleHandler)
+		r.Patch("/", h.UpdateRole)
 
 		// Delete role
-		r.Delete("/", h.DeleteRoleHandler)
+		r.Delete("/", h.DeleteRole)
 
 		// Role permissions
-		r.Mount("/permissions", RolePermissionsRouter(h))
+		r.Mount("/permissions", rolePermissionRoutes(h))
 	})
 
 	return r
 }
 
-func SchoolRoleRoutes(h *staffhandlers.Handler) chi.Router {
-	r := RoleRoutes(h)
+func schoolRoleRoutes(h *handlers.Handler) chi.Router {
+	r := roleRoutes(h)
 
-	r.Post("/", h.CreateRoleHandler)
+	r.Post("/", h.CreateRole)
 
 	return r
 }
 
-func StaffRoleRoutes(h *staffhandlers.Handler) chi.Router {
+func memberRoleRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// List roles
-	r.Get("/", h.ListStaffRolesHandler)
+	r.Get("/", h.ListStaffRoles)
 
 	r.Route("/{roleID}", func(r chi.Router) {
 		// Add role
-		r.Post("/", h.AddStaffRoleHandler)
+		r.Post("/", h.AddStaffRole)
 
 		// Remove role
-		r.Delete("/", h.RemoveStaffRoleHandler)
+		r.Delete("/", h.RemoveStaffRole)
 	})
+
+	return r
+}
+
+func rolePermissionRoutes(h *handlers.Handler) chi.Router {
+	r := chi.NewRouter()
+
+	// Set permission
+	r.Put("/", h.SetStaffRolePermission)
 
 	return r
 }

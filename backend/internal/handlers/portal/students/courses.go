@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListCourses(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeStudent)
@@ -26,7 +26,7 @@ func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"courses": mapListCoursesCourseSlice(res.Courses)})
 }
-func (h *Handler) CourseDashboardHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ViewCourseDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeStudent)

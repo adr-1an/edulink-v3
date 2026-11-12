@@ -13,9 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// SendRegistrationLinkHandler generates a registration link, and if the provided email isn't taken,
+// SendRegistrationLink generates a registration link, and if the provided email isn't taken,
 // sends a registration email.
-func (h *Handler) SendRegistrationLinkHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) SendRegistrationLink(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Payload
@@ -47,9 +47,9 @@ func (h *Handler) SendRegistrationLinkHandler(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// CheckRegistrationTokenHandler checks whether the given registration token is valid
+// CheckRegistrationToken checks whether the given registration token is valid
 // and returns the email associated with it.
-func (h *Handler) CheckRegistrationTokenHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CheckRegistrationToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	token := chi.URLParam(r, "token")
@@ -75,12 +75,12 @@ func (h *Handler) CheckRegistrationTokenHandler(w http.ResponseWriter, r *http.R
 	})
 }
 
-// RegistrationHandler - Main handler for user registration.
+// Register - Main handler for user registration.
 // Validation rules:
 // Name - min 1, max 128
 // Phone - min 3, max 32
 // Password - min 8, no max
-func (h *Handler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Payload
@@ -123,11 +123,11 @@ func (h *Handler) RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-// LoginHandler - Main handler for user login.
+// Login - Main handler for user login.
 // Validation rules:
 // Email - min 5, max 254
 // Password - min 8, no max
-func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user agent & IP
@@ -190,9 +190,9 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// TokenCheckHandler checks whether the given token is valid and not expired.
+// CheckToken checks whether the given token is valid and not expired.
 // It will only return a 204 if the token is valid.
-func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CheckToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get token & hash
@@ -229,8 +229,8 @@ func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// SendPasswordResetEmailHandler sends a password reset link ("forgot password") to the user's email address.
-func (h *Handler) SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.Request) {
+// SendPasswordResetEmail sends a password reset link ("forgot password") to the user's email address.
+func (h *Handler) SendPasswordResetEmail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Payload
@@ -259,7 +259,7 @@ func (h *Handler) SendPasswordResetEmailHandler(w http.ResponseWriter, r *http.R
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
-func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get reset token
@@ -300,7 +300,7 @@ func (h *Handler) PasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
-func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	tokenHash, err := auth.TokenToHash(w, r)
@@ -321,7 +321,7 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) EnableTwoFactor(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -343,7 +343,7 @@ func (h *Handler) Enable2faHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"url": res.URL})
 }
 
-func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) VerifyTwoFactor(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -380,7 +380,7 @@ func (h *Handler) Verify2faHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"codes": res.Codes})
 }
 
-func (h *Handler) Disable2faHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DisableTwoFactor(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -417,7 +417,7 @@ func (h *Handler) Disable2faHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) RecoverTwoFactorHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) RecoverTwoFactor(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	type payload struct {

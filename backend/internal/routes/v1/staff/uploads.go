@@ -1,17 +1,17 @@
 package staff
 
 import (
-	staffhandlers "app/internal/handlers/staff"
+	handlers "app/internal/handlers/staff"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func UploadRoutes(h *staffhandlers.Handler) chi.Router {
+func uploadRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{objectID}", func(r chi.Router) {
 		// Complete file upload
-		r.Post("/", h.CompleteUploadHandler)
+		r.Post("/", h.CompleteUpload)
 	})
 
 	return r

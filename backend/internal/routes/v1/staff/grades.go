@@ -1,23 +1,23 @@
 package staff
 
 import (
-	staffhandlers "app/internal/handlers/staff"
+	handlers "app/internal/handlers/staff"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func GradeRoutes(h *staffhandlers.Handler) chi.Router {
+func gradeRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Route("/{gradeID}", func(r chi.Router) {
 		// Update grade
-		r.Patch("/", h.UpdateGradeHandler)
+		r.Patch("/", h.UpdateGrade)
 
 		// Delete grade
-		r.Delete("/", h.DeleteGradeHandler)
+		r.Delete("/", h.DeleteGrade)
 
 		// Courses
-		r.Mount("/courses", GradeCourseRoutes(h))
+		r.Mount("/courses", gradeCourseRoutes(h))
 	})
 
 	return r

@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-func (h *Handler) ListAllAssignmentsHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListAllAssignments(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeStudent)

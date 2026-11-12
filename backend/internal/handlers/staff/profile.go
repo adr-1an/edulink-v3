@@ -17,7 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -39,7 +39,7 @@ func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}})
 }
 
-func (h *Handler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -76,7 +76,7 @@ func (h *Handler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) SendEmailChangeHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) SendEmailChange(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -114,7 +114,7 @@ func (h *Handler) SendEmailChangeHandler(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) EmailUpdateHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateEmail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get token from URL
@@ -138,7 +138,7 @@ func (h *Handler) EmailUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -176,7 +176,7 @@ func (h *Handler) PasswordChangeHandler(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) UploadPfpHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UploadProfilePicture(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -211,7 +211,7 @@ func (h *Handler) UploadPfpHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"id": strconv.FormatInt(res.ID, 10), "completionToken": res.CompletionToken, "url": res.URL})
 }
 
-func (h *Handler) ClearPfpHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ClearProfilePicture(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)

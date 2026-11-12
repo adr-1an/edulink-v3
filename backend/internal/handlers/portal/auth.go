@@ -19,7 +19,7 @@ type payload struct {
 	Password string `json:"password"`
 }
 
-func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var p payload
@@ -51,7 +51,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CheckToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeEither)
@@ -78,7 +78,7 @@ func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	token, err := auth.ParseToken(w, r)
@@ -94,7 +94,7 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) AccountActivationHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ActivateAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	activationToken := chi.URLParam(r, "token")
@@ -134,7 +134,7 @@ func (h *Handler) AccountActivationHandler(w http.ResponseWriter, r *http.Reques
 	_ = json.NewEncoder(w).Encode(map[string]any{"token": res.Token})
 }
 
-func (h *Handler) PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeEither)

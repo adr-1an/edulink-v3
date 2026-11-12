@@ -1,66 +1,56 @@
 package staff
 
 import (
-	staffhandlers "app/internal/handlers/staff"
+	handlers "app/internal/handlers/staff"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func SchoolRoutes(h *staffhandlers.Handler) chi.Router {
+func schoolRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// List schools
-	r.Get("/", h.SchoolListHandler)
+	r.Get("/", h.ListSchools)
 
 	// Create school
-	r.Post("/", h.CreateSchoolHandler)
+	r.Post("/", h.CreateSchool)
 
 	// School-specific
 	r.Route("/{schoolID}", func(r chi.Router) {
 		// View school dashboard
-		r.Get("/", h.ViewSchoolDashboardHandler)
+		r.Get("/", h.ViewSchool)
 
 		// Update school
-		r.Patch("/", h.UpdateSchoolHandler)
+		r.Patch("/", h.UpdateSchool)
 
 		// Delete school
-		r.Delete("/", h.DeleteSchoolHandler)
+		r.Delete("/", h.DeleteSchool)
 
 		// Staff
-		r.Mount("/staff", SchoolStaffMemberRoutes(h))
+		r.Mount("/staff", schoolMemberRoutes(h))
 
-		// Create academic year
-		r.Post("/academic-years", h.CreateAcademicYearHandler)
-
-		// List academic years
-		r.Get("/academic-years", h.ListAcademicYearsHandler)
+		registerSchoolAcademicYears(r, h)
 
 		// List grades
-		r.Get("/grades", h.ListGradesHandler)
-
-		// Promote school
-		r.Post("/promote", h.SchoolPromotionHandler)
-
-		// Clear active academic year
-		r.Put("/academic-years", h.ClearAcademicYearHandler)
+		r.Get("/grades", h.ListGrades)
 
 		// Roles
-		r.Mount("/roles", SchoolRoleRoutes(h))
+		r.Mount("/roles", schoolRoleRoutes(h))
 
 		// List logs
-		r.Get("/logs", h.ListSchoolLogsHandler)
+		r.Get("/logs", h.ListSchoolLogs)
 
 		// List staff invitations
-		r.Get("/staff-invitations", h.ListSchoolInvitationsHandler)
+		r.Get("/staff-invitations", h.ListSchoolInvitations)
 
 		// Leave school (for staff members)
-		r.Delete("/leave", h.LeaveSchoolStaffHandler)
+		r.Delete("/leave", h.LeaveSchool)
 
 		// Students
-		r.Mount("/students", SchoolStudentRoutes(h))
+		r.Mount("/students", schoolStudentRoutes(h))
 
 		// Guardians
-		r.Mount("/guardians", SchoolGuardianRoutes(h))
+		r.Mount("/guardians", schoolGuardianRoutes(h))
 	})
 
 	return r

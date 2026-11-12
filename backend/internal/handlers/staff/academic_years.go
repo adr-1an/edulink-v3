@@ -14,7 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (h *Handler) ListAcademicYearsHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListAcademicYears(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -74,7 +74,7 @@ func (h *Handler) ListAcademicYearsHandler(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateAcademicYear(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -139,7 +139,7 @@ func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteAcademicYear(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -183,7 +183,7 @@ func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) ClearAcademicYearHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ClearAcademicYear(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID

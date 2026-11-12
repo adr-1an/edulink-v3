@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (h *Handler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeEither)

@@ -18,7 +18,7 @@ type CreateCoursePayload struct {
 	Color       string `json:"color"`
 }
 
-func (h *Handler) CreateCourseHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateCourse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -66,7 +66,7 @@ type UpdateCoursePayload struct {
 	Color       string `json:"color"`
 }
 
-func (h *Handler) UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateCourse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -108,7 +108,7 @@ func (h *Handler) UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) DeleteCourseHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteCourse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -155,7 +155,7 @@ func mapListCoursesCourse(v courses.ListCoursesCourse) ListCoursesCourse {
 	return out
 }
 
-func (h *Handler) ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListCourses(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)

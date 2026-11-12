@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (h *Handler) ListGuardianStudentsHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListGuardianStudents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)

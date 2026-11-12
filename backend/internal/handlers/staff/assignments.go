@@ -24,7 +24,7 @@ type CreateAssignmentPayload struct {
 	Archived           bool       `json:"archived"`
 }
 
-func (h *Handler) CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateAssignment(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -102,7 +102,7 @@ func mapListAssignmentsAssignment(v assignments.ListAssignmentsAssignment) ListA
 	return out
 }
 
-func (h *Handler) ListAssignmentsHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListAssignments(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -150,7 +150,7 @@ type UpdateAssignmentPayload struct {
 	Archived           bool       `json:"archived"`
 }
 
-func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateAssignment(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)
@@ -186,7 +186,7 @@ func (h *Handler) UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) DeleteAssignmentHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteAssignment(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUserID(ctx, w, r, h.DB)

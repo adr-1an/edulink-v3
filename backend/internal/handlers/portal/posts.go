@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (h *Handler) ViewPostHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ViewPost(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := auth.TokenToUID(w, r, h.DB, ctx, portalusers.AccTypeEither)

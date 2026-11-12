@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (h *Handler) CreateRoleHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateRole(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -71,7 +71,7 @@ func (h *Handler) CreateRoleHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (h *Handler) ListRolesHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListRoles(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -122,7 +122,7 @@ func (h *Handler) ListRolesHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) UpdateRoleHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -180,7 +180,7 @@ func (h *Handler) UpdateRoleHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handler) DeleteRoleHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -217,7 +217,7 @@ func (h *Handler) DeleteRoleHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) SetStaffRolePermissionHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) SetStaffRolePermission(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -275,7 +275,7 @@ func (h *Handler) SetStaffRolePermissionHandler(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) ListPermissionsHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListPermissions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -296,7 +296,7 @@ func (h *Handler) ListPermissionsHandler(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-func (h *Handler) AddStaffRoleHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) AddStaffRole(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -336,7 +336,7 @@ func (h *Handler) AddStaffRoleHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) RemoveStaffRoleHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) RemoveStaffRole(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID
@@ -376,7 +376,7 @@ func (h *Handler) RemoveStaffRoleHandler(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) ListStaffRolesHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListStaffRoles(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get user ID

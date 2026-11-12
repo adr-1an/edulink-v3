@@ -1,28 +1,28 @@
 package portal
 
 import (
-	portalhandlers "app/internal/handlers/portal"
+	handlers "app/internal/handlers/portal"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func AuthRoutes(h *portalhandlers.Handler) chi.Router {
+func authRoutes(h *handlers.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// Login
-	r.Post("/login", h.LoginHandler)
+	r.Post("/login", h.Login)
 
 	// Token check
-	r.Get("/", h.TokenCheckHandler)
+	r.Get("/", h.CheckToken)
 
 	// Logout
-	r.Delete("/", h.LogoutHandler)
+	r.Delete("/", h.Logout)
 
 	// Activate account
-	r.Post("/activate/{token}", h.AccountActivationHandler)
+	r.Post("/activate/{token}", h.ActivateAccount)
 
 	// Change password
-	r.Put("/password", h.PasswordChangeHandler)
+	r.Put("/password", h.UpdatePassword)
 
 	return r
 }
