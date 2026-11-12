@@ -1,15 +1,33 @@
 package staff
 
 import (
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
 	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
 	"strconv"
 
+	"app/internal/application/staff/logs"
+	staffhelpers "app/internal/helpers/staff"
+
 	"github.com/go-chi/chi/v5"
 )
+
+type user struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+type schoolLog struct {
+	ID        string `json:"id"`
+	User      user   `json:"user"`
+	Action    string `json:"action"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	Message   string `json:"message"`
+	Details   string `json:"details"`
+	CreatedAt string `json:"createdAt"`
+}
 
 func (h *Handler) ListSchoolLogsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -25,88 +43,40 @@ func (h *Handler) ListSchoolLogsHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !schools.Can(schools.PermissionLogsList, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	type user struct {
-		ID    string `json:"id"`
-		Name  string `json:"name"`
-		Email string `json:"email"`
-	}
-
-	type schoolLog struct {
-		ID        string `json:"id"`
-		User      user   `json:"user"`
-		Action    string `json:"action"`
-		Type      string `json:"type"`
-		Title     string `json:"title"`
-		Message   string `json:"message"`
-		Details   string `json:"details"`
-		CreatedAt string `json:"createdAt"`
-	}
-	var logs []schoolLog
-
-	rows, err := h.DB.QueryContext(ctx, `
-		SELECT
-		    l.id,
-		    l.action,
-		    l.type,
-		    l.title,
-		    l.message,
-		    l.details,
-		    l.created_at,
-		    u.id,
-		    u.name,
-		    u.email
-		FROM school_logs l
-		JOIN users u ON u.id = l.by_user
-		WHERE school_id = $1
-		AND l.created_at > NOW() - INTERVAL '30 days'
-	`, schoolID)
+	res, err := h.App.Staff.Logs.ListLogs(ctx, &logs.ListLogsInput{
+		UserID:   userID,
+		SchoolID: schoolID,
+	})
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = rows.Close() }()
+		switch {
+		case errors.Is(err, logs.ErrForbidden):
+			w.WriteHeader(http.StatusForbidden)
 
-	for rows.Next() {
-		var l schoolLog
-
-		if err := rows.Scan(
-			&l.ID,
-			&l.Action,
-			&l.Type,
-			&l.Title,
-			&l.Message,
-			&l.Details,
-			&l.CreatedAt,
-			&l.User.ID,
-			&l.User.Name,
-			&l.User.Email,
-		); err != nil {
-			log.Println(err)
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
-			return
 		}
-
-		logs = append(logs, l)
-	}
-
-	if err := rows.Err(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	logs := make([]schoolLog, 0)
+	for _, l := range res.Logs {
+		logs = append(logs, schoolLog{
+			ID: strconv.FormatInt(l.ID, 10),
+			User: user{
+				ID:    strconv.FormatInt(l.User.ID, 10),
+				Name:  l.User.Name,
+				Email: l.User.Email,
+			},
+			Action:    l.Action,
+			Type:      l.Type,
+			Title:     l.Title,
+			Message:   l.Message,
+			Details:   l.Details,
+			CreatedAt: l.CreatedAt,
+		})
 	}
+
+	access := res.Access
 
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"access": access,

@@ -1,14 +1,15 @@
 package schools
 
 import (
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
 	"context"
 	"database/sql"
 	"errors"
 	"log"
 	"strconv"
 	"strings"
+
+	"app/internal/helpers/staff"
+	"app/internal/helpers/staff/schools"
 
 	"golang.org/x/text/language"
 )

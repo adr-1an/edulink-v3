@@ -30,22 +30,16 @@ func MainRouter(
 	// Staff handler
 	h := staff.Handler{
 		DB:  db,
-		Sf:  sf,
-		S3:  s3,
 		App: app,
 	}
 
 	// Portal handlers
 	portalHandler := portalhandlers.Handler{
 		DB:  db,
-		Sf:  sf,
-		S3:  s3,
 		App: app,
 	}
 	studentHandler := students.Handler{
 		DB:  db,
-		Sf:  sf,
-		S3:  s3,
 		App: app,
 	}
 

@@ -1,14 +1,14 @@
 package staff
 
 import (
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"strconv"
+
+	"app/internal/application/staff/academicyears"
+	"app/internal/helpers/staff"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -30,9 +30,18 @@ func (h *Handler) ListAcademicYearsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Check permissions
-	if !schools.Can(schools.PermissionAcademicYearList, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
+	res, err := h.App.Staff.AcademicYears.ListAcademicYears(ctx, &academicyears.ListAcademicYearsInput{
+		UserID:   userID,
+		SchoolID: schoolID,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, academicyears.ErrForbidden):
+			w.WriteHeader(http.StatusForbidden)
+		default:
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -45,45 +54,17 @@ func (h *Handler) ListAcademicYearsHandler(w http.ResponseWriter, r *http.Reques
 	}
 	var years []AcYear
 
-	// Get rows
-	rows, err := h.DB.QueryContext(ctx, `
-		SELECT id, start_year, end_year, is_active
-		FROM academic_years
-		WHERE school_id = $1
-	`, schoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = rows.Close() }()
-
-	// Scan rows
-	for rows.Next() {
-		var y AcYear
-
-		if err := rows.Scan(&y.ID, &y.StartYear, &y.EndYear, &y.IsActive); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		years = append(years, y)
-	}
-
-	if err := rows.Err(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	for _, y := range res.AcademicYears {
+		years = append(years, AcYear{
+			ID:        strconv.FormatInt(y.ID, 10),
+			StartYear: y.StartYear,
+			EndYear:   y.EndYear,
+			IsActive:  y.IsActive,
+		})
 	}
 
 	// Get user access
-	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	access := res.Access
 
 	// Return data
 	_ = json.NewEncoder(w).Encode(map[string]any{
@@ -109,12 +90,6 @@ func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Check permissions
-	if !schools.Can(schools.PermissionAcademicYearCreate, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
 	// Payload
 	type Payload struct {
 		AcademicYear struct {
@@ -127,95 +102,37 @@ func (h *Handler) CreateAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 	// Decode
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&p); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	decodeErr := dec.Decode(&p)
 
-	// Parse & validate
-
-	// If you're here in/after the year 10,000, add an extra 9 to the 9999 below
-	// Or if you've gone back to before 1900, IDK anymore maybe change it to like 100 or smth
-	// Also I had to write "IDK" in all caps or GoLand would cry
-	// I know it's corny
-	if p.AcademicYear.From < 1900 || p.AcademicYear.From > 9999 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	if p.AcademicYear.To < p.AcademicYear.From {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	// Check for conflicts
-	var exists bool
-	if err = h.DB.QueryRowContext(ctx, `
-		SELECT EXISTS (
-		    SELECT 1 FROM academic_years
-		 	WHERE school_id = $1
-		 	AND start_year = $2
-		 	AND end_year = $3
-		)
-	`, schoolID, p.AcademicYear.From, p.AcademicYear.To).Scan(&exists); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if exists {
-		w.WriteHeader(http.StatusConflict)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staffhelpers.ErrorCodeAcademicYearConflict,
-		})
-		return
-	}
-
-	// Generate ID
-	id, err := h.Sf.NextID()
+	res, err := h.App.Staff.AcademicYears.CreateAcademicYear(ctx, &academicyears.CreateAcademicYearInput{
+		InvalidPayload: decodeErr != nil,
+		UserID:         userID,
+		SchoolID:       schoolID,
+		AcademicYear: academicyears.CreateAcademicYear{
+			From: p.AcademicYear.From,
+			To:   p.AcademicYear.To,
+		},
+	})
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		switch {
+		case errors.Is(err, academicyears.ErrBadRequest):
+			w.WriteHeader(http.StatusBadRequest)
+		case errors.Is(err, academicyears.ErrForbidden):
+			w.WriteHeader(http.StatusForbidden)
+		case errors.Is(err, academicyears.ErrUnprocessableEntity):
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		case errors.Is(err, academicyears.ErrAcademicYearConflict):
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code": staffhelpers.ErrorCodeAcademicYearConflict,
+			})
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
-
-	tx, err := h.DB.BeginTx(ctx, nil)
-	if err != nil {
-		log.Println(err)
+	if res.NoRowsAffected {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	// Insert academic year
-	res, err := tx.ExecContext(ctx, `
-		INSERT INTO academic_years (id, school_id, start_year, end_year)
-		VALUES ($1, $2, $3, $4)
-	`, id, schoolID, p.AcademicYear.From, p.AcademicYear.To)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	yearLabel := strconv.Itoa(p.AcademicYear.From) + "-" + strconv.Itoa(p.AcademicYear.To)
-	// Log action
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionAcademicYearCreate, schools.TypeCreate, "Academic year created", "{user} created the academic year "+yearLabel+".", tx, ctx, h.Sf, "{user} created academic year "+yearLabel+" with ID "+strconv.FormatInt(id, 10)+"."); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -238,101 +155,28 @@ func (h *Handler) DeleteAcademicYearHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Start tx
-	tx, err := h.DB.BeginTx(ctx, nil)
+	res, err := h.App.Staff.AcademicYears.DeleteAcademicYear(ctx, &academicyears.DeleteAcademicYearInput{
+		UserID:         userID,
+		AcademicYearID: acYearID,
+	})
 	if err != nil {
-		log.Println(err)
+		switch {
+		case errors.Is(err, academicyears.ErrForbidden):
+			w.WriteHeader(http.StatusForbidden)
+		case errors.Is(err, academicyears.ErrYearIsActive):
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorYearIsActive})
+		case errors.Is(err, academicyears.ErrYearHasGrades):
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorYearHasGrades})
+		default:
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+	if res.NoRowsAffected {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	// Get the year's data
-	var yearSchoolID int64
-	var startYear int
-	var endYear int
-	if err := tx.QueryRowContext(ctx, `
-		SELECT school_id, start_year, end_year FROM academic_years WHERE id = $1
-	`, acYearID).Scan(&yearSchoolID, &startYear, &endYear); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Check permissions
-	if !schools.Can(schools.PermissionAcademicYearDelete, userID, yearSchoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	// Check if the current year is active
-	var (
-		active    bool
-		hasGrades bool
-	)
-	if err := tx.QueryRowContext(ctx, `
-		SELECT
-		    EXISTS (
-		    SELECT 1 FROM academic_years
-			WHERE id = $1
-			AND is_active = TRUE
-		),
-		    EXISTS (
-		        SELECT 1 FROM grades
-				WHERE academic_year_id = $1
-		    )
-	`, acYearID).Scan(&active, &hasGrades); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if active {
-		w.WriteHeader(http.StatusConflict)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staffhelpers.ErrorYearIsActive,
-		})
-		return
-	}
-
-	if hasGrades {
-		w.WriteHeader(http.StatusConflict)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staffhelpers.ErrorYearHasGrades,
-		})
-		return
-	}
-
-	// Delete the year
-	res, err := tx.ExecContext(ctx, `
-		DELETE FROM academic_years
-		WHERE id = $1
-	  	AND school_id = $2
-		AND is_active = FALSE
-	`, acYearID, yearSchoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	yearLabel := strconv.Itoa(startYear) + "-" + strconv.Itoa(endYear)
-	if err := schools.StoreSchoolLog(yearSchoolID, userID, schools.ActionAcademicYearDelete, schools.TypeDelete, "Academic year deleted", "{user} deleted the academic year "+yearLabel+".", tx, ctx, h.Sf, "{user} deleted academic year "+yearLabel+" with ID "+strconv.FormatInt(acYearID, 10)+"."); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -354,67 +198,22 @@ func (h *Handler) ClearAcademicYearHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Check permissions
-	if !schools.Can(schools.PermissionAcademicYearToggleActive, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	tx, err := h.DB.BeginTx(ctx, nil)
+	res, err := h.App.Staff.AcademicYears.ClearAcademicYear(ctx, &academicyears.ClearAcademicYearInput{
+		UserID:   userID,
+		SchoolID: schoolID,
+	})
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		switch {
+		case errors.Is(err, academicyears.ErrForbidden):
+			w.WriteHeader(http.StatusForbidden)
+		default:
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
-	defer func() { _ = tx.Rollback() }()
-
-	var activeYearID int64
-	var activeStartYear int
-	var activeEndYear int
-	if err := tx.QueryRowContext(ctx, `
-		SELECT id, start_year, end_year
-		FROM academic_years
-		WHERE school_id = $1
-		AND is_active = TRUE
-	`, schoolID).Scan(&activeYearID, &activeStartYear, &activeEndYear); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		log.Println(err)
+	if res.NoRowsAffected {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Deactivate current year
-	res, err := tx.ExecContext(ctx, `
-		UPDATE academic_years
-		SET is_active = FALSE
-		WHERE school_id = $1
-		AND is_active = TRUE
-	`, schoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	details := "{user} cleared the active academic year."
-	if activeYearID != 0 {
-		details = "{user} cleared active academic year " + strconv.Itoa(activeStartYear) + "-" + strconv.Itoa(activeEndYear) + " with ID " + strconv.FormatInt(activeYearID, 10) + "."
-	}
-	if err := schools.StoreSchoolLog(schoolID, userID, schools.ActionSchoolEdit, schools.TypeEdit, "Active academic year cleared", "{user} cleared the active academic year.", tx, ctx, h.Sf, details); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := staffhelpers.RowsAffectedOr500(res, w); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)

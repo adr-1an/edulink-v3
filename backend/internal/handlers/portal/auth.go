@@ -5,18 +5,13 @@ import (
 	"app/internal/helpers"
 	"app/internal/helpers/portal"
 	"app/internal/helpers/staff"
-	"context"
-	"database/sql"
+
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
-	"net/netip"
-	"time"
 
-	"github.com/alexedwards/argon2id"
 	"github.com/go-chi/chi/v5"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 type payload struct {
@@ -56,61 +51,6 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type completeLoginPayload struct {
-	W      http.ResponseWriter
-	R      *http.Request
-	DB     *sql.DB
-	Ctx    context.Context
-	UserID int64
-}
-
-func CompleteLogin(p completeLoginPayload) {
-	token, err := gonanoid.New(128)
-	if err != nil {
-		log.Println(err)
-		p.W.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	tokenHash := helpers.MakeHash256(token)
-
-	var ptrForwardedFor *string
-	var ptrSourceIP *string
-
-	xForwardedFor := p.R.Header.Get("X-Forwarded-For")
-	sourceIP := p.R.RemoteAddr
-
-	if _, err := netip.ParseAddr(xForwardedFor); err != nil {
-		xForwardedFor = ""
-	}
-
-	if _, err := netip.ParseAddr(sourceIP); err != nil {
-		sourceIP = ""
-	}
-
-	if xForwardedFor != "" {
-		ptrForwardedFor = &xForwardedFor
-	}
-
-	if sourceIP != "" {
-		ptrSourceIP = &sourceIP
-	}
-
-	userAgent := p.R.Header.Get("User-Agent")
-
-	if _, err := p.DB.ExecContext(p.Ctx, `
-		INSERT INTO portal_sessions (token_hash, portal_user_id, x_forwarded_for, source_ip, user_agent)
-		VALUES ($1, $2, $3, $4, $5)
-	`, tokenHash, p.UserID, ptrForwardedFor, ptrSourceIP, userAgent); err != nil {
-		log.Println(err)
-		p.W.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	_ = json.NewEncoder(p.W).Encode(map[string]any{
-		"token": token,
-	})
-}
-
 func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -119,11 +59,9 @@ func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var accType string
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT account_type FROM portal_users WHERE id = $1
-	`, userID).Scan(&accType); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	res, err := h.App.Portal.Auth.TokenCheck(ctx, &auth.TokenCheckInput{UserID: userID})
+	if err != nil {
+		if errors.Is(err, auth.ErrUnauthorized) {
 			w.WriteHeader(http.StatusUnauthorized)
 		} else {
 			log.Println(err)
@@ -135,7 +73,7 @@ func (h *Handler) TokenCheckHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"user": map[string]any{
 			"id":          userID,
-			"accountType": accType,
+			"accountType": res.AccountType,
 		},
 	})
 }
@@ -147,11 +85,7 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	tokenHash := helpers.MakeHash256(token)
-
-	if _, err := h.DB.ExecContext(ctx, `
-		DELETE FROM portal_sessions WHERE token_hash = $1
-	`, tokenHash); err != nil {
+	if err := h.App.Portal.Auth.Logout(ctx, &auth.LogoutInput{Token: token}); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -171,106 +105,33 @@ func (h *Handler) AccountActivationHandler(w http.ResponseWriter, r *http.Reques
 		})
 		return
 	}
-	tokenHash := helpers.MakeHash256(activationToken)
-
-	tx, err := h.DB.BeginTx(ctx, nil)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	type payload struct {
+		NewPassword string `json:"newPassword"`
 	}
-	defer func() { _ = tx.Rollback() }()
-
-	// Get user ID by token hash
-	var userID int64
-	var expiresAt time.Time
-	if err := tx.QueryRowContext(ctx, `
-		DELETE FROM portal_account_activation_tokens
-		WHERE token_hash = $1
-		RETURNING portal_user_id, expires_at
-	`, tokenHash).Scan(&userID, &expiresAt); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	var p payload
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	decodeErr := dec.Decode(&p)
+	res, err := h.App.Portal.Auth.Activate(ctx, &auth.ActivateInput{Token: activationToken, NewPassword: p.NewPassword, InvalidPayload: decodeErr != nil, Session: auth.SessionInput{ForwardedFor: r.Header.Get("X-Forwarded-For"), SourceIP: r.RemoteAddr, UserAgent: r.Header.Get("User-Agent")}})
+	if err != nil {
+		switch {
+		case errors.Is(err, auth.ErrInvalidToken):
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": staffhelpers.ErrorCodeInvalidToken,
-			})
-		} else {
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeInvalidToken})
+		case errors.Is(err, auth.ErrExpiredToken):
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": staffhelpers.ErrorCodeExpiredToken})
+		case errors.Is(err, auth.ErrBadRequest):
+			w.WriteHeader(http.StatusBadRequest)
+		case errors.Is(err, auth.ErrUnprocessableEntity):
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		default:
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return
 	}
-
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM portal_account_activation_tokens
-		WHERE portal_user_id = $1
-	`, userID); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if expiresAt.Before(time.Now()) || expiresAt.Equal(time.Now()) {
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": staffhelpers.ErrorCodeExpiredToken,
-		})
-		return
-	}
-
-	type payload struct {
-		NewPassword string `json:"newPassword"`
-	}
-	var p payload
-
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&p); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if len(p.NewPassword) < 8 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	// Hash new password
-	passHash, err := argon2id.CreateHash(p.NewPassword, argon2id.DefaultParams)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Update user
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE portal_users
-		SET
-		    password_hash = $1,
-		    account_active = true
-		WHERE id = $2
-	`, passHash, userID); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Login
-	CompleteLogin(completeLoginPayload{
-		W:      w,
-		R:      r,
-		DB:     h.DB,
-		Ctx:    ctx,
-		UserID: userID,
-	})
+	_ = json.NewEncoder(w).Encode(map[string]any{"token": res.Token})
 }
 
 func (h *Handler) PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {

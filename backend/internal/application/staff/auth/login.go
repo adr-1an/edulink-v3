@@ -1,7 +1,6 @@
 package auth
 
 import (
-	helpers2 "app/internal/helpers"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -9,6 +8,8 @@ import (
 	"log"
 	"strings"
 	"time"
+
+	helpers2 "app/internal/helpers"
 
 	"github.com/alexedwards/argon2id"
 	gonanoid "github.com/matoous/go-nanoid/v2"

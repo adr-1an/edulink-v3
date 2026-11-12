@@ -1,25 +1,23 @@
 package staff
 
 import (
-	helpers2 "app/internal/helpers"
-	"app/internal/helpers/staff"
-	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
-	"os"
 	"strconv"
 
+	"app/internal/application/staff/uploads"
+	"app/internal/helpers/staff"
+
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
 )
+
+type CompleteUploadPayload struct {
+	CompletionToken string `json:"completionToken"`
+}
 
 func (h *Handler) CompleteUploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	doCleanup := true
 
 	userID, err := staffhelpers.TokenToUserID(ctx, w, r, h.DB)
 	if err != nil {
@@ -32,10 +30,7 @@ func (h *Handler) CompleteUploadHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	type payload struct {
-		CompletionToken string `json:"completionToken"`
-	}
-	var p payload
+	var p CompleteUploadPayload
 
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -43,93 +38,17 @@ func (h *Handler) CompleteUploadHandler(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	tokenHash := helpers2.MakeHash256(p.CompletionToken)
-
-	var objectUserID int64
-	var declaredSize int64
-	var declaredContentType string
-	var objectKey string
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT uploaded_by, declared_file_size, declared_content_type, object_key
-		FROM storage_objects WHERE id = $1 AND completion_token = $2 AND status = $3
-	`, objectID, tokenHash, helpers2.StatusPending).Scan(&objectUserID, &declaredSize, &declaredContentType, &objectKey); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	err = h.App.Staff.Uploads.CompleteUpload(ctx, &uploads.CompleteUploadInput{UserID: userID, ObjectID: objectID, Data: uploads.CompleteUploadData{CompletionToken: p.CompletionToken}})
+	if err != nil {
+		switch {
+		case errors.Is(err, uploads.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
-		} else {
-			log.Println(err)
+		case errors.Is(err, uploads.ErrUnprocessableEntity):
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return
 	}
-
-	if userID != objectUserID {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	bucketName := os.Getenv("S3_BUCKET")
-	if bucketName == "" {
-		log.Println("S3_BUCKET environment variable not set.")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	defer func() {
-		if !doCleanup {
-			return
-		}
-
-		if err := h.S3.RemoveObject(context.WithoutCancel(ctx), bucketName, objectKey, minio.RemoveObjectOptions{}); err != nil {
-			log.Println(err)
-		}
-
-		if _, err := h.DB.ExecContext(context.WithoutCancel(ctx), `
-			UPDATE storage_objects
-			SET status = $1
-			WHERE id = $2
-			AND completion_token = $3
-			AND status = $4
-			AND uploaded_by = $5
-		`, helpers2.StatusFailed, objectID, tokenHash, helpers2.StatusPending, userID); err != nil {
-			log.Println(err)
-		}
-	}()
-
-	// check if the declared object data matches the actual data
-	info, err := h.S3.StatObject(ctx, bucketName, objectKey, minio.StatObjectOptions{})
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if info.Size != declaredSize {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	if info.ContentType != declaredContentType {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-	// note: the content type stored in s3 is from the client. there's no guarantee it's correct, but
-	// for this handler it really doesn't matter.
-
-	if _, err := h.DB.ExecContext(ctx, `
-		UPDATE storage_objects
-		SET status = $1, completion_token = '', completed_at = NOW()
-		WHERE id = $2
-		AND completion_token = $3
-		AND status = $4
-		AND uploaded_by = $5
-	`, helpers2.StatusDone, objectID, tokenHash, helpers2.StatusPending, objectUserID); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	doCleanup = false
-
 	w.WriteHeader(http.StatusNoContent)
 }

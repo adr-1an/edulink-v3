@@ -1,14 +1,14 @@
 package staff
 
 import (
-	"app/internal/application/staff/guardians"
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
 	"time"
+
+	"app/internal/application/staff/guardians"
+	staffhelpers "app/internal/helpers/staff"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -143,7 +143,7 @@ func (h *Handler) ListGuardiansHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
+	access := res.Access
 
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"guardians": guardianList,

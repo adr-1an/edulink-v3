@@ -21,6 +21,7 @@ type ListGuardian struct {
 }
 
 type ListGuardiansResult struct {
+	Access    schools.AccessData
 	Guardians []ListGuardian
 }
 
@@ -80,7 +81,14 @@ func (s *Service) ListGuardians(ctx context.Context, i *ListGuardiansInput) (*Li
 		return nil, err
 	}
 
+	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
 	return &ListGuardiansResult{
+		Access:    access,
 		Guardians: guardians,
 	}, nil
 }

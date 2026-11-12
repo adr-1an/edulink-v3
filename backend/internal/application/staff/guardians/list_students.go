@@ -22,6 +22,7 @@ type ListGuardianStudentsInput struct {
 }
 
 type ListGuardianStudentsResult struct {
+	Access   schools.AccessData
 	Students []Student
 	SchoolID int64
 }
@@ -74,7 +75,14 @@ func (s *Service) ListGuardianStudents(
 		return nil, err
 	}
 
+	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, schoolID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
 	return &ListGuardianStudentsResult{
+		Access:   access,
 		Students: students,
 		SchoolID: schoolID,
 	}, nil

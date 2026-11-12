@@ -1,9 +1,10 @@
 package auth
 
 import (
-	"app/internal/helpers"
 	"context"
 	"log"
+
+	"app/internal/helpers"
 )
 
 type CheckTokenInput struct {

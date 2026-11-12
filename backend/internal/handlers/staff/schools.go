@@ -1,21 +1,17 @@
 package staff
 
 import (
-	"app/internal/application/staff/auth"
-	schoolService "app/internal/application/staff/schools"
-	"app/internal/helpers"
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"strconv"
-	"time"
+
+	"app/internal/application/staff/auth"
+	schoolService "app/internal/application/staff/schools"
+	staffhelpers "app/internal/helpers/staff"
 
 	"github.com/go-chi/chi/v5"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
@@ -35,6 +31,11 @@ func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
 	res, err := h.App.Staff.Schools.ListSchools(ctx, &schoolService.ListSchoolsInput{
 		UserID: userID,
 	})
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	type school struct {
 		ID         string `json:"id"`
@@ -47,11 +48,11 @@ func (h *Handler) SchoolListHandler(w http.ResponseWriter, r *http.Request) {
 	if res != nil {
 		for _, s := range res.Schools {
 			idStr := strconv.FormatInt(s.ID, 10)
-			ownerIdStr := strconv.FormatInt(s.OwnerID, 10)
+			ownerIDStr := strconv.FormatInt(s.OwnerID, 10)
 
 			schoolList = append(schoolList, school{
 				ID:         idStr,
-				OwnerID:    ownerIdStr,
+				OwnerID:    ownerIDStr,
 				Name:       s.Name,
 				RegionCode: s.RegionCode,
 			})
@@ -95,7 +96,6 @@ func (h *Handler) CreateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 			RegionCode: p.RegionCode,
 		},
 	})
-
 	if err != nil {
 		switch {
 		case errors.Is(err, schoolService.ErrBadRequest):
@@ -168,7 +168,6 @@ func (h *Handler) UpdateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 			ActiveAcademicYearID: p.ActiveAcademicYearID,
 		},
 	})
-
 	if err != nil {
 		switch {
 		case errors.Is(err, schoolService.ErrNoPermission), errors.Is(err, schoolService.ErrForbidden):
@@ -215,119 +214,19 @@ func (h *Handler) DeleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Permission check
-	if !schools.Can(
-		schools.SchoolOwner,
-		userID,
-		schoolID,
-		ctx,
-		h.DB,
-	) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	// Check whether 2FA is enabled
-	var tfa string
-
-	err = h.DB.QueryRowContext(ctx, `
-		SELECT two_factor_status
-		FROM users
-		WHERE id = $1
-	`, userID).Scan(&tfa)
-
+	res, err := h.App.Staff.Auth.RequestSchoolDeletion(ctx, &auth.RequestSchoolDeletionInput{UserID: userID, SchoolID: schoolID})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, auth.ErrForbidden) {
 			w.WriteHeader(http.StatusForbidden)
 		} else {
-			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-
 		return
 	}
-
-	if tfa == auth.TwoFAStatusEnabled {
-		token, err := gonanoid.New(128)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		tokenHash := helpers.MakeHash256(token)
-
-		id, err := h.App.Staff.Auth.Sf.NextID()
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		meta := auth.SchoolDeletionChallengeMetadata{
-			UserID:   userID,
-			SchoolID: schoolID,
-		}
-
-		metadata, err := json.Marshal(meta)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		expiresAt := time.Now().Add(15 * time.Minute)
-
-		_, err = h.DB.ExecContext(ctx, `
-			INSERT INTO two_factor_challenges (
-				id,
-				user_id,
-				purpose,
-				token_hash,
-				expires_at,
-				metadata
-			)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`,
-			id,
-			userID,
-			auth.ChallengePurposeSchoolDeletion,
-			tokenHash,
-			expiresAt,
-			metadata,
-		)
-
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"twoFactorChallenge": map[string]any{
-				"token":     token,
-				"purpose":   auth.ChallengePurposeSchoolDeletion,
-				"expiresAt": expiresAt,
-			},
-		})
-
+	if res.Challenge != nil {
+		_ = json.NewEncoder(w).Encode(map[string]any{"twoFactorChallenge": map[string]any{"token": res.Challenge.Token, "purpose": res.Challenge.Purpose, "expiresAt": res.Challenge.ExpiresAt}})
 		return
 	}
-
-	// No 2FA required -> delete immediately
-	err = h.App.Staff.Schools.DeleteSchool(
-		ctx,
-		&schoolService.DeleteSchoolInput{
-			UserID:   userID,
-			SchoolID: schoolID,
-		},
-	)
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -352,7 +251,6 @@ func (h *Handler) ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Requ
 		UserID:   userID,
 		SchoolID: schoolID,
 	})
-
 	if err != nil {
 		switch {
 		case errors.Is(err, schoolService.ErrNoPermission):
@@ -365,15 +263,8 @@ func (h *Handler) ViewSchoolDashboardHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"access": access,
+		"access": res.Access,
 		"school": res.School,
 	})
 }

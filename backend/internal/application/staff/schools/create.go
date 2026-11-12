@@ -1,11 +1,12 @@
 package schools
 
 import (
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
 	"context"
 	"log"
 	"strings"
+
+	"app/internal/helpers/staff"
+	"app/internal/helpers/staff/schools"
 
 	"golang.org/x/text/language"
 )

@@ -1,13 +1,13 @@
 package staff
 
 import (
-	"app/internal/application/staff/auth"
-	schoolService "app/internal/application/staff/schools"
-	"app/internal/helpers/staff"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
+
+	"app/internal/application/staff/auth"
+	staffhelpers "app/internal/helpers/staff"
 )
 
 type challengeCompletionPayload struct {
@@ -71,15 +71,6 @@ func (h *Handler) CompleteChallenge(w http.ResponseWriter, r *http.Request) {
 		})
 
 	case auth.CompleteChallengeSchoolDeletion:
-		err := h.App.Staff.Schools.DeleteSchool(ctx, &schoolService.DeleteSchoolInput{
-			UserID:   res.SchoolDeletion.UserID,
-			SchoolID: res.SchoolDeletion.SchoolID,
-		})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

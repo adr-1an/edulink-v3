@@ -1,8 +1,6 @@
 package students
 
 import (
-	"app/internal/helpers"
-	"app/internal/helpers/staff/schools"
 	"context"
 	"database/sql"
 	"errors"
@@ -10,6 +8,9 @@ import (
 	"log"
 	"os"
 	"time"
+
+	"app/internal/helpers"
+	"app/internal/helpers/staff/schools"
 
 	"github.com/lib/pq"
 	gonanoid "github.com/matoous/go-nanoid/v2"

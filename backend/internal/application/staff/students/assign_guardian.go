@@ -1,10 +1,11 @@
 package students
 
 import (
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
 	"context"
 	"log"
+
+	"app/internal/helpers/staff"
+	"app/internal/helpers/staff/schools"
 )
 
 type AssignGuardianInput struct {

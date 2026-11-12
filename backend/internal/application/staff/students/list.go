@@ -1,11 +1,12 @@
 package students
 
 import (
-	helpers2 "app/internal/helpers"
-	"app/internal/helpers/staff/schools"
 	"context"
 	"log"
 	"time"
+
+	helpers2 "app/internal/helpers"
+	"app/internal/helpers/staff/schools"
 )
 
 type ListStudentsInput struct {
@@ -37,6 +38,7 @@ type studentType struct {
 }
 
 type ListStudentsResult struct {
+	Access   schools.AccessData
 	Students []studentType
 }
 
@@ -117,7 +119,16 @@ func (s *Service) ListStudents(ctx context.Context, i *ListStudentsInput) (*List
 		return nil, err
 	}
 
+	// Release the read transaction before looking up access through the connection pool.
+	_ = tx.Rollback()
+
+	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ListStudentsResult{
+		Access:   access,
 		Students: studentList,
 	}, nil
 }

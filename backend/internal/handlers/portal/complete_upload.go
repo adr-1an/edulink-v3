@@ -1,27 +1,20 @@
 package portal
 
 import (
-	helpers2 "app/internal/helpers"
-	"app/internal/helpers/portal"
-	"context"
-	"database/sql"
+	svc "app/internal/application/portal/uploads"
+	"app/internal/helpers"
+	portal "app/internal/helpers/portal"
 	"encoding/json"
-	"errors"
-	"log"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
 )
 
 func (h *Handler) CompleteUploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	doCleanup := true
-
-	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers2.AccTypeEither)
+	userID, err := portal.TokenToUID(w, r, h.DB, ctx, helpers.AccTypeEither)
 	if err != nil {
 		return
 	}
@@ -31,105 +24,18 @@ func (h *Handler) CompleteUploadHandler(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
 	type payload struct {
 		CompletionToken string `json:"completionToken"`
 	}
 	var p payload
-
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&p); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	decodeErr := dec.Decode(&p)
 
-	tokenHash := helpers2.MakeHash256(p.CompletionToken)
-
-	var objectUserID int64
-	var declaredSize int64
-	var declaredContentType string
-	var objectKey string
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT uploaded_by, declared_file_size, declared_content_type, object_key
-		FROM portal_storage_objects WHERE id = $1 AND completion_token = $2 AND status = $3
-	`, objectID, tokenHash, helpers2.StatusPending).Scan(&objectUserID, &declaredSize, &declaredContentType, &objectKey); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusForbidden)
-		} else {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		return
-	}
-
-	if userID != objectUserID {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	bucketName := os.Getenv("S3_BUCKET")
-	if bucketName == "" {
-		log.Println("S3_BUCKET environment variable not set.")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	defer func() {
-		if !doCleanup {
-			return
-		}
-
-		if err := h.S3.RemoveObject(context.WithoutCancel(ctx), bucketName, objectKey, minio.RemoveObjectOptions{}); err != nil {
-			log.Println(err)
-		}
-
-		if _, err := h.DB.ExecContext(context.WithoutCancel(ctx), `
-			UPDATE portal_storage_objects
-			SET status = $1
-			WHERE id = $2
-			AND completion_token = $3
-			AND status = $4
-			AND uploaded_by = $5
-		`, helpers2.StatusFailed, objectID, tokenHash, helpers2.StatusPending, userID); err != nil {
-			log.Println(err)
-		}
-	}()
-
-	// check if the declared object data matches the actual data
-	info, err := h.S3.StatObject(ctx, bucketName, objectKey, minio.StatObjectOptions{})
+	err = h.App.Portal.Uploads.CompleteUpload(ctx, &svc.CompleteUploadInput{UserID: userID, ObjectID: objectID, InvalidPayload: decodeErr != nil, CompletionToken: p.CompletionToken})
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		writeUploadsError(w, err)
 		return
 	}
-
-	if info.Size != declaredSize {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	if info.ContentType != declaredContentType {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-	// note: the content type stored in s3 is from the client. there's no guarantee it's correct, but
-	// for this handler it really doesn't matter.
-
-	if _, err := h.DB.ExecContext(ctx, `
-		UPDATE portal_storage_objects
-		SET status = $1, completion_token = '', completed_at = NOW()
-		WHERE id = $2
-		AND completion_token = $3
-		AND status = $4
-		AND uploaded_by = $5
-	`, helpers2.StatusDone, objectID, tokenHash, helpers2.StatusPending, objectUserID); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	doCleanup = false
-
 	w.WriteHeader(http.StatusNoContent)
 }

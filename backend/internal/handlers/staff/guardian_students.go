@@ -3,7 +3,6 @@ package staff
 import (
 	"app/internal/application/staff/guardians"
 	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
 	"encoding/json"
 	"errors"
 	"log"
@@ -42,12 +41,7 @@ func (h *Handler) ListGuardianStudentsHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, res.SchoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	access := res.Access
 
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"access":   access,

@@ -1,11 +1,12 @@
 package students
 
 import (
+	"context"
+	"log"
+
 	"app/internal/helpers"
 	"app/internal/helpers/staff"
 	"app/internal/helpers/staff/schools"
-	"context"
-	"log"
 )
 
 type ListGuardiansInput struct {
@@ -23,6 +24,7 @@ type Guardian struct {
 }
 
 type ListGuardiansResult struct {
+	Access    schools.AccessData
 	SchoolID  int64
 	Guardians []Guardian
 }
@@ -82,7 +84,14 @@ func (s *Service) ListGuardians(ctx context.Context, i *ListGuardiansInput) (*Li
 		return nil, err
 	}
 
+	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, sSchoolID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
 	return &ListGuardiansResult{
+		Access:    access,
 		SchoolID:  sSchoolID,
 		Guardians: guardians,
 	}, nil

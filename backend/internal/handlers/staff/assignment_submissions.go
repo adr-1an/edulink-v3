@@ -1,39 +1,56 @@
 package staff
 
 import (
-	"app/internal/helpers"
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
-	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 
+	"app/internal/application/staff/submissions"
+	"app/internal/helpers/staff"
+
 	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
 )
 
-// SubToSchoolID is public because it came in handy in another handler.
-func SubToSchoolID(subID int64, db *sql.DB, ctx context.Context) (int64, error) {
-	var sID int64
-	if err := db.QueryRowContext(ctx, `
-		SELECT y.school_id
-		FROM assignment_submissions s
-		JOIN assignments a ON s.assignment_id = a.id
-		JOIN courses c ON a.course_id = c.id
-		JOIN grades g ON c.grade_id = g.id
-		JOIN academic_years y ON g.academic_year_id = y.id
-		WHERE s.id = $1
-	`, subID).Scan(&sID); err != nil {
-		return 0, err
-	}
+type ListAssignmentSubmissionsPortalUser struct {
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	Phone    string `json:"phone"`
+	Name     string `json:"name"`
+	Lastname string `json:"lastName"`
+}
 
-	return sID, nil
+func mapListAssignmentSubmissionsPortalUser(v submissions.ListAssignmentSubmissionsPortalUser) ListAssignmentSubmissionsPortalUser {
+	out := ListAssignmentSubmissionsPortalUser{
+		ID:       v.ID,
+		Email:    v.Email,
+		Phone:    v.Phone,
+		Name:     v.Name,
+		Lastname: v.Lastname,
+	}
+	return out
+}
+
+type ListAssignmentSubmissionsSubmission struct {
+	ID          string                              `json:"id"`
+	Status      string                              `json:"status"`
+	SubmittedBy ListAssignmentSubmissionsPortalUser `json:"submittedBy"`
+	Notes       *string                             `json:"notes"`
+	SubmittedAt time.Time                           `json:"submittedAt"`
+	Graded      bool                                `json:"graded"`
+}
+
+func mapListAssignmentSubmissionsSubmission(v submissions.ListAssignmentSubmissionsSubmission) ListAssignmentSubmissionsSubmission {
+	out := ListAssignmentSubmissionsSubmission{
+		ID:          v.ID,
+		Status:      v.Status,
+		SubmittedBy: mapListAssignmentSubmissionsPortalUser(v.SubmittedBy),
+		Notes:       v.Notes,
+		SubmittedAt: v.SubmittedAt,
+		Graded:      v.Graded,
+	}
+	return out
 }
 
 func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -50,139 +67,129 @@ func (h *Handler) ListAssignmentSubmissionsHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	var schoolID int64
-	if err := h.DB.QueryRowContext(ctx, `
-		SELECT y.school_id
-		FROM assignments a
-		JOIN courses c ON a.course_id = c.id
-		JOIN grades g ON c.grade_id = g.id
-		JOIN academic_years y ON g.academic_year_id = y.id
-		WHERE  a.id = $1
-	`, assignmentID).Scan(&schoolID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	res, err := h.App.Staff.Submissions.ListAssignmentSubmissions(ctx, &submissions.ListAssignmentSubmissionsInput{UserID: userID, AssignmentID: assignmentID})
+	if err != nil {
+		switch {
+		case errors.Is(err, submissions.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
-		} else {
-			log.Println(err)
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return
 	}
 
-	if !schools.Can(schools.PermissionSubmissionList, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	type portalUser struct {
-		ID       string `json:"id"`
-		Email    string `json:"email"`
-		Phone    string `json:"phone"`
-		Name     string `json:"name"`
-		Lastname string `json:"lastName"`
-	}
-
-	type submission struct {
-		ID          string     `json:"id"`
-		Status      string     `json:"status"`
-		SubmittedBy portalUser `json:"submittedBy"`
-		Notes       *string    `json:"notes"`
-		SubmittedAt time.Time  `json:"submittedAt"`
-		Graded      bool       `json:"graded"`
-	}
-	var subs []submission
-
-	rows, err := h.DB.QueryContext(ctx, `
-		SELECT
-		    s.id, u.id, u.email, u.phone, u.name, u.last_name,
-		    s.notes, s.created_at, s.status,
-		    EXISTS (SELECT 1 FROM submission_scores WHERE submission_id = s.id)
-		FROM assignment_submissions s
-		JOIN portal_users u ON s.submitted_by = u.id
-		WHERE (s.status = $1
-		  OR s.status = $4)
-		AND s.assignment_id = $2
-		AND u.account_type = $3
-	`, helpers.SubmissionStatusSubmitted, assignmentID, helpers.AccTypeStudent, helpers.SubmissionStatusReturned)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = rows.Close() }()
-
-	type submissionRow struct {
-		SubmissionID string
-
-		UserID   string
-		Email    string
-		Phone    string
-		Name     string
-		Lastname string
-
-		Notes       *string
-		SubmittedAt time.Time
-		Status      string
-		Graded      bool
-	}
-
-	for rows.Next() {
-		var r submissionRow
-
-		if err := rows.Scan(
-			&r.SubmissionID,
-
-			&r.UserID,
-			&r.Email,
-			&r.Phone,
-			&r.Name,
-			&r.Lastname,
-
-			&r.Notes,
-			&r.SubmittedAt,
-			&r.Status,
-
-			&r.Graded,
-		); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+	var mappedSubmissions []ListAssignmentSubmissionsSubmission
+	if res.Submissions != nil {
+		mappedSubmissions = make([]ListAssignmentSubmissionsSubmission, 0, len(res.Submissions))
+		for _, item := range res.Submissions {
+			mappedSubmissions = append(mappedSubmissions, mapListAssignmentSubmissionsSubmission(item))
 		}
-
-		subs = append(subs, submission{
-			ID: r.SubmissionID,
-
-			SubmittedBy: portalUser{
-				ID:       r.UserID,
-				Email:    r.Email,
-				Phone:    r.Phone,
-				Name:     r.Name,
-				Lastname: r.Lastname,
-			},
-
-			Notes:       r.Notes,
-			SubmittedAt: r.SubmittedAt,
-			Status:      r.Status,
-			Graded:      r.Graded,
-		})
 	}
-
-	if err := rows.Err(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"access":      access,
-		"submissions": subs,
+		"access":      res.Access,
+		"submissions": mappedSubmissions,
 	})
+}
+
+type ViewSubmissionUser struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Phone string `json:"phone"`
+}
+
+func mapViewSubmissionUser(v submissions.ViewSubmissionUser) ViewSubmissionUser {
+	out := ViewSubmissionUser{
+		ID:    v.ID,
+		Name:  v.Name,
+		Email: v.Email,
+		Phone: v.Phone,
+	}
+	return out
+}
+
+type ViewSubmissionGrade struct {
+	Score    int                `json:"score"`
+	Notes    *string            `json:"notes"`
+	GradedAt time.Time          `json:"gradedAt"`
+	GradedBy ViewSubmissionUser `json:"gradedBy"`
+}
+
+func mapViewSubmissionGrade(v submissions.ViewSubmissionGrade) ViewSubmissionGrade {
+	out := ViewSubmissionGrade{
+		Score:    v.Score,
+		Notes:    v.Notes,
+		GradedAt: v.GradedAt,
+		GradedBy: mapViewSubmissionUser(v.GradedBy),
+	}
+	return out
+}
+
+type ViewSubmissionPortalUser struct {
+	ID       string  `json:"id"`
+	Email    string  `json:"email"`
+	Phone    *string `json:"phone"`
+	Name     string  `json:"name"`
+	Lastname string  `json:"lastName"`
+}
+
+func mapViewSubmissionPortalUser(v submissions.ViewSubmissionPortalUser) ViewSubmissionPortalUser {
+	out := ViewSubmissionPortalUser{
+		ID:       v.ID,
+		Email:    v.Email,
+		Phone:    v.Phone,
+		Name:     v.Name,
+		Lastname: v.Lastname,
+	}
+	return out
+}
+
+type ViewSubmissionSubmissionAttachment struct {
+	ID           string `json:"id"`
+	PresignedURL string `json:"presignedUrl"`
+	Filename     string `json:"originalFilename"`
+	ContentType  string `json:"declaredContentType"`
+}
+
+func mapViewSubmissionSubmissionAttachment(v submissions.ViewSubmissionSubmissionAttachment) ViewSubmissionSubmissionAttachment {
+	out := ViewSubmissionSubmissionAttachment{
+		ID:           v.ID,
+		PresignedURL: v.PresignedURL,
+		Filename:     v.Filename,
+		ContentType:  v.ContentType,
+	}
+	return out
+}
+
+type ViewSubmissionSubmission struct {
+	ID          string                               `json:"id"`
+	Status      string                               `json:"status"`
+	SubmittedBy ViewSubmissionPortalUser             `json:"submittedBy"`
+	Attachments []ViewSubmissionSubmissionAttachment `json:"attachments"`
+	Grade       *ViewSubmissionGrade                 `json:"grade"`
+	Notes       *string                              `json:"notes"`
+	SubmittedAt time.Time                            `json:"submittedAt"`
+}
+
+func mapViewSubmissionSubmission(v submissions.ViewSubmissionSubmission) ViewSubmissionSubmission {
+	out := ViewSubmissionSubmission{
+		ID:          v.ID,
+		Status:      v.Status,
+		SubmittedBy: mapViewSubmissionPortalUser(v.SubmittedBy),
+		Notes:       v.Notes,
+		SubmittedAt: v.SubmittedAt,
+	}
+	if v.Attachments != nil {
+		out.Attachments = make([]ViewSubmissionSubmissionAttachment, 0, len(v.Attachments))
+		for _, item := range v.Attachments {
+			out.Attachments = append(out.Attachments, mapViewSubmissionSubmissionAttachment(item))
+		}
+	}
+	if v.Grade != nil {
+		mapped := mapViewSubmissionGrade(*v.Grade)
+		out.Grade = &mapped
+	}
+	return out
 }
 
 func (h *Handler) ViewSubmissionHandler(w http.ResponseWriter, r *http.Request) {
@@ -199,240 +206,20 @@ func (h *Handler) ViewSubmissionHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	schoolID, err := SubToSchoolID(subID, h.DB, ctx)
+	res, err := h.App.Staff.Submissions.ViewSubmission(ctx, &submissions.ViewSubmissionInput{UserID: userID, SubmissionID: subID})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		switch {
+		case errors.Is(err, submissions.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
-		} else {
-			log.Println(err)
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		return
-	}
-
-	if !schools.Can(schools.PermissionSubmissionView, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	type user struct {
-		ID    string `json:"id"`
-		Name  string `json:"name"`
-		Email string `json:"email"`
-		Phone string `json:"phone"`
-	}
-
-	type grade struct {
-		Score    int       `json:"score"`
-		Notes    *string   `json:"notes"`
-		GradedAt time.Time `json:"gradedAt"`
-		GradedBy user      `json:"gradedBy"`
-	}
-
-	type portalUser struct {
-		ID       string  `json:"id"`
-		Email    string  `json:"email"`
-		Phone    *string `json:"phone"`
-		Name     string  `json:"name"`
-		Lastname string  `json:"lastName"`
-	}
-
-	type submissionAttachment struct {
-		ID           string `json:"id"`
-		PresignedURL string `json:"presignedUrl"`
-		Filename     string `json:"originalFilename"`
-		ContentType  string `json:"declaredContentType"`
-	}
-
-	type submission struct {
-		ID          string                 `json:"id"`
-		Status      string                 `json:"status"`
-		SubmittedBy portalUser             `json:"submittedBy"`
-		Attachments []submissionAttachment `json:"attachments"`
-		Grade       *grade                 `json:"grade"`
-		Notes       *string                `json:"notes"`
-		SubmittedAt time.Time              `json:"submittedAt"`
-	}
-
-	rows, err := h.DB.QueryContext(ctx, `
-		SELECT
-		    s.id,
-		    s.status,
-		    s.notes,
-		    s.created_at,
-		    
-		    ss.score_percentage,
-		    ss.notes,
-		    ss.graded_at,
-		    
-		    gu.id,
-		    gu.name,
-		    gu.email,
-		    gu.phone,
-		    
-		    u.id,
-		    u.email,
-		    u.phone,
-		    u.name,
-		    u.last_name,
-		    
-		    so.id,
-		    so.original_file_name,
-		    so.declared_content_type,
-		    so.bucket_name
-		FROM assignment_submissions s
-		JOIN portal_users u ON s.submitted_by = u.id
-		LEFT JOIN submission_attachments sa ON s.id = sa.submission_id
-		LEFT JOIN portal_storage_objects so ON sa.storage_object_id = so.id
-		LEFT JOIN submission_scores ss ON s.id = ss.submission_id
-		LEFT JOIN users gu ON ss.graded_by = gu.id
-		WHERE s.id = $1
-		AND (s.status = $2 OR s.status = $3)
-	`, subID, helpers.SubmissionStatusSubmitted, helpers.SubmissionStatusReturned)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = rows.Close() }()
-
-	var (
-		s           submission
-		initialized bool
-	)
-
-	type subRow struct {
-		ID        string
-		Status    string
-		Notes     *string
-		CreatedAt time.Time
-
-		GradeScore    *int
-		GradeNotes    *string
-		GradedAt      *time.Time
-		GradedByID    *string
-		GradedByName  *string
-		GradedByEmail *string
-		GradedByPhone *string
-
-		UserID   string
-		Email    string
-		Phone    string
-		Name     string
-		Lastname string
-
-		AttachmentID *string
-		Filename     *string
-		ContentType  *string
-		BucketName   *string
-	}
-
-	for rows.Next() {
-		var r subRow
-
-		if err := rows.Scan(
-			&r.ID,
-			&r.Status,
-			&r.Notes,
-			&r.CreatedAt,
-
-			&r.GradeScore,
-			&r.GradeNotes,
-			&r.GradedAt,
-
-			&r.GradedByID,
-			&r.GradedByName,
-			&r.GradedByEmail,
-			&r.GradedByPhone,
-
-			&r.UserID,
-			&r.Email,
-			&r.Phone,
-			&r.Name,
-			&r.Lastname,
-
-			&r.AttachmentID,
-			&r.Filename,
-			&r.ContentType,
-			&r.BucketName,
-		); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		if !initialized {
-			s = submission{
-				ID:     r.ID,
-				Status: r.Status,
-				SubmittedBy: portalUser{
-					ID:       r.UserID,
-					Email:    r.Email,
-					Phone:    &r.Phone,
-					Name:     r.Name,
-					Lastname: r.Lastname,
-				},
-				Grade:       nil,
-				Attachments: make([]submissionAttachment, 0),
-				SubmittedAt: r.CreatedAt,
-			}
-
-			if r.Notes != nil {
-				s.Notes = r.Notes
-			}
-
-			initialized = true
-		}
-
-		if r.AttachmentID != nil {
-			objKey := fmt.Sprintf("%s/%s", helpers.UploadCategorySubmissionAttachments, *r.AttachmentID)
-
-			url, err := h.S3.PresignedGetObject(ctx, *r.BucketName, objKey, 5*time.Minute, nil)
-			if err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			s.Attachments = append(s.Attachments, submissionAttachment{
-				ID:           *r.AttachmentID,
-				PresignedURL: url.String(),
-				Filename:     *r.Filename,
-				ContentType:  *r.ContentType,
-			})
-		}
-
-		if r.GradeScore != nil && r.GradedByID != nil {
-			s.Grade = &grade{
-				Score:    *r.GradeScore,
-				Notes:    r.GradeNotes,
-				GradedAt: *r.GradedAt,
-				GradedBy: user{
-					ID:    *r.GradedByID,
-					Name:  *r.GradedByName,
-					Email: *r.GradedByEmail,
-					Phone: *r.GradedByPhone,
-				},
-			}
-		}
-	}
-
-	if err := rows.Err(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	access, err := schools.GetAllUserPermissions(ctx, h.DB, userID, schoolID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"access":     access,
-		"submission": s,
+		"access":     res.Access,
+		"submission": mapViewSubmissionSubmission(res.Submission),
 	})
 }
 
@@ -450,53 +237,18 @@ func (h *Handler) ReturnSubmissionHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	schoolID, err := SubToSchoolID(subID, h.DB, ctx)
+	err = h.App.Staff.Submissions.ReturnSubmission(ctx, &submissions.ReturnSubmissionInput{UserID: userID, SubmissionID: subID})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		switch {
+		case errors.Is(err, submissions.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
-		} else {
-			log.Println(err)
+		case errors.Is(err, submissions.ErrConflict):
+			w.WriteHeader(http.StatusConflict)
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return
 	}
-
-	if !schools.Can(schools.PermissionSubmissionReturn, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	if _, err := h.DB.ExecContext(ctx, `
-		DELETE FROM submission_scores WHERE submission_id = $1
-	`, subID); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	result, err := h.DB.ExecContext(ctx, `
-		UPDATE assignment_submissions
-		SET status = $1
-		WHERE id = $2
-		AND status = $3
-	`, helpers.SubmissionStatusReturned, subID, helpers.SubmissionStatusSubmitted)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if rowsAffected != 1 {
-		w.WriteHeader(http.StatusConflict)
-		return
-	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -514,125 +266,17 @@ func (h *Handler) DeleteReturnedSubmissionHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	schoolID, err := SubToSchoolID(subID, h.DB, ctx)
+	err = h.App.Staff.Submissions.DeleteReturnedSubmission(ctx, &submissions.DeleteReturnedSubmissionInput{UserID: userID, SubmissionID: subID})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		switch {
+		case errors.Is(err, submissions.ErrForbidden):
 			w.WriteHeader(http.StatusForbidden)
-		} else {
-			log.Println(err)
+		case errors.Is(err, submissions.ErrConflict):
+			w.WriteHeader(http.StatusConflict)
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return
 	}
-
-	if !schools.Can(schools.PermissionSubmissionDelete, userID, schoolID, ctx, h.DB) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	tx, err := h.DB.BeginTx(ctx, nil)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	var status helpers.SubmissionStatus
-	if err := tx.QueryRowContext(ctx, `
-		SELECT status
-		FROM assignment_submissions
-		WHERE id = $1
-		FOR UPDATE
-	`, subID).Scan(&status); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusForbidden)
-		} else {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		return
-	}
-
-	if status != helpers.SubmissionStatusReturned {
-		w.WriteHeader(http.StatusConflict)
-		return
-	}
-
-	type storageObject struct {
-		BucketName string
-		ObjectKey  string
-	}
-	var storageObjects []storageObject
-
-	rows, err := tx.QueryContext(ctx, `
-		DELETE FROM portal_storage_objects so
-		USING submission_attachments sa
-		WHERE sa.storage_object_id = so.id
-		AND sa.submission_id = $1
-		RETURNING so.bucket_name, so.object_key
-	`, subID)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	for rows.Next() {
-		var object storageObject
-		if err := rows.Scan(&object.BucketName, &object.ObjectKey); err != nil {
-			_ = rows.Close()
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		storageObjects = append(storageObjects, object)
-	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if err := rows.Close(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	result, err := tx.ExecContext(ctx, `
-		DELETE FROM assignment_submissions
-		WHERE id = $1
-		AND status = $2
-	`, subID, helpers.SubmissionStatusReturned)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if rowsAffected != 1 {
-		w.WriteHeader(http.StatusConflict)
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	for _, object := range storageObjects {
-		if err := h.S3.RemoveObject(context.WithoutCancel(ctx), object.BucketName, object.ObjectKey, minio.RemoveObjectOptions{}); err != nil {
-			log.Println(err)
-		}
-	}
-
 	w.WriteHeader(http.StatusNoContent)
 }

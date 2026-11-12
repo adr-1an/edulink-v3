@@ -1,7 +1,6 @@
 package auth
 
 import (
-	helpers2 "app/internal/helpers"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -9,6 +8,9 @@ import (
 	"log"
 	"strings"
 	"time"
+
+	"app/internal/application/staff/schools"
+	helpers2 "app/internal/helpers"
 
 	"github.com/pquerna/otp/totp"
 )
@@ -127,6 +129,9 @@ func (s *Service) CompleteChallenge(
 			return nil, err
 		}
 
+		if err := s.Schools.DeleteSchool(ctx, &schools.DeleteSchoolInput{UserID: meta.UserID, SchoolID: meta.SchoolID}); err != nil {
+			return nil, err
+		}
 		return &CompleteChallengeResult{
 			Type:           CompleteChallengeSchoolDeletion,
 			SchoolDeletion: &meta,

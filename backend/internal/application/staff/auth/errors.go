@@ -12,3 +12,5 @@ var (
 	ErrInvalidTwoFactorCode        = errors.New("invalid two factor code")
 	ErrUnsupportedChallengePurpose = errors.New("unsupported challenge purpose")
 )
+
+var ErrConflict = errors.New("conflict")

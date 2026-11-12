@@ -1,14 +1,15 @@
 package students
 
 import (
-	"app/internal/helpers"
-	"app/internal/helpers/staff"
-	"app/internal/helpers/staff/schools"
 	"context"
 	"database/sql"
 	"errors"
 	"log"
 	"time"
+
+	"app/internal/helpers"
+	"app/internal/helpers/staff"
+	"app/internal/helpers/staff/schools"
 )
 
 type ViewStudentInput struct {
@@ -76,6 +77,7 @@ type student struct {
 }
 
 type ViewStudentResult struct {
+	Access      schools.AccessData
 	SchoolID    int64
 	Submissions []submission
 	Student     student
@@ -273,7 +275,13 @@ func (s *Service) ViewStudent(ctx context.Context, i *ViewStudentInput) (*ViewSt
 		}
 	}
 
+	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, schoolID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ViewStudentResult{
+		Access:      access,
 		SchoolID:    schoolID,
 		Submissions: submissions,
 		Student:     st,

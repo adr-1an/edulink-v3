@@ -1,9 +1,10 @@
 package schools
 
 import (
-	"app/internal/helpers/staff/schools"
 	"context"
 	"log"
+
+	"app/internal/helpers/staff/schools"
 )
 
 type SchoolViewInput struct {
@@ -12,6 +13,7 @@ type SchoolViewInput struct {
 }
 
 type SchoolViewResult struct {
+	Access schools.AccessData
 	School schoolView
 }
 
@@ -97,7 +99,13 @@ func (s *Service) ViewSchool(ctx context.Context, i *SchoolViewInput) (*SchoolVi
 	// Return data
 	sc.Grades = gs
 
+	access, err := schools.GetAllUserPermissions(ctx, s.DB, i.UserID, i.SchoolID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &SchoolViewResult{
+		Access: access,
 		School: sc,
 	}, nil
 }
