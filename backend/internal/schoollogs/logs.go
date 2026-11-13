@@ -1,3 +1,4 @@
+// Package schoollogs contains constants and functions for the school audit log feature
 package schoollogs
 
 import (
@@ -9,8 +10,10 @@ import (
 	"github.com/sony/sonyflake/v2"
 )
 
-type Action string
-type Type string
+type (
+	Action string
+	Type   string
+)
 
 const (
 	ActionSchoolCreate Action = "school.create"

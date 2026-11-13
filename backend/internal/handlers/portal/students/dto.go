@@ -1,9 +1,10 @@
 package students
 
 import (
+	"time"
+
 	svc "app/internal/application/portal/students"
 	"app/internal/submissions"
-	"time"
 )
 
 type ListCoursesCourse struct {
@@ -23,6 +24,7 @@ func mapListCoursesCourse(v svc.ListCoursesCourse) ListCoursesCourse {
 		AccentColor: v.AccentColor,
 	}
 }
+
 func mapListCoursesCoursePtr(v *svc.ListCoursesCourse) *ListCoursesCourse {
 	if v == nil {
 		return nil
@@ -30,6 +32,7 @@ func mapListCoursesCoursePtr(v *svc.ListCoursesCourse) *ListCoursesCourse {
 	r := mapListCoursesCourse(*v)
 	return &r
 }
+
 func mapListCoursesCourseSlice(v []svc.ListCoursesCourse) []ListCoursesCourse {
 	if v == nil {
 		return nil
@@ -52,6 +55,7 @@ func mapListCoursesGrade(v svc.ListCoursesGrade) ListCoursesGrade {
 		Name: v.Name,
 	}
 }
+
 func mapListCoursesGradePtr(v *svc.ListCoursesGrade) *ListCoursesGrade {
 	if v == nil {
 		return nil
@@ -59,6 +63,7 @@ func mapListCoursesGradePtr(v *svc.ListCoursesGrade) *ListCoursesGrade {
 	r := mapListCoursesGrade(*v)
 	return &r
 }
+
 func mapListCoursesGradeSlice(v []svc.ListCoursesGrade) []ListCoursesGrade {
 	if v == nil {
 		return nil
@@ -87,6 +92,7 @@ func mapCourseDashboardCourse(v svc.CourseDashboardCourse) CourseDashboardCourse
 		AccentColor: v.AccentColor,
 	}
 }
+
 func mapCourseDashboardCoursePtr(v *svc.CourseDashboardCourse) *CourseDashboardCourse {
 	if v == nil {
 		return nil
@@ -94,6 +100,7 @@ func mapCourseDashboardCoursePtr(v *svc.CourseDashboardCourse) *CourseDashboardC
 	r := mapCourseDashboardCourse(*v)
 	return &r
 }
+
 func mapCourseDashboardCourseSlice(v []svc.CourseDashboardCourse) []CourseDashboardCourse {
 	if v == nil {
 		return nil
@@ -118,6 +125,7 @@ func mapCourseDashboardGrade(v svc.CourseDashboardGrade) CourseDashboardGrade {
 		Level: v.Level,
 	}
 }
+
 func mapCourseDashboardGradePtr(v *svc.CourseDashboardGrade) *CourseDashboardGrade {
 	if v == nil {
 		return nil
@@ -125,6 +133,7 @@ func mapCourseDashboardGradePtr(v *svc.CourseDashboardGrade) *CourseDashboardGra
 	r := mapCourseDashboardGrade(*v)
 	return &r
 }
+
 func mapCourseDashboardGradeSlice(v []svc.CourseDashboardGrade) []CourseDashboardGrade {
 	if v == nil {
 		return nil
@@ -161,6 +170,7 @@ func mapCourseDashboardAssignment(v svc.CourseDashboardAssignment) CourseDashboa
 		CreatedAt:          v.CreatedAt,
 	}
 }
+
 func mapCourseDashboardAssignmentPtr(v *svc.CourseDashboardAssignment) *CourseDashboardAssignment {
 	if v == nil {
 		return nil
@@ -168,6 +178,7 @@ func mapCourseDashboardAssignmentPtr(v *svc.CourseDashboardAssignment) *CourseDa
 	r := mapCourseDashboardAssignment(*v)
 	return &r
 }
+
 func mapCourseDashboardAssignmentSlice(v []svc.CourseDashboardAssignment) []CourseDashboardAssignment {
 	if v == nil {
 		return nil
@@ -190,6 +201,7 @@ func mapCourseDashboardReferencedPost(v svc.CourseDashboardReferencedPost) Cours
 		Title: v.Title,
 	}
 }
+
 func mapCourseDashboardReferencedPostPtr(v *svc.CourseDashboardReferencedPost) *CourseDashboardReferencedPost {
 	if v == nil {
 		return nil
@@ -197,6 +209,7 @@ func mapCourseDashboardReferencedPostPtr(v *svc.CourseDashboardReferencedPost) *
 	r := mapCourseDashboardReferencedPost(*v)
 	return &r
 }
+
 func mapCourseDashboardReferencedPostSlice(v []svc.CourseDashboardReferencedPost) []CourseDashboardReferencedPost {
 	if v == nil {
 		return nil
@@ -231,6 +244,7 @@ func mapCourseDashboardPost(v svc.CourseDashboardPost) CourseDashboardPost {
 		EditedAt:    v.EditedAt,
 	}
 }
+
 func mapCourseDashboardPostPtr(v *svc.CourseDashboardPost) *CourseDashboardPost {
 	if v == nil {
 		return nil
@@ -238,6 +252,7 @@ func mapCourseDashboardPostPtr(v *svc.CourseDashboardPost) *CourseDashboardPost 
 	r := mapCourseDashboardPost(*v)
 	return &r
 }
+
 func mapCourseDashboardPostSlice(v []svc.CourseDashboardPost) []CourseDashboardPost {
 	if v == nil {
 		return nil
@@ -264,6 +279,7 @@ func mapCourseDashboardAttachment(v svc.CourseDashboardAttachment) CourseDashboa
 		ContentType:  v.ContentType,
 	}
 }
+
 func mapCourseDashboardAttachmentPtr(v *svc.CourseDashboardAttachment) *CourseDashboardAttachment {
 	if v == nil {
 		return nil
@@ -271,6 +287,7 @@ func mapCourseDashboardAttachmentPtr(v *svc.CourseDashboardAttachment) *CourseDa
 	r := mapCourseDashboardAttachment(*v)
 	return &r
 }
+
 func mapCourseDashboardAttachmentSlice(v []svc.CourseDashboardAttachment) []CourseDashboardAttachment {
 	if v == nil {
 		return nil
@@ -297,6 +314,7 @@ func mapCourseDashboardUser(v svc.CourseDashboardUser) CourseDashboardUser {
 		PfpURL: v.PfpURL,
 	}
 }
+
 func mapCourseDashboardUserPtr(v *svc.CourseDashboardUser) *CourseDashboardUser {
 	if v == nil {
 		return nil
@@ -304,6 +322,7 @@ func mapCourseDashboardUserPtr(v *svc.CourseDashboardUser) *CourseDashboardUser 
 	r := mapCourseDashboardUser(*v)
 	return &r
 }
+
 func mapCourseDashboardUserSlice(v []svc.CourseDashboardUser) []CourseDashboardUser {
 	if v == nil {
 		return nil
@@ -342,6 +361,7 @@ func mapListAllAssignmentsAssignment(v svc.ListAllAssignmentsAssignment) ListAll
 		CreatedAt:          v.CreatedAt,
 	}
 }
+
 func mapListAllAssignmentsAssignmentPtr(v *svc.ListAllAssignmentsAssignment) *ListAllAssignmentsAssignment {
 	if v == nil {
 		return nil
@@ -349,6 +369,7 @@ func mapListAllAssignmentsAssignmentPtr(v *svc.ListAllAssignmentsAssignment) *Li
 	r := mapListAllAssignmentsAssignment(*v)
 	return &r
 }
+
 func mapListAllAssignmentsAssignmentSlice(v []svc.ListAllAssignmentsAssignment) []ListAllAssignmentsAssignment {
 	if v == nil {
 		return nil
@@ -371,6 +392,7 @@ func mapListAllAssignmentsCourse(v svc.ListAllAssignmentsCourse) ListAllAssignme
 		Name: v.Name,
 	}
 }
+
 func mapListAllAssignmentsCoursePtr(v *svc.ListAllAssignmentsCourse) *ListAllAssignmentsCourse {
 	if v == nil {
 		return nil
@@ -378,6 +400,7 @@ func mapListAllAssignmentsCoursePtr(v *svc.ListAllAssignmentsCourse) *ListAllAss
 	r := mapListAllAssignmentsCourse(*v)
 	return &r
 }
+
 func mapListAllAssignmentsCourseSlice(v []svc.ListAllAssignmentsCourse) []ListAllAssignmentsCourse {
 	if v == nil {
 		return nil
@@ -404,6 +427,7 @@ func mapListAllAssignmentsRefPost(v svc.ListAllAssignmentsRefPost) ListAllAssign
 		Color: v.Color,
 	}
 }
+
 func mapListAllAssignmentsRefPostPtr(v *svc.ListAllAssignmentsRefPost) *ListAllAssignmentsRefPost {
 	if v == nil {
 		return nil
@@ -411,6 +435,7 @@ func mapListAllAssignmentsRefPostPtr(v *svc.ListAllAssignmentsRefPost) *ListAllA
 	r := mapListAllAssignmentsRefPost(*v)
 	return &r
 }
+
 func mapListAllAssignmentsRefPostSlice(v []svc.ListAllAssignmentsRefPost) []ListAllAssignmentsRefPost {
 	if v == nil {
 		return nil
@@ -437,6 +462,7 @@ func mapAssignmentGradeUser(v svc.AssignmentGradeUser) AssignmentGradeUser {
 		Phone: v.Phone,
 	}
 }
+
 func mapAssignmentGradeUserPtr(v *svc.AssignmentGradeUser) *AssignmentGradeUser {
 	if v == nil {
 		return nil
@@ -444,6 +470,7 @@ func mapAssignmentGradeUserPtr(v *svc.AssignmentGradeUser) *AssignmentGradeUser 
 	r := mapAssignmentGradeUser(*v)
 	return &r
 }
+
 func mapAssignmentGradeUserSlice(v []svc.AssignmentGradeUser) []AssignmentGradeUser {
 	if v == nil {
 		return nil
@@ -470,6 +497,7 @@ func mapSubmissionGrade(v svc.SubmissionGrade) SubmissionGrade {
 		GradedBy: mapAssignmentGradeUser(v.GradedBy),
 	}
 }
+
 func mapSubmissionGradePtr(v *svc.SubmissionGrade) *SubmissionGrade {
 	if v == nil {
 		return nil
@@ -477,6 +505,7 @@ func mapSubmissionGradePtr(v *svc.SubmissionGrade) *SubmissionGrade {
 	r := mapSubmissionGrade(*v)
 	return &r
 }
+
 func mapSubmissionGradeSlice(v []svc.SubmissionGrade) []SubmissionGrade {
 	if v == nil {
 		return nil
@@ -507,6 +536,7 @@ func mapAssignmentSubmission(v svc.AssignmentSubmission) AssignmentSubmission {
 		CreatedAt:   v.CreatedAt,
 	}
 }
+
 func mapAssignmentSubmissionPtr(v *svc.AssignmentSubmission) *AssignmentSubmission {
 	if v == nil {
 		return nil
@@ -514,6 +544,7 @@ func mapAssignmentSubmissionPtr(v *svc.AssignmentSubmission) *AssignmentSubmissi
 	r := mapAssignmentSubmission(*v)
 	return &r
 }
+
 func mapAssignmentSubmissionSlice(v []svc.AssignmentSubmission) []AssignmentSubmission {
 	if v == nil {
 		return nil
@@ -542,6 +573,7 @@ func mapAssignmentSubmissionAttachment(v svc.AssignmentSubmissionAttachment) Ass
 		PresignedURL: v.PresignedURL,
 	}
 }
+
 func mapAssignmentSubmissionAttachmentPtr(v *svc.AssignmentSubmissionAttachment) *AssignmentSubmissionAttachment {
 	if v == nil {
 		return nil
@@ -549,6 +581,7 @@ func mapAssignmentSubmissionAttachmentPtr(v *svc.AssignmentSubmissionAttachment)
 	r := mapAssignmentSubmissionAttachment(*v)
 	return &r
 }
+
 func mapAssignmentSubmissionAttachmentSlice(v []svc.AssignmentSubmissionAttachment) []AssignmentSubmissionAttachment {
 	if v == nil {
 		return nil

@@ -1,3 +1,4 @@
+// Package submissions contains constants for assignment submission status
 package submissions
 
 type SubmissionStatus string

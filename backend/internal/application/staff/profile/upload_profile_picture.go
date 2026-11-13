@@ -1,3 +1,4 @@
+// Package profile
 package profile
 
 import (
@@ -50,7 +51,7 @@ func (s *Service) UploadProfilePicture(ctx context.Context, i *UploadProfilePict
 	}
 
 	upload := uploads.UploadService{
-		Db:         s.DB,
+		DB:         s.DB,
 		S3:         s.S3,
 		Ctx:        ctx,
 		BucketName: bucketName,

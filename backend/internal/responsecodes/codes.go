@@ -1,3 +1,4 @@
+// Package responsecodes contains constants for error response status codes
 package responsecodes
 
 // Error codes are returned alongside response codes (e.g. 500) in cases where

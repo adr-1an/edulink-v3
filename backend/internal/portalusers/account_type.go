@@ -1,3 +1,4 @@
+// Package portalusers
 package portalusers
 
 type AccType string

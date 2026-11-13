@@ -1,13 +1,15 @@
+// Package schoollookup contains helper functions for school lookups
 package schoollookup
 
 import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // YearToSchoolID returns the ID of the school that the Academic Year belongs to.

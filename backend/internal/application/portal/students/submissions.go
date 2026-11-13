@@ -1,22 +1,24 @@
+// Package students
 package students
 
 import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"strconv"
+	"time"
+
 	"app/internal/cryptoutil"
 	"app/internal/permissions"
 	"app/internal/submissions"
 	"app/internal/uploads"
 
-	"context"
-	"database/sql"
-	"errors"
-	"fmt"
 	"github.com/lib/pq"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/minio/minio-go/v7"
-	"log"
-	"os"
-	"strconv"
-	"time"
 )
 
 func listAssignmentSubmissionAttachments(ctx context.Context, db *sql.DB, submissionIDs []int64, s3 *minio.Client) (map[string][]AssignmentSubmissionAttachment, error) {
@@ -391,7 +393,7 @@ func (s *Service) InitSubmissionAttachmentUpload(ctx context.Context, i *InitSub
 	}
 
 	upload := uploads.UploadService{
-		Db:         tx,
+		DB:         tx,
 		S3:         s.S3,
 		Ctx:        ctx,
 		BucketName: bucketName,

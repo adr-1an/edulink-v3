@@ -1,14 +1,16 @@
+// Package auth
 package auth
 
 import (
-	"app/internal/cryptoutil"
-	"app/internal/portalusers"
 	"context"
 	"database/sql"
 	"errors"
 	"log"
 	"net/http"
 	"strings"
+
+	"app/internal/cryptoutil"
+	"app/internal/portalusers"
 )
 
 func ParseToken(w http.ResponseWriter, r *http.Request) (string, error) {

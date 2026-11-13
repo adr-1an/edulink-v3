@@ -1,3 +1,4 @@
+// Package students
 package students
 
 import (
@@ -110,7 +111,7 @@ func (s *Service) UploadStudentProfilePicture(ctx context.Context, i *UploadProf
 	defer func() { _ = tx.Rollback() }()
 
 	uploadService := uploads.UploadService{
-		Db:         tx,
+		DB:         tx,
 		S3:         s.S3,
 		Ctx:        ctx,
 		BucketName: bucketName,

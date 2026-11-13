@@ -1,3 +1,4 @@
+// Package mailer contains functions for email sending
 package mailer
 
 import (
@@ -86,7 +87,6 @@ func AppendMailQueue(emails []MailQueue, sf *sonyflake.Sonyflake, db *sql.Tx, ct
 		Purpose     *MailQueuePurpose
 		MaxRetries  *int
 	}
-	messages := make([]email, 0, len(emails))
 
 	// The number of arguments one insert query will take
 	argsLen := 9
@@ -115,7 +115,6 @@ func AppendMailQueue(emails []MailQueue, sf *sonyflake.Sonyflake, db *sql.Tx, ct
 			Purpose:     e.Purpose,
 			MaxRetries:  e.MaxRetries,
 		}
-		messages = append(messages, m)
 
 		// Generate placeholders & args
 		placeholders = append(

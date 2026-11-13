@@ -1,3 +1,4 @@
+// Package permissions contains functions for checking portal permissions
 package permissions
 
 import (

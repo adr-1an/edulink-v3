@@ -1,3 +1,4 @@
+// Package permissions contains functions for checking staff school permissions
 package permissions
 
 import (

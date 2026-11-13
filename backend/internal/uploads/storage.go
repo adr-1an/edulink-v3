@@ -1,3 +1,4 @@
+// Package uploads contains constants and functions for handling file uploads
 package uploads
 
 import (
@@ -20,7 +21,7 @@ type databaseExecutor interface {
 }
 
 type UploadService struct {
-	Db         databaseExecutor
+	DB         databaseExecutor
 	S3         *minio.Client
 	Ctx        context.Context
 	BucketName string
@@ -44,7 +45,7 @@ func (s UploadService) StoreStorageObjectsRow(
 	declaredContentType string,
 	objectKey string,
 ) error {
-	if _, err := s.Db.ExecContext(s.Ctx, `
+	if _, err := s.DB.ExecContext(s.Ctx, `
 		INSERT INTO storage_objects (
 			 id,
 			 completion_token,
@@ -81,7 +82,7 @@ func (s UploadService) PortalStoreStorageObjectsRow(
 	declaredContentType string,
 	objectKey string,
 ) error {
-	if _, err := s.Db.ExecContext(s.Ctx, `
+	if _, err := s.DB.ExecContext(s.Ctx, `
 		INSERT INTO portal_storage_objects (
 			id,
 			completion_token,

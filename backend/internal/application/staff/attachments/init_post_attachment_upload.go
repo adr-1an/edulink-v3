@@ -1,3 +1,4 @@
+// Package attachments
 package attachments
 
 import (
@@ -69,7 +70,7 @@ func (svc *Service) InitPostAttachmentUpload(ctx context.Context, i *InitPostAtt
 		return nil, ErrBadRequest
 	}
 
-	if p.DeclaredSize <= 0 || p.DeclaredSize > 5*1024*1024 { // 5mb
+	if p.DeclaredSize <= 0 || p.DeclaredSize > 50*1024*1024 { // 50MB
 		return nil, ErrUnprocessableEntity
 	}
 	if p.Name == "" || len(p.Name) > 255 {
@@ -117,7 +118,7 @@ func (svc *Service) InitPostAttachmentUpload(ctx context.Context, i *InitPostAtt
 
 	// store row
 	s := uploads.UploadService{
-		Db:         svc.DB,
+		DB:         svc.DB,
 		S3:         svc.S3,
 		Ctx:        ctx,
 		BucketName: bucketName,

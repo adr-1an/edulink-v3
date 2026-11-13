@@ -1,3 +1,4 @@
+// Package staff
 package staff
 
 import (
