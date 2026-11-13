@@ -27,7 +27,7 @@ const allowedTypes = new Set([
 ])
 
 const acceptedFiles = ".jpg,.jpeg,.png,.gif,.webp,.zip,.pdf"
-const maxFileSize = 5 * 1024 * 1024
+const maxFileSize = 50 * 1024 * 1024
 
 function formatBytes(bytes: number) {
     if (bytes < 1024) return `${bytes} B`
@@ -133,7 +133,7 @@ export default function PostAttachmentPicker({
                     event.currentTarget.value = ""
                 }}
             />
-            <FieldDescription>Optional. JPEG, PNG, GIF, WebP, ZIP, or PDF files up to 5 MB each.</FieldDescription>
+            <FieldDescription>Optional. JPEG, PNG, GIF, WebP, ZIP, or PDF files up to 50 MB each.</FieldDescription>
 
             {attachments.length > 0 && (
                 <div className="max-h-48 space-y-2 overflow-y-auto pr-1" aria-label="Selected attachments">
