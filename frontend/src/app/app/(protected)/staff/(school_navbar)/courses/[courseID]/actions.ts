@@ -121,8 +121,8 @@ export async function handleInitPostAttachmentUpload(postID: string, file: {
 }) {
     if (!/^\d+$/.test(postID)) return {ok: false as const, message: "Invalid post."}
     if (!file.name || file.name.length > 255) return {ok: false as const, message: "The file name is invalid."}
-    if (!Number.isInteger(file.size) || file.size <= 0 || file.size > 5 * 1024 * 1024) {
-        return {ok: false as const, message: "Files can't be larger than 5 MB."}
+    if (!Number.isInteger(file.size) || file.size <= 0 || file.size > 50 * 1024 * 1024) {
+        return {ok: false as const, message: "Files can't be larger than 50 MB."}
     }
     if (!allowedAttachmentTypes.has(file.type)) {
         return {ok: false as const, message: "This file type is not supported."}
