@@ -10,6 +10,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -72,7 +73,7 @@ func (h *Handler) CheckToken(w http.ResponseWriter, r *http.Request) {
 
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"user": map[string]any{
-			"id":          userID,
+			"id":          strconv.FormatInt(userID, 10),
 			"accountType": res.AccountType,
 		},
 	})

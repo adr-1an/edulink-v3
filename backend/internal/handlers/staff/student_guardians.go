@@ -143,6 +143,6 @@ func (h *Handler) ListStudentGuardians(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"access":    access,
 		"guardians": guardians,
-		"schoolId":  res.SchoolID,
+		"schoolId":  strconv.FormatInt(res.SchoolID, 10),
 	})
 }

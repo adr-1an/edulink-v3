@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -41,10 +42,24 @@ func (h *Handler) ListGuardianStudents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	access := res.Access
+	type student struct {
+		ID          string    `json:"id"`
+		Name        string    `json:"name"`
+		LastName    string    `json:"lastName"`
+		DateOfBirth time.Time `json:"dateOfBirth"`
+	}
+	students := make([]student, 0, len(res.Students))
+	for _, s := range res.Students {
+		students = append(students, student{
+			ID:          strconv.FormatInt(s.ID, 10),
+			Name:        s.Name,
+			LastName:    s.LastName,
+			DateOfBirth: s.DoB,
+		})
+	}
 
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"access":   access,
-		"students": res.Students,
+		"access":   res.Access,
+		"students": students,
 	})
 }

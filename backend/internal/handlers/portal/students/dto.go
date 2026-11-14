@@ -9,7 +9,7 @@ import (
 
 type ListCoursesCourse struct {
 	ID          string           `json:"id"`
-	Grade       ListCoursesGrade `json:"ListCoursesGrade"`
+	Grade       ListCoursesGrade `json:"grade"`
 	Name        string           `json:"name"`
 	Description string           `json:"description"`
 	AccentColor string           `json:"accentColor"`
@@ -76,7 +76,7 @@ func mapListCoursesGradeSlice(v []svc.ListCoursesGrade) []ListCoursesGrade {
 }
 
 type CourseDashboardCourse struct {
-	Grade       CourseDashboardGrade `json:"CourseDashboardGrade"`
+	Grade       CourseDashboardGrade `json:"grade"`
 	ID          string               `json:"id"`
 	Name        string               `json:"name"`
 	Description string               `json:"description"`
@@ -146,7 +146,7 @@ func mapCourseDashboardGradeSlice(v []svc.CourseDashboardGrade) []CourseDashboar
 }
 
 type CourseDashboardAssignment struct {
-	ReferencedPost     *CourseDashboardReferencedPost `json:"CourseDashboardReferencedPost"`
+	ReferencedPost     *CourseDashboardReferencedPost `json:"referencedPost"`
 	Submission         *AssignmentSubmission          `json:"submission"`
 	ID                 string                         `json:"id"`
 	Title              string                         `json:"title"`
@@ -336,7 +336,7 @@ func mapCourseDashboardUserSlice(v []svc.CourseDashboardUser) []CourseDashboardU
 
 type ListAllAssignmentsAssignment struct {
 	RefPost            *ListAllAssignmentsRefPost `json:"referencedPost"`
-	Course             ListAllAssignmentsCourse   `json:"ListAllAssignmentsCourse"`
+	Course             ListAllAssignmentsCourse   `json:"course"`
 	Submission         *AssignmentSubmission      `json:"submission"`
 	ID                 string                     `json:"id"`
 	Title              string                     `json:"title"`
@@ -520,7 +520,7 @@ func mapSubmissionGradeSlice(v []svc.SubmissionGrade) []SubmissionGrade {
 type AssignmentSubmission struct {
 	ID          string                           `json:"id"`
 	Status      submissions.SubmissionStatus     `json:"status"`
-	Grade       *SubmissionGrade                 `json:"SubmissionGrade"`
+	Grade       *SubmissionGrade                 `json:"grade"`
 	Notes       string                           `json:"notes"`
 	Attachments []AssignmentSubmissionAttachment `json:"attachments"`
 	CreatedAt   time.Time                        `json:"createdAt"`
