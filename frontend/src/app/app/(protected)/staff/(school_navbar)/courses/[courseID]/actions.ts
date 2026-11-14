@@ -44,8 +44,8 @@ function validatePostInput(input: CoursePostInput) {
     const accentColor = input.accentColor.trim().replace(/^#/, "").toUpperCase()
     const showUntil = input.showUntil?.trim() || null
 
-    if (!title || title.length > 32) return {ok: false as const, message: "Post titles must be between 1 and 32 characters."}
-    if (!body || body.length > 2048) return {ok: false as const, message: "Post content must be between 1 and 2048 characters."}
+    if (!title || title.length > 64) return {ok: false as const, message: "Post titles must be between 1 and 64 characters."}
+    if (!body || body.length > 10240) return {ok: false as const, message: "Post content must be between 1 and 10240 characters."}
     if (!/^[0-9A-F]{6}$/.test(accentColor)) return {ok: false as const, message: "Enter a valid six-character hex color."}
     if (showUntil && Number.isNaN(Date.parse(showUntil))) return {ok: false as const, message: "Enter a valid expiry date."}
 

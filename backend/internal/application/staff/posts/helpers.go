@@ -1,3 +1,4 @@
+// Package posts
 package posts
 
 import (
@@ -24,7 +25,7 @@ func parseAndValidate(p Post) (Post, error) {
 		return Post{}, errors.New("missing fields")
 	}
 
-	if len(p.Title) > 32 || len(p.Body) > 2048 || len(p.AccentColor) != 6 {
+	if len(p.Title) > 64 || len(p.Body) > 10240 || len(p.AccentColor) != 6 {
 		return Post{}, errors.New("invalid lengths")
 	}
 

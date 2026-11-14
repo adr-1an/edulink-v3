@@ -850,9 +850,9 @@ function PostForm({
     const showUntilID = useId()
     const color = normalizeColor(draft.accentColor)
     const valid = Boolean(draft.title.trim())
-        && draft.title.trim().length <= 32
+        && draft.title.trim().length <= 64
         && Boolean(draft.body.trim())
-        && draft.body.trim().length <= 2048
+        && draft.body.trim().length <= 10240
         && /^[0-9A-Fa-f]{6}$/.test(draft.accentColor)
         && (!draft.hasExpiry || Boolean(draft.showUntil))
 
@@ -862,13 +862,13 @@ function PostForm({
                 <Field>
                     <div className="flex items-center justify-between gap-3">
                         <FieldLabel>Title</FieldLabel>
-                        <span className="text-xs tabular-nums text-muted-foreground">{draft.title.length}/32</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">{draft.title.length}/64</span>
                     </div>
                     <Input
                         value={draft.title}
                         onChange={(event) => onChange({...draft, title: event.target.value})}
                         placeholder="What’s happening?"
-                        maxLength={32}
+                        maxLength={64}
                         required
                         autoFocus
                     />
@@ -876,14 +876,14 @@ function PostForm({
                 <Field>
                     <div className="flex items-center justify-between gap-3">
                         <FieldLabel>Content</FieldLabel>
-                        <span className="text-xs tabular-nums text-muted-foreground">{draft.body.length}/2048</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">{draft.body.length}/10240</span>
                     </div>
                     <Textarea
                         className="min-h-36 resize-y"
                         value={draft.body}
                         onChange={(event) => onChange({...draft, body: event.target.value})}
                         placeholder="Write an update for the course..."
-                        maxLength={2048}
+                        maxLength={10240}
                         required
                     />
                 </Field>
